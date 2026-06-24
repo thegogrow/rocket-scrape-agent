@@ -736,13 +736,28 @@ function bindEvents() {
 }
 
 async function loadProfiles() {
-  const response = await fetch("/api/profiles");
+  let response = await fetch("/api/profiles");
+
+  if (!response.ok) {
+    response = await fetch("/profiles.json");
+  }
 
   if (!response.ok) {
     throw new Error(`Failed to load profiles: ${response.status}`);
   }
 
   state.profiles = await response.json();
+
+  if (!Array.isArray(state.profiles) || state.profiles.length === 0) {
+    response = await fetch("/profiles.json");
+
+    if (!response.ok) {
+      throw new Error(`Failed to load static profiles: ${response.status}`);
+    }
+
+    state.profiles = await response.json();
+  }
+
   state.filtered = state.profiles;
   state.selectedDomain = null;
   elements.status.textContent = `${state.profiles.length} loaded`;
