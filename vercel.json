@@ -4,10 +4,6 @@
     {
       "source": "/api/profiles/:domain",
       "destination": "/api/profile?domain=:domain"
-    },
-    {
-      "source": "/logos/:domain/logo.png",
-      "destination": "/api/logo?domain=:domain"
     }
   ]
 }

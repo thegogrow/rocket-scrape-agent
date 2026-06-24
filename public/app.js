@@ -454,10 +454,10 @@ function evidenceStatusMarkup(label, available) {
 function evidenceSummaryMarkup(profile) {
   return `
     <div class="evidenceGrid">
-      ${evidenceStatusMarkup("Website content first", Boolean(profile.json?.sourceBundle?.websiteData?.markdown || profile.description))}
+      ${evidenceStatusMarkup("Website content first", Boolean(profile.files?.sourceBundle || profile.description))}
       ${evidenceStatusMarkup("Logo source", Boolean(profile.logoUrl || profile.files?.logo))}
-      ${evidenceStatusMarkup("Company enrichment", Boolean(profile.json?.enrichment))}
-      ${evidenceStatusMarkup("GitHub support only", Boolean(profile.githubUrl || profile.json?.github))}
+      ${evidenceStatusMarkup("Company enrichment", Boolean(profile.files?.enrichment))}
+      ${evidenceStatusMarkup("GitHub support only", Boolean(profile.githubUrl || profile.files?.github))}
     </div>
   `;
 }

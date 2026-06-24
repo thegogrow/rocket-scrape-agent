@@ -177,7 +177,18 @@ async function listProfiles() {
   return profiles.filter((profile) => profile.json.profile);
 }
 
+async function listStaticProfiles() {
+  const staticPath = path.join(env.paths.rootDir, "public", "profiles.json");
+
+  if (!(await fs.pathExists(staticPath))) {
+    return [];
+  }
+
+  return fs.readJson(staticPath);
+}
+
 module.exports = {
+  listStaticProfiles,
   listProfiles,
   loadProfile,
   logoPathForDomain,

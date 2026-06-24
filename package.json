@@ -14,6 +14,7 @@
     "cost:week3": "node src/utils/generateCostModel.js",
     "demo": "node src/utils/runDemo.js",
     "demo:live": "node src/utils/runDemo.js --mode=live",
+    "export:ui": "node src/utils/exportStaticUiData.js",
     "ui": "node src/ui/server.js"
   },
   "engines": {

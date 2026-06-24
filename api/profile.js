@@ -1,4 +1,4 @@
-const { loadProfile, safeDomain } = require("../src/ui/profileData");
+const { listStaticProfiles, loadProfile, safeDomain } = require("../src/ui/profileData");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -14,8 +14,11 @@ module.exports = async function handler(request, response) {
   }
 
   try {
+    const staticProfiles = await listStaticProfiles();
+    const staticProfile = staticProfiles.find((profile) => profile.domain === domain);
+
     response.setHeader("Cache-Control", "no-store");
-    response.status(200).json(await loadProfile(domain));
+    response.status(200).json(staticProfile || (await loadProfile(domain)));
   } catch (error) {
     response.status(500).json({ error: error.message });
   }
