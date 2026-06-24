@@ -71,6 +71,7 @@ Node.js pipeline for crawling Rocket Engineers provider websites, storing raw cr
 - `npm run cost:week3`: Generate `docs/week3-cost-model.md`.
 - `npm run demo`: Run a deterministic replay demo that emits profile JSON and logo output.
 - `npm run demo:live`: Run a live demo through the pipeline for a supplied URL.
+- `npm run export:ui`: Export generated providers from `output/` into deployable static UI data.
 - `npm run ui`: Start the local profile browser at `http://localhost:3001`.
 
 ## Profile Browser
@@ -81,7 +82,25 @@ Run:
 npm run ui
 ```
 
-The browser reads existing folders in `output/` and shows company logo, name, services, technologies, vendor partnerships, links, confidence score, recent activity dates/sources when available, full profile JSON, source data, raw crawl data, logo source, and review notes. Filters cover country, services, technologies, vendor partnerships, confidence score, and free-text search.
+The local browser reads existing folders in `output/` and shows company logo, name, services, technologies, vendor partnerships, links, confidence score, recent activity dates/sources when available, evidence summaries, and review notes. Filters cover country, services, technologies, vendor partnerships, confidence score, and free-text search.
+
+## Provider Data For Deployment
+
+The source crawl output in `output/` is intentionally ignored by Git because it is generated data. Vercel cannot read ignored local folders after deployment, so the provider UI uses a compact deployable export instead:
+
+- `public/profiles.json`: provider cards and detail-page data.
+- `public/logos/`: provider logos used by the UI.
+
+After running or updating the pipeline, refresh the deployable provider data:
+
+```bash
+npm run export:ui
+git add public/profiles.json public/logos
+git commit -m "Update provider data"
+git push
+```
+
+This keeps the current prototype simple: providers are versioned in Git and Vercel can show them without a database. Move to a database later if provider editing needs to happen from an admin UI or without redeploying.
 
 ## Week 1 Documents
 
