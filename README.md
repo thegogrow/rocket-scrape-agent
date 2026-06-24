@@ -67,6 +67,7 @@ Node.js pipeline for crawling Rocket Engineers provider websites, storing raw cr
 - `npm run review:week1`: Generate `docs/week1-review.md` from `output/`.
 - `npm run pipeline:week3`: Run the pipeline for `data/week3-additional-company-urls.json`.
 - `npm run pipeline:week4`: Run the pipeline for `data/week4-additional-company-urls.json`.
+- `npm run compare:model`: Compare the current OpenRouter model with DeepSeek V3.1 for Task 4.7.
 - `npm run report:week3`: Generate `docs/week3-quality-report.md` and `docs/week3-quality-review.csv`.
 - `npm run cost:week3`: Generate `docs/week3-cost-model.md`.
 - `npm run demo`: Run a deterministic replay demo that emits profile JSON and logo output.

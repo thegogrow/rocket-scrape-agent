@@ -8,6 +8,7 @@
     "dev": "node --watch src/index.js",
     "review:week1": "node src/utils/generateWeek1Review.js",
     "compare:week2": "node src/utils/generateComparisonSpreadsheet.js",
+    "compare:model": "node src/utils/compareChineseModelQuality.js",
     "pipeline:week3": "node src/utils/runWeek3Pipeline.js",
     "pipeline:week4": "node src/utils/runWeek4Pipeline.js",
     "report:week3": "node src/utils/generateWeek3QualityReport.js",

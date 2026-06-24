@@ -339,9 +339,9 @@ function buildUserPrompt(scrapedData, retryMessage = null) {
   ].join("\n");
 }
 
-async function requestProfileCompletion(client, scrapedData, retryMessage = null) {
+async function requestProfileCompletion(client, scrapedData, retryMessage = null, model = null) {
   const response = await client.chat.completions.create({
-    model: env.openRouter.model || "anthropic/claude-sonnet-4",
+    model: model || env.openRouter.model || "anthropic/claude-sonnet-4",
     temperature: 0.1,
     max_tokens: 2500,
     messages: [
@@ -360,18 +360,23 @@ async function requestProfileCompletion(client, scrapedData, retryMessage = null
 }
 
 async function generateCompanyProfile(scrapedData) {
+  return generateCompanyProfileWithModel(scrapedData, env.openRouter.model || "anthropic/claude-sonnet-4");
+}
+
+async function generateCompanyProfileWithModel(scrapedData, model) {
   const client = createClient();
   let firstResponseText = "";
 
   try {
-    firstResponseText = await requestProfileCompletion(client, scrapedData);
+    firstResponseText = await requestProfileCompletion(client, scrapedData, null, model);
     return parseProfileResponse(firstResponseText);
   } catch (firstError) {
     try {
       const secondResponseText = await requestProfileCompletion(
         client,
         scrapedData,
-        `Your previous response could not be parsed as JSON. Return only one valid JSON object with the exact required keys.`
+        `Your previous response could not be parsed as JSON. Return only one valid JSON object with the exact required keys.`,
+        model
       );
 
       return parseProfileResponse(secondResponseText);
@@ -393,5 +398,6 @@ async function generateCompanyProfile(scrapedData) {
 
 module.exports = {
   generateCompanyProfile,
+  generateCompanyProfileWithModel,
   buildUserPrompt,
 };
