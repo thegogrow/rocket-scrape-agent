@@ -6,6 +6,8 @@ const state = {
   profileMode: false,
   quickFilter: "all",
   activeDetailTab: "overview",
+  adminJobs: [],
+  adminProviders: [],
 };
 
 const elements = {
@@ -17,7 +19,25 @@ const elements = {
   authEmail: document.querySelector("#authEmail"),
   authPassword: document.querySelector("#authPassword"),
   authMessage: document.querySelector("#authMessage"),
+  searchHero: document.querySelector(".searchHero"),
   homePage: document.querySelector("#homePage"),
+  adminPage: document.querySelector("#adminPage"),
+  adminSetupNotice: document.querySelector("#adminSetupNotice"),
+  adminLoginPanel: document.querySelector("#adminLoginPanel"),
+  adminLoginForm: document.querySelector("#adminLoginForm"),
+  adminEmail: document.querySelector("#adminEmail"),
+  adminPassword: document.querySelector("#adminPassword"),
+  adminLoginMessage: document.querySelector("#adminLoginMessage"),
+  adminWorkspace: document.querySelector("#adminWorkspace"),
+  adminSignedInAs: document.querySelector("#adminSignedInAs"),
+  adminSignOutButton: document.querySelector("#adminSignOutButton"),
+  adminRefreshButton: document.querySelector("#adminRefreshButton"),
+  scrapeForm: document.querySelector("#scrapeForm"),
+  scrapeUrl: document.querySelector("#scrapeUrl"),
+  scrapeCompanyName: document.querySelector("#scrapeCompanyName"),
+  scrapeMessage: document.querySelector("#scrapeMessage"),
+  jobList: document.querySelector("#jobList"),
+  adminProviderList: document.querySelector("#adminProviderList"),
   providersPage: document.querySelector("#providersPage"),
   navTabs: document.querySelectorAll("[data-nav-tab]"),
   searchInput: document.querySelector("#searchInput"),
@@ -636,13 +656,218 @@ function resetFilters() {
 }
 
 function setActivePage(page) {
-  const showProviders = page === "providers";
-  elements.homePage.hidden = showProviders;
-  elements.providersPage.hidden = !showProviders;
+  elements.searchHero.hidden = page !== "providers";
+  elements.homePage.hidden = page !== "home";
+  elements.adminPage.hidden = page !== "admin";
+  elements.providersPage.hidden = page !== "providers";
+
+  if (page === "admin") {
+    refreshAdminState();
+  }
 
   elements.navTabs.forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.navTab === page);
   });
+}
+
+function adminToken() {
+  return window.localStorage.getItem("rocketEngineersAdminToken");
+}
+
+function adminEmail() {
+  return window.localStorage.getItem("rocketEngineersAdminEmail");
+}
+
+function setAdminSession(session) {
+  window.localStorage.setItem("rocketEngineersAdminToken", session.accessToken);
+  window.localStorage.setItem("rocketEngineersAdminEmail", session.email);
+}
+
+function clearAdminSession() {
+  window.localStorage.removeItem("rocketEngineersAdminToken");
+  window.localStorage.removeItem("rocketEngineersAdminEmail");
+}
+
+function renderAdminShell(configured = true) {
+  const signedIn = Boolean(adminToken());
+
+  elements.adminSetupNotice.hidden = configured;
+  elements.adminLoginPanel.hidden = !configured || signedIn;
+  elements.adminWorkspace.hidden = !configured || !signedIn;
+  elements.adminSignedInAs.textContent = signedIn ? `Signed in as ${adminEmail()}` : "";
+}
+
+function adminHeaders() {
+  return {
+    Authorization: `Bearer ${adminToken()}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function adminItemMarkup(title, meta, status, body = "", action = "") {
+  return `
+    <article class="adminItem">
+      <div class="adminItemHeader">
+        <strong>${escapeHtml(title)}</strong>
+        ${status ? `<span class="statusPill">${escapeHtml(status)}</span>` : ""}
+      </div>
+      ${meta ? `<span>${escapeHtml(meta)}</span>` : ""}
+      ${body ? `<p>${escapeHtml(body)}</p>` : ""}
+      ${action}
+    </article>
+  `;
+}
+
+function renderAdminLists() {
+  elements.jobList.innerHTML =
+    state.adminJobs.length === 0
+      ? `<div class="emptyResults">No scrape jobs yet.</div>`
+      : state.adminJobs
+          .map((job) =>
+            adminItemMarkup(
+              job.company_name || job.domain || job.url,
+              `${job.url} · ${job.created_at ? new Date(job.created_at).toLocaleString() : "No date"}`,
+              job.status,
+              job.error || ""
+            )
+          )
+          .join("");
+
+  elements.adminProviderList.innerHTML =
+    state.adminProviders.length === 0
+      ? `<div class="emptyResults">No database providers yet.</div>`
+      : state.adminProviders
+          .map((provider) => {
+            const action =
+              provider.status === "published"
+                ? ""
+                : `<button class="secondaryAction" type="button" data-publish-provider="${escapeHtml(provider.id || "")}">Publish</button>`;
+
+            return adminItemMarkup(
+              provider.companyName || provider.domain,
+              provider.website || provider.domain,
+              provider.status || "draft",
+              `${(provider.services || []).slice(0, 3).join(", ") || "No services yet"}`,
+              action
+            );
+          })
+          .join("");
+
+  elements.adminProviderList.querySelectorAll("[data-publish-provider]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await publishAdminProvider(button.dataset.publishProvider);
+    });
+  });
+}
+
+async function refreshAdminState() {
+  try {
+    const response = await fetch(
+      "/api/admin-state",
+      adminToken() ? { headers: adminHeaders() } : {}
+    );
+    const payload = await response.json();
+
+    if (payload.configured === false) {
+      renderAdminShell(false);
+      return;
+    }
+
+    renderAdminShell(true);
+
+    if (!adminToken()) {
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to load admin state.");
+    }
+
+    renderAdminShell(payload.configured !== false);
+    state.adminJobs = payload.jobs || [];
+    state.adminProviders = payload.providers || [];
+    renderAdminLists();
+  } catch (error) {
+    elements.adminLoginMessage.textContent = error.message;
+    elements.adminLoginMessage.classList.add("error");
+    clearAdminSession();
+    renderAdminShell(true);
+  }
+}
+
+async function handleAdminLogin(event) {
+  event.preventDefault();
+  elements.adminLoginMessage.textContent = "";
+  elements.adminLoginMessage.classList.remove("error");
+
+  try {
+    const response = await fetch("/api/admin-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: elements.adminEmail.value,
+        password: elements.adminPassword.value,
+      }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Admin sign in failed.");
+    }
+
+    setAdminSession(payload);
+    elements.adminPassword.value = "";
+    await refreshAdminState();
+  } catch (error) {
+    elements.adminLoginMessage.textContent = error.message;
+    elements.adminLoginMessage.classList.add("error");
+  }
+}
+
+async function handleScrapeSubmit(event) {
+  event.preventDefault();
+  elements.scrapeMessage.textContent = "Queueing scrape job...";
+  elements.scrapeMessage.classList.remove("error");
+
+  try {
+    const response = await fetch("/api/admin-scrape", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        url: elements.scrapeUrl.value,
+        companyName: elements.scrapeCompanyName.value,
+      }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to queue scrape job.");
+    }
+
+    elements.scrapeMessage.textContent = "Scrape job queued.";
+    elements.scrapeUrl.value = "";
+    elements.scrapeCompanyName.value = "";
+    await refreshAdminState();
+  } catch (error) {
+    elements.scrapeMessage.textContent = error.message;
+    elements.scrapeMessage.classList.add("error");
+  }
+}
+
+async function publishAdminProvider(id) {
+  if (!id) {
+    return;
+  }
+
+  const response = await fetch("/api/admin-publish", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, status: "published" }),
+  });
+
+  if (response.ok) {
+    await refreshAdminState();
+  }
 }
 
 function currentUserEmail() {
@@ -703,6 +928,13 @@ function bindEvents() {
   });
 
   elements.resetButton.addEventListener("click", resetFilters);
+  elements.adminLoginForm.addEventListener("submit", handleAdminLogin);
+  elements.scrapeForm.addEventListener("submit", handleScrapeSubmit);
+  elements.adminRefreshButton.addEventListener("click", refreshAdminState);
+  elements.adminSignOutButton.addEventListener("click", () => {
+    clearAdminSession();
+    renderAdminShell(true);
+  });
   elements.authButton.addEventListener("click", openAuthModal);
   elements.authCloseButton.addEventListener("click", closeAuthModal);
   elements.authForm.addEventListener("submit", handleAuthSubmit);

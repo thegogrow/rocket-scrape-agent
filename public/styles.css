@@ -119,7 +119,8 @@ a:hover {
 }
 
 .headerActions button,
-.primaryAction {
+.primaryAction,
+.secondaryAction {
   min-height: 34px;
   border: 1px solid var(--blue);
   border-radius: 4px;
@@ -127,6 +128,11 @@ a:hover {
   color: #fff;
   padding: 0 14px;
   font-weight: 700;
+}
+
+.secondaryAction {
+  background: #fff;
+  color: var(--blue-dark);
 }
 
 .authModal {
@@ -269,6 +275,138 @@ a:hover {
 .homePage {
   min-height: calc(100vh - 76px);
   background: var(--page);
+}
+
+.adminPage {
+  padding: 28px 32px 48px;
+}
+
+.adminShell {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.adminHeader,
+.panelHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.adminHeader h1,
+.adminPanel h2 {
+  margin: 0;
+  color: var(--blue-dark);
+}
+
+.adminHeader p,
+.panelHeader p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.adminNotice,
+.adminPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(24, 24, 24, 0.08);
+}
+
+.adminNotice {
+  padding: 14px 16px;
+  color: #7d4b00;
+  background: #fff7e8;
+}
+
+.adminPanel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.adminWorkspace {
+  display: grid;
+  gap: 18px;
+}
+
+.adminGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.adminForm {
+  display: grid;
+  gap: 12px;
+}
+
+.adminForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.adminForm input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #9faab5;
+  border-radius: 6px;
+}
+
+.adminForm button[type="submit"] {
+  min-height: 44px;
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 800;
+}
+
+.adminList {
+  display: grid;
+  gap: 10px;
+}
+
+.adminItem {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.adminItemHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminItem strong {
+  color: var(--blue-dark);
+}
+
+.adminItem span,
+.adminItem p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.statusPill {
+  align-self: start;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #edf4ff;
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .marketplace {
@@ -1082,7 +1220,8 @@ a:hover {
   .listingDetail,
   .listingHero,
   .mediaStrip,
-  .highlightGrid {
+  .highlightGrid,
+  .adminGrid {
     grid-template-columns: 1fr;
   }
 

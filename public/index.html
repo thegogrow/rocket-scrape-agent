@@ -17,6 +17,7 @@
       <nav class="topNav" aria-label="Primary navigation">
         <a href="#" data-nav-tab="home">Home</a>
         <a href="#" class="active" data-nav-tab="providers">Providers</a>
+        <a href="#" data-nav-tab="admin">Admin</a>
       </nav>
       <div class="headerActions">
         <span id="status" hidden>Loading profiles</span>
@@ -56,6 +57,73 @@
     </section>
 
     <section id="homePage" class="homePage" hidden></section>
+
+    <main id="adminPage" class="adminPage" hidden>
+      <section class="adminShell">
+        <div class="adminHeader">
+          <div>
+            <h1>Provider Admin</h1>
+            <p>Submit company websites, review scrape jobs, and publish provider profiles from Supabase.</p>
+          </div>
+          <button id="adminRefreshButton" class="secondaryAction" type="button">Refresh</button>
+        </div>
+
+        <section id="adminSetupNotice" class="adminNotice" hidden>
+          Supabase is not configured yet. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_EMAILS` in Vercel.
+        </section>
+
+        <section id="adminLoginPanel" class="adminPanel">
+          <h2>Admin Sign In</h2>
+          <form id="adminLoginForm" class="adminForm">
+            <label>
+              Email
+              <input id="adminEmail" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              Password
+              <input id="adminPassword" type="password" autocomplete="current-password" required />
+            </label>
+            <div id="adminLoginMessage" class="authMessage" role="status"></div>
+            <button type="submit">Sign In</button>
+          </form>
+        </section>
+
+        <section id="adminWorkspace" class="adminWorkspace" hidden>
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Scrape Company</h2>
+                <p id="adminSignedInAs"></p>
+              </div>
+              <button id="adminSignOutButton" class="secondaryAction" type="button">Sign Out</button>
+            </div>
+            <form id="scrapeForm" class="adminForm">
+              <label>
+                Company Website
+                <input id="scrapeUrl" type="url" placeholder="https://company.com" required />
+              </label>
+              <label>
+                Company Name
+                <input id="scrapeCompanyName" type="text" placeholder="Optional" />
+              </label>
+              <div id="scrapeMessage" class="authMessage" role="status"></div>
+              <button type="submit">Queue Scrape</button>
+            </form>
+          </section>
+
+          <section class="adminGrid">
+            <div class="adminPanel">
+              <h2>Scrape Jobs</h2>
+              <div id="jobList" class="adminList"></div>
+            </div>
+            <div class="adminPanel">
+              <h2>Provider Review</h2>
+              <div id="adminProviderList" class="adminList"></div>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
 
     <main id="providersPage" class="marketplace">
       <aside class="discoveryRail" aria-label="Explore and filters">

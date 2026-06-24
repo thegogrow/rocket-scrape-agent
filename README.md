@@ -87,7 +87,7 @@ The local browser reads existing folders in `output/` and shows company logo, na
 
 ## Provider Data For Deployment
 
-The source crawl output in `output/` is intentionally ignored by Git because it is generated data. Vercel cannot read ignored local folders after deployment, so the provider UI uses a compact deployable export instead:
+The source crawl output in `output/` is intentionally ignored by Git because it is generated data. For the public provider browser, the app uses Supabase when configured and falls back to the compact deployable export:
 
 - `public/profiles.json`: provider cards and detail-page data.
 - `public/logos/`: provider logos used by the UI.
@@ -101,7 +101,22 @@ git commit -m "Update provider data"
 git push
 ```
 
-This keeps the current prototype simple: providers are versioned in Git and Vercel can show them without a database. Move to a database later if provider editing needs to happen from an admin UI or without redeploying.
+The Git export remains useful as a fallback and for local demos. The admin UI uses Supabase so providers can be reviewed and published without a redeploy.
+
+## Supabase Admin UI
+
+Run `docs/supabase-schema.sql` in the Supabase SQL editor, then create Supabase Auth users for the admins. For the first admin account, use `phil@thegogrow.ch` with the agreed password.
+
+Set these Vercel environment variables:
+
+```bash
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ADMIN_EMAILS=phil@thegogrow.ch,nunezkathleenm@gmail.com
+```
+
+The `/api/admin-*` routes verify Supabase Auth tokens and use the service role key only on the server. The Admin tab can queue scrape requests, view jobs, review database providers, and publish providers. The actual background scrape processor is intentionally separate from this UI layer.
 
 ## Week 1 Documents
 
@@ -127,6 +142,10 @@ This keeps the current prototype simple: providers are versioned in Git and Verc
 - `BRANDFETCH_BASE_URL`: Base URL for the Brandfetch Brand API.
 - `OUTPUT_DIR`: Directory for generated outputs.
 - `DATA_DIR`: Directory for cached or raw data files.
+- `SUPABASE_URL`: Supabase project URL for the provider database.
+- `SUPABASE_ANON_KEY`: Supabase anon key used for admin sign-in verification.
+- `SUPABASE_SERVICE_ROLE_KEY`: Server-only key used by Vercel API routes.
+- `ADMIN_EMAILS`: Comma-separated admin emails allowed to access the Admin tab.
 
 ## Important
 

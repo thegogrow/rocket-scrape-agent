@@ -1,4 +1,5 @@
 const { listProfiles, listStaticProfiles } = require("../src/ui/profileData");
+const { isSupabaseConfigured, listPublishedProviders } = require("../src/ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -7,6 +8,16 @@ module.exports = async function handler(request, response) {
   }
 
   try {
+    if (isSupabaseConfigured()) {
+      const databaseProfiles = await listPublishedProviders();
+
+      if (databaseProfiles.length > 0) {
+        response.setHeader("Cache-Control", "no-store");
+        response.status(200).json(databaseProfiles);
+        return;
+      }
+    }
+
     const staticProfiles = await listStaticProfiles();
 
     response.setHeader("Cache-Control", "no-store");

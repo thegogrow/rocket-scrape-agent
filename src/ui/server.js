@@ -3,9 +3,16 @@ const http = require("http");
 const net = require("net");
 const path = require("path");
 const { listProfiles, loadProfile, logoPathForDomain, safeDomain } = require("./profileData");
+const { isSupabaseConfigured, listPublishedProviders } = require("./supabaseStore");
 
 const START_PORT = Number.parseInt(process.env.PROFILE_UI_PORT || "3001", 10);
 const PUBLIC_DIR = path.resolve(process.cwd(), "public");
+const API_HANDLERS = {
+  "/api/admin-login": require("../../api/admin-login"),
+  "/api/admin-publish": require("../../api/admin-publish"),
+  "/api/admin-scrape": require("../../api/admin-scrape"),
+  "/api/admin-state": require("../../api/admin-state"),
+};
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -21,6 +28,29 @@ function sendText(response, statusCode, body, contentType = "text/plain; charset
     "Cache-Control": "no-store",
   });
   response.end(body);
+}
+
+function createApiResponse(response) {
+  let statusCode = 200;
+  const headers = {};
+
+  return {
+    setHeader(name, value) {
+      headers[name] = value;
+    },
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      response.writeHead(statusCode, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        ...headers,
+      });
+      response.end(JSON.stringify(payload, null, 2));
+    },
+  };
 }
 
 function contentTypeFor(filePath) {
@@ -53,9 +83,24 @@ async function handleRequest(request, response) {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
     const requestPath = requestUrl.pathname;
+    const apiHandler = API_HANDLERS[requestPath];
+
+    if (apiHandler) {
+      await apiHandler(request, createApiResponse(response));
+      return;
+    }
 
     if (requestPath === "/api/profiles") {
-      const profiles = await listProfiles();
+      let profiles = [];
+
+      if (isSupabaseConfigured()) {
+        profiles = await listPublishedProviders();
+      }
+
+      if (profiles.length === 0) {
+        profiles = await listProfiles();
+      }
+
       sendJson(response, 200, profiles);
       return;
     }
