@@ -1,0 +1,30 @@
+{
+  "name": "rocket-scrape-agent",
+  "version": "1.0.0",
+  "description": "Scaffold for a scraping and AI enrichment pipeline.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "review:week1": "node src/utils/generateWeek1Review.js",
+    "compare:week2": "node src/utils/generateComparisonSpreadsheet.js",
+    "pipeline:week3": "node src/utils/runWeek3Pipeline.js",
+    "pipeline:week4": "node src/utils/runWeek4Pipeline.js",
+    "report:week3": "node src/utils/generateWeek3QualityReport.js",
+    "cost:week3": "node src/utils/generateCostModel.js",
+    "demo": "node src/utils/runDemo.js",
+    "demo:live": "node src/utils/runDemo.js --mode=live",
+    "ui": "node src/ui/server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@mendable/firecrawl-js": "^4.25.2",
+    "axios": "^1.0.0",
+    "cheerio": "1.0.0",
+    "dotenv": "^16.0.0",
+    "fs-extra": "^11.0.0",
+    "openai": "^4.0.0"
+  }
+}
