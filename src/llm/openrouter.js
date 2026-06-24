@@ -172,6 +172,67 @@ function normalizeConfidenceScore(value) {
   return Math.max(0, Math.min(100, score));
 }
 
+function evidenceTextForTechnology(scrapedData) {
+  const payload = prepareScrapedPayload(scrapedData);
+
+  return [
+    payload.websiteData?.markdown,
+    payload.websiteData?.metadata?.title,
+    payload.websiteData?.metadata?.description,
+    JSON.stringify(payload.websiteData?.metadata?.pages || []),
+    JSON.stringify(payload.enrichmentData || {}),
+    JSON.stringify(payload.brandfetchData || {}),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function technologyAliases(value) {
+  const normalized = String(value || "").toLowerCase();
+  const aliases = {
+    aws: ["aws", "amazon web services"],
+    azure: ["azure", "microsoft cloud", "microsoft azure"],
+    "google cloud": ["google cloud", "gcp"],
+    "github actions": ["github actions"],
+    "gitlab": ["gitlab", "git lab"],
+    "argo cd": ["argo cd", "argocd"],
+    "red hat": ["red hat", "redhat"],
+    openshift: ["openshift", "open shift"],
+  };
+
+  return aliases[normalized] || [normalized];
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function evidenceContainsTechnology(evidenceText, alias) {
+  const escaped = escapeRegExp(alias);
+  const pattern = new RegExp(`(^|[^a-z0-9+#.-])${escaped}([^a-z0-9+#.-]|$)`, "i");
+
+  return pattern.test(evidenceText);
+}
+
+function filterWebsiteSupportedTechnologies(profile, scrapedData) {
+  const evidenceText = evidenceTextForTechnology(scrapedData);
+
+  if (!evidenceText.trim()) {
+    return {
+      ...profile,
+      technologies: [],
+    };
+  }
+
+  return {
+    ...profile,
+    technologies: profile.technologies.filter((technology) =>
+      technologyAliases(technology).some((alias) => evidenceContainsTechnology(evidenceText, alias))
+    ),
+  };
+}
+
 function normalizeProfile(parsed) {
   return {
     companyName: normalizeString(parsed?.companyName),
@@ -369,7 +430,7 @@ async function generateCompanyProfileWithModel(scrapedData, model) {
 
   try {
     firstResponseText = await requestProfileCompletion(client, scrapedData, null, model);
-    return parseProfileResponse(firstResponseText);
+    return filterWebsiteSupportedTechnologies(parseProfileResponse(firstResponseText), scrapedData);
   } catch (firstError) {
     try {
       const secondResponseText = await requestProfileCompletion(
@@ -379,7 +440,7 @@ async function generateCompanyProfileWithModel(scrapedData, model) {
         model
       );
 
-      return parseProfileResponse(secondResponseText);
+      return filterWebsiteSupportedTechnologies(parseProfileResponse(secondResponseText), scrapedData);
     } catch (secondError) {
       const error = new Error(
         `Failed to generate company profile: ${secondError.message}`
@@ -399,5 +460,6 @@ async function generateCompanyProfileWithModel(scrapedData, model) {
 module.exports = {
   generateCompanyProfile,
   generateCompanyProfileWithModel,
+  filterWebsiteSupportedTechnologies,
   buildUserPrompt,
 };

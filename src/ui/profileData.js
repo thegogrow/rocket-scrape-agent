@@ -170,7 +170,7 @@ async function listProfiles() {
   const domains = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .filter((domain) => domain !== "demo")
+    .filter((domain) => domain !== "demo" && domain !== "proof.local")
     .sort();
   const profiles = await Promise.all(domains.map(loadProfile));
 

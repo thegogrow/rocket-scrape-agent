@@ -11,6 +11,8 @@
     "compare:model": "node src/utils/compareChineseModelQuality.js",
     "pipeline:week3": "node src/utils/runWeek3Pipeline.js",
     "pipeline:week4": "node src/utils/runWeek4Pipeline.js",
+    "profiles:regenerate": "node src/utils/regenerateProfilesFromSources.js",
+    "profiles:enforce-website-tech": "node src/utils/enforceWebsiteFirstTechnologies.js",
     "report:week3": "node src/utils/generateWeek3QualityReport.js",
     "cost:week3": "node src/utils/generateCostModel.js",
     "demo": "node src/utils/runDemo.js",
