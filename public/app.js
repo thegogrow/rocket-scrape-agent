@@ -564,16 +564,16 @@ function renderDetail() {
             <div class="highlightCard"><span>Location</span>${escapeHtml(profile.location || "Unknown")}</div>
             <div class="highlightCard"><span>Domain</span>${escapeHtml(profile.domain)}</div>
           </div>
-        </section>
 
-        <section class="section">
-          <h3>Technologies</h3>
-          <div class="chips">${chips(profile.technologies, "No technologies found", true)}</div>
-        </section>
+          <section class="section">
+            <h3>Technologies</h3>
+            <div class="chips">${chips(profile.technologies, "No technologies found", true)}</div>
+          </section>
 
-        <section class="section">
-          <h3>Vendor Partnerships</h3>
-          <div class="chips">${chips(profile.vendorPartnerships, "No explicit partnerships found", true)}</div>
+          <section class="section">
+            <h3>Vendor Partnerships</h3>
+            <div class="chips">${chips(profile.vendorPartnerships, "No explicit partnerships found", true)}</div>
+          </section>
         </section>
 
         <section data-detail-panel="activity" class="detailPanel ${state.activeDetailTab === "activity" ? "active" : ""}">
