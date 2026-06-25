@@ -40,7 +40,7 @@
       "Claude Partner Network"
     ],
     "location": "Warsaw, Poland",
-    "confidenceScore": 95,
+    "confidenceScore": 85,
     "githubUrl": "https://github.com/10clouds",
     "linkedinUrl": null,
     "logoUrl": "/logos/10clouds.com/logo.png",
@@ -95,13 +95,11 @@
       "Operations"
     ],
     "focusAreas": [
+      "AWS Cloud Migration",
       "Serverless Architectures",
       "Advanced Automation",
       "Infrastructure Observability",
-      "Full Stack Software Solutions",
-      "Cloud Migration",
-      "AWS Landing Zone Setup",
-      "CI/CD Pipelines"
+      "Full Stack Software Solutions"
     ],
     "technologies": [
       "AWS",
@@ -109,19 +107,19 @@
       "Java",
       "React",
       "Angular",
+      "TypeScript",
       "Terraform",
       "Cloud Development Kit",
       "Pulumi",
-      "CloudFormation",
-      "Typescript"
+      "CloudFormation"
     ],
     "vendorPartnerships": [
-      "AWS"
+      "AWS Partner"
     ],
     "location": "Zurich, Switzerland",
     "confidenceScore": 85,
     "githubUrl": "https://github.com/1way2cloud",
-    "linkedinUrl": "http://www.linkedin.com/company/1way2cloud-company",
+    "linkedinUrl": "https://linkedin.com/company/1way2cloud-company",
     "logoUrl": "/logos/1way2cloud.com/logo.png",
     "recentActivity": [],
     "reviewNotes": [
@@ -141,7 +139,7 @@
     "domain": "2ndwatch.com",
     "country": null,
     "companyName": "Ollion",
-    "website": "https://ollion.com",
+    "website": "https://ollion.com/",
     "description": "We deliver scalable and sustainable solutions, from strategy to execution, across AI, data, and cloud that help you solve your toughest business challenges. We show up with clarity, confidence and accountability where AI ambitions outpace execution, data is complex, and cloud environments are fractured.",
     "services": [
       "AI Strategy & Development",
@@ -153,11 +151,11 @@
       "Software Security and Reliability Engineering"
     ],
     "focusAreas": [
-      "AI Strategy",
-      "Cloud Transformation",
+      "AI Strategy & Development",
+      "Cloud Solutions",
       "Data Engineering",
       "Application Modernization",
-      "IT Strategy",
+      "IT Transformation",
       "M&A Advisory",
       "Software Security"
     ],
@@ -167,7 +165,7 @@
     ],
     "vendorPartnerships": [
       "AWS",
-      "Google Cloud",
+      "Google Cloud Platform",
       "Microsoft Azure",
       "Snowflake"
     ],
@@ -176,7 +174,26 @@
     "githubUrl": null,
     "linkedinUrl": null,
     "logoUrl": "/logos/2ndwatch.com/logo.png",
-    "recentActivity": [],
+    "recentActivity": [
+      {
+        "title": "From Guesswork to Greatness: AI-Driven Product Placement at the Speed of Live",
+        "date": null,
+        "source": "https://ollion.com/case-studies/from-guesswork-to-greatness-ai-driven-product-placement-at-the-speed-of-live",
+        "sourceType": "case-study"
+      },
+      {
+        "title": "Enabling a Seamless IT Carve-out and Cloud Transformation for Arc Network",
+        "date": null,
+        "source": "https://ollion.com/case-studies/strategic-approach-to-m-and-a-and-it-carve-out-in-the-arc-network-and-tpm-transition",
+        "sourceType": "case-study"
+      },
+      {
+        "title": "Etops - Innovative SaaS-based solutions for wealth management industry",
+        "date": null,
+        "source": "https://ollion.com/case-studies/etops",
+        "sourceType": "case-study"
+      }
+    ],
     "reviewNotes": [
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
@@ -194,7 +211,7 @@
     "domain": "4data.ch",
     "country": "Switzerland",
     "companyName": "4data.ch",
-    "website": "https://4data.ch",
+    "website": "https://4data.ch/en/",
     "description": "We make technology work for you Services tailored to help you get business value from your technology Go to your Services Who We Are Born out of years of industry experience We believe that specialised, focused, and thoroughly engineered services, supplied for a simple and transparent price are the future. Most clients' core business is not technology, and we believe that they should be able to pay for a service that does exactly what it says it will, and for a fixed price.",
     "services": [],
     "focusAreas": [],
@@ -292,14 +309,12 @@
       "Mobile App",
       "Solution Engineering",
       "ICT-Grundversorgung",
-      "Managed Workplace M365",
       "Lösungs- und Prozessberatung"
     ],
     "focusAreas": [
       "E-Government",
       "Digitale Souveränität",
-      "Künstliche Intelligenz",
-      "Steuerverwaltung",
+      "Steuern",
       "Polizei",
       "Gemeinden",
       "Kantone",
@@ -335,6 +350,12 @@
         "date": "2026-05-27",
         "source": "https://www.abraxas.ch/de/news/abraxas-magazin-15",
         "sourceType": "news"
+      },
+      {
+        "title": "VOTING Stimmunterlagen Offline Client App",
+        "date": "2026-06-16",
+        "source": "https://github.com/abraxas-labs/voting-stimmunterlagen-offline-client-app",
+        "sourceType": "github"
       }
     ],
     "reviewNotes": [
@@ -357,23 +378,22 @@
     "website": "https://www.accenture.com/",
     "description": "Accenture embraces the power of change to create 360° value and shared success for our clients, people, shareholders, partners and communities. We work with organizations to rewrite the rules of growth, innovation and resilience.",
     "services": [
-      "AI and data services",
-      "Cloud transformation",
+      "Consulting",
+      "AI and Data Services",
+      "Cloud Services",
       "Cybersecurity",
-      "Digital transformation",
-      "Engineering services",
-      "Supply chain optimization",
-      "Business reinvention",
-      "Technology consulting"
+      "Digital Transformation",
+      "Supply Chain Services",
+      "Engineering Services"
     ],
     "focusAreas": [
-      "Artificial Intelligence",
-      "Cloud computing",
+      "AI and Artificial Intelligence",
+      "Cloud Transformation",
       "Cybersecurity",
-      "Digital transformation",
-      "Business reinvention",
-      "Supply chain management",
-      "Engineering optimization"
+      "Digital Reinvention",
+      "Supply Chain Optimization",
+      "Human + AI Engineering",
+      "Agentic Commerce"
     ],
     "technologies": [
       "AI",
@@ -446,7 +466,7 @@
   {
     "domain": "accso.de",
     "country": null,
-    "companyName": "Accso - Accelerated Solutions GmbH",
+    "companyName": "ACCSO",
     "website": "https://www.accso.de/",
     "description": "AI-Native. Software Engineering. Digitale Transformation. Gemeinsam mit unseren Kunden entwickeln wir maßgeschneiderte Lösungen, um die digitale Transformation in Ihrem Unternehmen erfolgreich zu realisieren. Profitieren Sie von unserem Know-how aus über 2.000 Projekten.",
     "services": [
@@ -519,11 +539,11 @@
     "services": [
       "Cloud Native Trainings",
       "GitLab CI/CD Training",
-      "Container & Kubernetes Training",
-      "Argo CD Training",
+      "Agentic SDLC Training",
       "KI für Platform Engineers Training",
       "Software-Entwicklung mit KI Training",
-      "Agentic SDLC Training",
+      "Container & Kubernetes Training",
+      "Argo CD Training",
       "Prometheus Training",
       "Firmen-Trainings"
     ],
@@ -672,25 +692,23 @@
       "IT-Beratung",
       "Softwareentwicklung",
       "Application Modernization",
-      "Digitale Souveränität",
-      "Agentische Softwareentwicklung",
-      "Automatisierung",
+      "Digitale Transformation",
       "Künstliche Intelligenz",
-      "Digitalisierung"
+      "Automatisierung",
+      "Unternehmensarchitektur"
     ],
     "focusAreas": [
       "Digitale Souveränität",
+      "Agentische Softwareentwicklung",
+      "Generative AI",
       "Application Modernization",
-      "Künstliche Intelligenz",
-      "Automatisierung",
-      "Softwareentwicklung",
-      "IT-Beratung"
+      "Automation"
     ],
     "technologies": [
       "KI"
     ],
     "vendorPartnerships": [],
-    "location": "Schweiz",
+    "location": "Switzerland",
     "confidenceScore": 85,
     "githubUrl": null,
     "linkedinUrl": null,
@@ -718,10 +736,9 @@
     "services": [
       "IT-Beratung",
       "Softwareentwicklung",
-      "Digitale Transformation",
-      "Agentic AI",
       "Agentische Softwareentwicklung",
       "KI-Integration",
+      "Digitale Transformation",
       "Compliance-Automatisierung",
       "Cloud Security",
       "Data Governance"
@@ -800,30 +817,33 @@
     "description": "Accelerate your business with open source-driven automation, security, cloud, and DevSecOps solutions from Adfinis, your end-to-end partner for robust, flexible IT that drives growth and innovation at any scale.",
     "services": [
       "Cloud infrastructure",
-      "Security solutions",
-      "System automation",
-      "Forms and workflows",
-      "Digital sovereignty",
-      "Developer tools",
-      "24/7 support",
-      "DevSecOps"
+      "Security and Zero Trust integration",
+      "System automation and Infrastructure as Code",
+      "Forms and workflows automation",
+      "Digital sovereignty solutions",
+      "Developer experience optimization",
+      "24/7 on-call support",
+      "Proactive monitoring"
     ],
     "focusAreas": [
       "Open source solutions",
       "Cloud-native strategies",
+      "DevSecOps",
       "Digital transformation",
-      "Infrastructure as Code",
-      "Zero Trust security",
       "Supply chain security",
-      "Digital sustainability",
-      "Vendor lock-in prevention"
+      "Digital sovereignty",
+      "Automation",
+      "Security"
     ],
     "technologies": [
+      "Open source software",
+      "Infrastructure as Code",
+      "Zero Trust",
       "OpenBao"
     ],
     "vendorPartnerships": [],
     "location": "Switzerland",
-    "confidenceScore": 85,
+    "confidenceScore": 95,
     "githubUrl": "https://github.com/adfinis",
     "linkedinUrl": null,
     "logoUrl": "/logos/adfinis.com/logo.png",
@@ -869,7 +889,7 @@
   {
     "domain": "adnovum.com",
     "country": null,
-    "companyName": "Adnovum AG",
+    "companyName": "Adnovum",
     "website": "https://www.adnovum.com/",
     "description": "Adnovum specializes in the design, implementation and maintenance of software and security solutions that comply with business and technical requirements.",
     "services": [
@@ -885,7 +905,8 @@
       "Banking and FinTech",
       "Public Sector",
       "Transportation and Logistics",
-      "Digital Identities (IAM)",
+      "Digital transformation",
+      "Identity Management",
       "Digital Asset Banking"
     ],
     "technologies": [],
@@ -939,7 +960,7 @@
     "domain": "allcloud.io",
     "country": "United States",
     "companyName": "AllCloud",
-    "website": "https://www.allcloud.io/",
+    "website": "https://www.allcloud.io",
     "description": "AllCloud leads organizations to accelerate innovation with AI-led professional and managed services across AWS and Salesforce",
     "services": [
       "AI-led professional services",
@@ -947,24 +968,24 @@
       "AWS support",
       "Salesforce services",
       "Cloud migration",
-      "FinOps",
-      "Solutions Architect Advisory Services",
-      "AWS Infrastructure provision",
-      "Health Monitoring",
+      "Data & Analytics Management",
       "Security Management",
       "Application Delivery",
-      "Data & Analytics Management",
+      "Health Monitoring",
+      "FinOps",
+      "Solutions Architect Advisory Services",
+      "AWS Training",
       "Cost optimization",
-      "24/7 AWS Partner-Led Enterprise Support"
+      "24/7 enterprise support"
     ],
     "focusAreas": [
       "AI adoption",
       "Cloud transformation",
-      "AWS optimization",
+      "AWS services",
       "Salesforce implementation",
       "Prevention-first security",
-      "Financial services",
-      "Cloud cost management"
+      "Managed services",
+      "Cost optimization"
     ],
     "technologies": [
       "AWS",
@@ -975,13 +996,12 @@
       "EKS"
     ],
     "vendorPartnerships": [
-      "AWS Partner",
       "AWS Financial Services Competency"
     ],
     "location": "Denver, Colorado, United States",
-    "confidenceScore": 95,
+    "confidenceScore": 85,
     "githubUrl": "https://github.com/allcloud-io",
-    "linkedinUrl": "https://linkedin.com/company/allcloud",
+    "linkedinUrl": "http://www.linkedin.com/company/allcloud",
     "logoUrl": "/logos/allcloud.io/logo.png",
     "recentActivity": [
       {
@@ -1060,8 +1080,8 @@
       "HP",
       "Lenovo",
       "Container",
-      "Hybrid Cloud",
-      "Multi-Cloud"
+      "Multi-Cloud",
+      "Hybrid Cloud"
     ],
     "vendorPartnerships": [
       "Amazon Web Services Advanced Consulting Partner",
@@ -1167,7 +1187,7 @@
         "sourceType": "GitHub"
       },
       {
-        "title": "Professionally failing code examples",
+        "title": "Code examples for the talk professionally failing",
         "date": "2025-06-16",
         "source": "https://github.com/andrena/professionally-failing",
         "sourceType": "GitHub"
@@ -1213,8 +1233,8 @@
       "Cloud modernisation",
       "Data and AI",
       "Developer self-service",
-      "Security and compliance",
-      "Cost optimisation"
+      "Cloud operations",
+      "Security and compliance"
     ],
     "technologies": [
       "AWS",
@@ -1236,25 +1256,25 @@
     "location": "London, United Kingdom",
     "confidenceScore": 95,
     "githubUrl": "https://github.com/appvia",
-    "linkedinUrl": "http://www.linkedin.com/company/appvia",
+    "linkedinUrl": "https://linkedin.com/company/appvia",
     "logoUrl": "/logos/appvia.io/logo.png",
     "recentActivity": [
       {
-        "title": "Wayfinder fully agentic developer platform launch",
-        "date": null,
-        "source": "https://www.getwayfinder.io/",
-        "sourceType": "product"
-      },
-      {
-        "title": "terraform-aws-cudos repository update",
+        "title": "Terraform repository used to deploy and manage a Cloud Intelligence framework",
         "date": "2026-06-16T12:53:49Z",
         "source": "https://github.com/appvia/terraform-aws-cudos",
         "sourceType": "github"
       },
       {
-        "title": "terraform-aws-cloudaccess-lza repository update",
+        "title": "Terraform module used to provision resources and access for a landing zone",
         "date": "2026-06-16T05:06:50Z",
         "source": "https://github.com/appvia/terraform-aws-cloudaccess-lza",
+        "sourceType": "github"
+      },
+      {
+        "title": "Terraform module for OIDC integration for IAM",
+        "date": "2026-06-16T05:05:47Z",
+        "source": "https://github.com/appvia/terraform-aws-oidc",
         "sourceType": "github"
       }
     ],
@@ -1278,21 +1298,23 @@
     "website": "https://www.arvato-systems.com/",
     "description": "As an internationally active IT specialist and multi-cloud service provider, we support companies in their digital transformation. Extensive IT expertise, a high level of technical understanding, strong industry knowledge, and partnership in action - that's Arvato Systems. As a team, we develop innovative IT solutions, bring our customers into the cloud, integrate digital processes, and take over the operation and support of IT systems.",
     "services": [
-      "Digital transformation consulting",
-      "Cloud migration",
-      "Digital process integration",
-      "IT systems operation and support",
-      "Multi-cloud services"
+      "Digital Transformation",
+      "Cloud Migration",
+      "IT Solutions Development",
+      "Digital Process Integration",
+      "IT Systems Operation and Support",
+      "Multi-cloud Services"
     ],
     "focusAreas": [
-      "Digital transformation",
-      "Cloud solutions",
-      "IT sovereignty",
-      "Industry-specific solutions",
-      "Digitalization"
+      "Digital Transformation",
+      "Cloud Services",
+      "IT Consulting",
+      "Digital Process Integration",
+      "IT Operations"
     ],
     "technologies": [
-      "Microsoft 365"
+      "Microsoft 365",
+      "GenAI"
     ],
     "vendorPartnerships": [],
     "location": "Germany",
@@ -1303,7 +1325,7 @@
     "recentActivity": [
       {
         "title": "Digital Workplace Forum 2026 - Strategically managing Microsoft 365: focus on governance, platform strategy and AI",
-        "date": null,
+        "date": "2026",
         "source": "https://www.arvato-systems.com/more/events/digital-workplace-forum-2026",
         "sourceType": "event"
       },
@@ -1315,7 +1337,7 @@
       },
       {
         "title": "Arvato Systems Energy Days 2027",
-        "date": null,
+        "date": "2027",
         "source": "https://www.arvato-systems.com/more/events/arvato-systems-energy-days-2027",
         "sourceType": "event"
       },
@@ -1359,44 +1381,45 @@
     "description": "Aspectran is a lightweight, high‑performance framework for building both simple shell applications and large enterprise web services on the JVM.",
     "services": [
       "Enterprise-grade platform management system",
-      "Web application server development",
-      "JVM-based application framework"
+      "Web application server",
+      "Framework development"
     ],
     "focusAreas": [
-      "Enterprise web applications",
-      "JVM development",
+      "JVM-based applications",
+      "Enterprise web services",
+      "Shell applications",
       "Platform management",
       "Observability and governance"
     ],
     "technologies": [],
     "vendorPartnerships": [],
     "location": "Korea, South",
-    "confidenceScore": 75,
+    "confidenceScore": 85,
     "githubUrl": "https://github.com/aspectran",
     "linkedinUrl": null,
     "logoUrl": null,
     "recentActivity": [
       {
-        "title": "Aspectow platform management system update",
-        "date": "2026-06-17",
+        "title": "Updated aspectow repository",
+        "date": "2026-06-17T11:11:07Z",
         "source": "https://github.com/aspectran/aspectow",
         "sourceType": "GitHub"
       },
       {
-        "title": "Aspectran framework core update",
-        "date": "2026-06-17",
+        "title": "Updated aspectran repository",
+        "date": "2026-06-17T11:10:40Z",
         "source": "https://github.com/aspectran/aspectran",
         "sourceType": "GitHub"
       },
       {
-        "title": "Aspectow Demo Site update",
-        "date": "2026-06-16",
+        "title": "Updated aspectow-demo repository",
+        "date": "2026-06-16T14:16:35Z",
         "source": "https://github.com/aspectran/aspectow-demo",
         "sourceType": "GitHub"
       },
       {
-        "title": "Official Website update",
-        "date": "2026-06-15",
+        "title": "Updated aspectran.github.io repository",
+        "date": "2026-06-15T04:37:57Z",
         "source": "https://github.com/aspectran/aspectran.github.io",
         "sourceType": "GitHub"
       }
@@ -1440,15 +1463,13 @@
       "Open Source",
       "IT-Automatisierung",
       "Infrastructure Management",
-      "Container Platforms",
-      "Cloud Solutions",
       "DevOps",
-      "Cloud Native"
+      "Cloud Native",
+      "Container Platforms"
     ],
     "technologies": [
       "Linux",
       "Kubernetes",
-      "Open Source",
       "orcharhino",
       "Oracle Linux",
       "Oracle Virtualization",
@@ -1517,6 +1538,7 @@
       "AI-native Software",
       "Cloud-native Plattformen",
       "Software Engineering",
+      "Quality Assurance",
       "Platform Engineering"
     ],
     "technologies": [
@@ -1631,19 +1653,19 @@
         "title": "Nextcloud Summit",
         "date": "9. Juni",
         "source": "https://nextcloud.com/summit/",
-        "sourceType": "conference"
+        "sourceType": "event"
       },
       {
         "title": "TechRiders",
         "date": "17. – 18. Juni",
         "source": "https://tech-riders.de/",
-        "sourceType": "conference"
+        "sourceType": "event"
       },
       {
         "title": "FrOSCon",
         "date": "15. – 16. August",
         "source": "https://froscon.org/en/",
-        "sourceType": "conference"
+        "sourceType": "event"
       },
       {
         "title": "Znuny repository update",
@@ -1689,16 +1711,17 @@
     ],
     "focusAreas": [
       "Cloud enablement",
-      "DevOps automation",
-      "AI solutions",
+      "DevOps",
+      "Artificial Intelligence",
       "MLOps",
       "Platform engineering",
-      "Security and compliance",
-      "Infrastructure management"
+      "CI/CD pipelines",
+      "Cloud infrastructure",
+      "Compliance and security",
+      "AWS solutions"
     ],
     "technologies": [
       "AWS",
-      "CI/CD pipelines",
       "Jenkins"
     ],
     "vendorPartnerships": [
@@ -1756,14 +1779,15 @@
     "description": "Ihr Partner für individuelle Software und Digitalisierungsberatung. Gemeinsam mit unseren Kunden verwandeln wir Chancen in inspirierende Lösungen mit nachhaltigem Erfolg. Wir entwickeln skalierende digitale Geschäfte, faszinierende digitale Erlebniswelten und erstklassige Software.",
     "services": [
       "Digital Consulting",
-      "KI und Softwareentwicklung",
-      "Digitalisierungsberatung",
+      "KI",
+      "Softwareentwicklung",
       "B2B-E-Commerce-Plattform",
+      "Digitalisierungsberatung",
       "Prozessoptimierung",
       "Cybersecurity",
       "Security by Design",
       "Produktentwicklung",
-      "Softwarearchitektur"
+      "Business Process Management"
     ],
     "focusAreas": [
       "Digital Businesses",
@@ -1771,7 +1795,9 @@
       "Software Products",
       "Künstliche Intelligenz",
       "Cybersecurity",
-      "Agile Produktentwicklung"
+      "Agile Produktentwicklung",
+      "Softwarearchitektur",
+      "Leadership"
     ],
     "technologies": [
       "Microsoft Azure",
@@ -1787,25 +1813,25 @@
     "recentActivity": [
       {
         "title": "KI-Trends 2026: Die Ära der Modell-Konvergenz",
-        "date": null,
+        "date": "2026-02-01",
         "source": "https://bbv.ch/insights/blog/ki-trends-2026-die-aera-der-modell-konvergenz/",
         "sourceType": "blog"
       },
       {
         "title": "Cyber Resilience Act: Was Hersteller ab September 2026 beachten müssen",
-        "date": null,
+        "date": "2025-09-01",
         "source": "https://bbv.ch/insights/blog/cyber-resilience-act-was-hersteller-ab-september-2026-beachten-muessen/",
         "sourceType": "blog"
       },
       {
         "title": "Use-Case-basierte Produktentwicklung",
-        "date": "29.09.2026",
+        "date": "2026-09-29",
         "source": "https://bbv.ch/academy-detail/41306285/use-case-basierte-produktentwicklung",
         "sourceType": "event"
       },
       {
         "title": "AZ-204: Develop Solutions for Microsoft Azure",
-        "date": "10.09.2026",
+        "date": "2026-09-10",
         "source": "https://bbv.ch/academy-detail/53831246/az-204-develop-solutions-for-microsoft-azure",
         "sourceType": "event"
       }
@@ -1834,15 +1860,16 @@
       "Cloud Services",
       "IT-Security",
       "Managed Services",
-      "Hardware und Software",
+      "Hardware",
+      "Software",
       "IT-Lösungen"
     ],
     "focusAreas": [
       "Digitale Transformation",
       "Cloud Computing",
-      "IT-Sicherheit",
-      "Workplace Modernisierung",
-      "Nachhaltigkeit"
+      "IT-Security",
+      "Modern Workplace",
+      "Managed Services"
     ],
     "technologies": [
       "Microsoft Azure",
@@ -1898,15 +1925,19 @@
       "Serverless Application Acceleration",
       "Cloud Native Empowerment",
       "SaaS Transformation",
-      "Pragmatic AI Adoption"
+      "Pragmatic AI Adoption",
+      "Cloud Readiness Workshop",
+      "Collaborative Engineering",
+      "Team Training"
     ],
     "focusAreas": [
       "Cloud modernization",
       "Infrastructure cost reduction",
       "Serverless computing",
-      "DevOps and GitOps",
+      "DevOps culture change",
       "AI adoption",
-      "Team productivity"
+      "Application containerization",
+      "CI/CD improvement"
     ],
     "technologies": [
       "AWS",
@@ -1916,13 +1947,15 @@
       "Containers",
       "CI/CD",
       "DevOps",
-      "GitOps"
+      "GitOps",
+      "GCP",
+      "OpenShift"
     ],
     "vendorPartnerships": [],
     "location": "Bern, Switzerland",
-    "confidenceScore": 95,
+    "confidenceScore": 92,
     "githubUrl": "https://github.com/bespinian",
-    "linkedinUrl": "http://www.linkedin.com/company/bespinian",
+    "linkedinUrl": "https://linkedin.com/company/bespinian",
     "logoUrl": "/logos/bespinian.io/logo.png",
     "recentActivity": [
       {
@@ -1942,6 +1975,12 @@
         "date": null,
         "source": "https://bespinian.io/en/blog/openbao-os-vault-alternative",
         "sourceType": "blog"
+      },
+      {
+        "title": "Kubernetes Training and Jitsi Deployment",
+        "date": null,
+        "source": "https://bespinian.io/en/customers/stepping-stone",
+        "sourceType": "case_study"
       }
     ],
     "reviewNotes": [
@@ -1962,7 +2001,7 @@
     "country": null,
     "companyName": "CGI",
     "website": "https://www.bjss.com/",
-    "description": "CGI is among the largest IT and business consulting services firms in the world. We are insights-driven and outcome-based to help accelerate returns on your IT and business investments. We are trusted to work side-by-side with clients to help maximise the technologies that transform their businesses. Our 94,000 professionals serve as trusted, innovative experts to support our clients' digital journeys.",
+    "description": "We are trusted to work side-by-side with clients to help maximise the technologies that transform their businesses. Our 94,000 professionals serve as trusted, innovative experts to support our clients' digital journeys.",
     "services": [
       "Advisory services",
       "Business consulting",
@@ -2011,7 +2050,7 @@
         "title": "CGI announced as Headline Sponsor of Leeds Digital for 2026",
         "date": null,
         "source": "https://www.cgi.com/uk/en-gb/article/responsible-business/cgi-announced-headline-sponsor-leeds-digital-2026",
-        "sourceType": "article"
+        "sourceType": "news"
       }
     ],
     "reviewNotes": [
@@ -2032,7 +2071,7 @@
     "country": "United Kingdom",
     "companyName": "BlakYaks",
     "website": "https://www.blakyaks.com/",
-    "description": "Specialist Microsoft Azure partner accelerating customers Azure and container adoption journey. Industry leading team of cloud native specialists helping enterprises realize the full potential of Azure and transform their business.",
+    "description": "Specialist Microsoft Azure partner accelerating customers Azure and container adoption journey. Industry leading team of cloud native specialists helping enterprises realise the full potential of Azure and transform their business.",
     "services": [
       "Enterprise Azure Platforms",
       "DevSecOps",
@@ -2056,15 +2095,14 @@
       "Azure Container Platforms",
       "Databricks",
       "Microservices",
-      "Containers",
       "DevSecOps Pipelines",
       "Azure Landing Zones"
     ],
     "vendorPartnerships": [
-      "Microsoft Azure Partner"
+      "Microsoft Azure"
     ],
     "location": "London, England, United Kingdom",
-    "confidenceScore": 92,
+    "confidenceScore": 85,
     "githubUrl": "https://github.com/BlakYaks-gs-labs",
     "linkedinUrl": "http://www.linkedin.com/company/blakyaks",
     "logoUrl": "/logos/blakyaks.com/logo.png",
@@ -2092,12 +2130,6 @@
         "date": "28 January 2026",
         "source": "https://www.blakyaks.com/resources/whitepaper-designing-azure-platforms-that-remove-blockers-rework-and-ops-load",
         "sourceType": "whitepaper"
-      },
-      {
-        "title": "2025: A look back at our biggest year to date",
-        "date": "17 December 2025",
-        "source": "https://www.blakyaks.com/resources/2025-a-look-back-at-our-biggest-year-to-date",
-        "sourceType": "news"
       },
       {
         "title": "BlakYaks wins 'Cloud Technology of the Year' at the BCS UK IT Industry Awards 2025",
@@ -2148,9 +2180,8 @@
       "AI-augmented solutions",
       "Human-centered product development",
       "Digital product creation",
-      "Business consulting",
-      "Product scaling",
-      "Digital transformation"
+      "Product consulting",
+      "Business goal fulfillment"
     ],
     "technologies": [
       "AI tools",
@@ -2164,19 +2195,19 @@
     "logoUrl": "/logos/boldare.com/logo.png",
     "recentActivity": [
       {
-        "title": "MCP Farmer - CLI tool for scaffolding, testing, extending and analyzing MCP servers",
+        "title": "MCP Farmer - CLI tool for Model Context Protocol servers",
         "date": "2026-01-23",
         "source": "https://github.com/boldare/mcp-farmer",
         "sourceType": "GitHub"
       },
       {
-        "title": "AI Support Toolkit - AI augmented Maintenance & Support workflow for investigating Jira support tickets",
+        "title": "AI Support Toolkit - AI augmented Maintenance & Support workflow",
         "date": "2026-03-06",
         "source": "https://github.com/boldare/ai-support-toolkit",
         "sourceType": "GitHub"
       },
       {
-        "title": "Claude Code Workshop - Training project for cinema ticket reservation system",
+        "title": "Claude Code Workshop - Cinema ticket reservation system",
         "date": "2026-03-16",
         "source": "https://github.com/boldare/claude-code-workshop",
         "sourceType": "GitHub"
@@ -2426,7 +2457,8 @@
     ],
     "technologies": [
       "AI",
-      "3DEXPERIENCE platform"
+      "3DEXPERIENCE platform",
+      "ERP systems"
     ],
     "vendorPartnerships": [
       "SAP Sovereign Cloud Partner"
@@ -2568,13 +2600,13 @@
       "Cybersecurity"
     ],
     "focusAreas": [
-      "Digital reengineering",
       "AI-empowered managed IT services",
       "Cyber resilience",
-      "Modernization and business outcomes"
+      "Digital reengineering",
+      "Business transformation"
     ],
     "technologies": [
-      "AI",
+      "Artificial Intelligence",
       "Cloud",
       "Hybrid IT"
     ],
@@ -2664,7 +2696,7 @@
     "location": "San Francisco, California, United States",
     "confidenceScore": 95,
     "githubUrl": "https://github.com/clearscale",
-    "linkedinUrl": "https://linkedin.com/company/clearscale",
+    "linkedinUrl": "http://www.linkedin.com/company/clearscale",
     "logoUrl": "/logos/clearscale.com/logo.png",
     "recentActivity": [
       {
@@ -2678,12 +2710,6 @@
         "date": null,
         "source": "https://clearscale.com/metapix/",
         "sourceType": "case study"
-      },
-      {
-        "title": "Modern Cloud & App Development. The Talk of IT Today",
-        "date": null,
-        "source": "https://go.clearscale.com/ebook-cloud-native-app-dev",
-        "sourceType": "ebook"
       }
     ],
     "reviewNotes": [
@@ -2704,31 +2730,29 @@
     "country": null,
     "companyName": "Cloud303",
     "website": "https://www.cloud303.io/",
-    "description": "AWS Premier Partner providing cloud solutions, migrations, DevOps, AI/ML, data analytics, and high performance computing services across multiple industries including fintech, healthcare, life sciences, and media & entertainment.",
+    "description": "AWS Premier Partner providing cloud solutions, migrations, and specialized services across multiple industries including fintech, healthcare, life sciences, and media & entertainment.",
     "services": [
       "AWS Cloud Solutions",
       "Cloud Migrations",
       "DevOps",
-      "Artificial Intelligence & Machine Learning",
       "Data & Analytics",
+      "Artificial Intelligence & Machine Learning",
       "High Performance Computing",
       "Microsoft On AWS",
       "HIPAA Compliant Solutions",
-      "Compliance Solutions",
-      "Containerization",
-      "Infrastructure as Code"
+      "Compliance Solutions"
     ],
     "focusAreas": [
       "AWS Cloud Native Solutions",
       "Data Lakes and Pipelines",
+      "Infrastructure as Code",
+      "Containerization",
+      "CI/CD Pipelines",
       "Generative AI",
       "Computer Vision",
       "Predictive Analysis",
-      "CI/CD Pipelines",
-      "VDI Solutions",
-      "Render Farms",
-      "Genomic Pipelines",
-      "MPAA-compliant Solutions"
+      "Cloud Migrations",
+      "Compliance and Security"
     ],
     "technologies": [
       "AWS",
@@ -2760,15 +2784,15 @@
         "sourceType": "GitHub"
       },
       {
-        "title": "SGTMA Project",
-        "date": "2025-10-02",
-        "source": "https://github.com/Cloud303/sgtma",
-        "sourceType": "GitHub"
-      },
-      {
         "title": "Terraform via PR Automation",
         "date": "2025-08-29",
         "source": "https://github.com/Cloud303/TF-via-PR",
+        "sourceType": "GitHub"
+      },
+      {
+        "title": "SGTMA Project",
+        "date": "2025-10-02",
+        "source": "https://github.com/Cloud303/sgtma",
         "sourceType": "GitHub"
       }
     ],
@@ -2814,19 +2838,19 @@
     "logoUrl": "/logos/cloudflight.io/logo.png",
     "recentActivity": [
       {
-        "title": "cloudflight-eslint-plugin repository updated",
+        "title": "cloudflight-eslint-plugin repository update",
         "date": "2026-01-29T12:05:44Z",
         "source": "https://github.com/cloudflightio/cloudflight-eslint-plugin",
         "sourceType": "github"
       },
       {
-        "title": "syn2sem-relation-mapper repository updated",
+        "title": "syn2sem-relation-mapper repository update",
         "date": "2026-01-29T14:21:37Z",
         "source": "https://github.com/cloudflightio/syn2sem-relation-mapper",
         "sourceType": "github"
       },
       {
-        "title": "hl7-at-messaging-poc repository updated",
+        "title": "hl7-at-messaging-poc repository update",
         "date": "2026-03-02T10:10:39Z",
         "source": "https://github.com/cloudflightio/hl7-at-messaging-poc",
         "sourceType": "github"
@@ -2910,18 +2934,16 @@
       "Cloud Native Consulting",
       "Assessment",
       "Transformations",
-      "Managed Services",
-      "Augmented Support"
+      "Managed Services"
     ],
     "focusAreas": [
       "DevOps",
       "Cloud Native",
       "Kubernetes",
-      "Open Source",
-      "Networking",
-      "Container Migration",
       "Hybrid Clouds",
-      "Edge to Cloud Orchestration"
+      "Container Orchestration",
+      "Digital Transformation",
+      "Open Source"
     ],
     "technologies": [
       "Kubernetes",
@@ -2935,19 +2957,19 @@
     "logoUrl": "/logos/cloudops.com/logo.png",
     "recentActivity": [
       {
-        "title": "CloudMC monetization local environment update",
-        "date": "2026-06-12",
-        "source": "https://github.com/cloudops/cloudmc-monetization-local",
+        "title": "CloudMC API Documentation Update",
+        "date": "2024-03-25",
+        "source": "https://github.com/cloudops/cloudmc-api-docs",
         "sourceType": "github"
       },
       {
-        "title": "Aptum standard knowledge base update",
+        "title": "Aptum Portal Knowledge Base Update",
         "date": "2026-06-01",
         "source": "https://github.com/cloudops/aptum-standard-kb",
         "sourceType": "github"
       },
       {
-        "title": "CloudMC services JavaScript client update",
+        "title": "CloudMC Services JavaScript Client Update",
         "date": "2026-05-27",
         "source": "https://github.com/cloudops/cloudmc-services-js-client",
         "sourceType": "github"
@@ -3054,12 +3076,12 @@
       "Cloud infrastructure management"
     ],
     "focusAreas": [
-      "Cloud infrastructure",
-      "DevOps",
+      "Development & Operations",
+      "Strategy & Management",
       "Security & Compliance",
-      "High availability",
-      "GPU computing",
-      "Machine learning infrastructure"
+      "Critical applications",
+      "Deep learning systems",
+      "Large language models"
     ],
     "technologies": [
       "Ansible",
@@ -3121,7 +3143,7 @@
     "logoUrl": "/logos/codecentric.de/logo.png",
     "recentActivity": [
       {
-        "title": "TDWI 2026 - KI-Pflaster zum KI-Gewinner",
+        "title": "TDWI 2026 - KI-Vorteile brauchen ein starkes Fundament",
         "date": null,
         "source": "https://www.codecentric.de/wissens-hub/events/tdwi",
         "sourceType": "event"
@@ -3158,35 +3180,37 @@
     "country": null,
     "companyName": "Codurance",
     "website": "https://www.codurance.com/",
-    "description": "Codurance is a global software consultancy that helps businesses build a better sustainable technical capability to support growth. We modernise and build scalable software using an AI-first approach, creating exponential value for businesses and investors. Our purpose is to create a long lasting positive impact in the software industry through excelling at what we do, building long-lasting relationships at a personal level and going beyond the service we are delivering.",
+    "description": "We modernise and build scalable software using an AI-first approach, creating exponential value for businesses and investors. Codurance is a global software consultancy that helps businesses build a better sustainable technical capability to support growth.",
     "services": [
       "Software modernisation",
       "AI-first software development",
       "Legacy application modernisation",
+      "Software craftsmanship consulting",
       "Platform engineering",
-      "Software craftsmanship training",
-      "Architecture modernisation",
-      "Team augmentation",
-      "Bootcamps and academy training"
+      "Training and bootcamps",
+      "Architecture modernisation"
     ],
     "focusAreas": [
       "Software Craftsmanship",
       "AI Revolution",
-      "Legacy modernisation",
-      "Private equity technology projects",
-      "Scalable software development",
-      "Technical capability building"
+      "Legacy Modernisation",
+      "Private Equity technology projects",
+      "Agile & Lean Processes",
+      "Continuous Delivery",
+      "Extreme Programming",
+      "DevOps Culture"
     ],
     "technologies": [
-      "EventStorming"
+      "EventStorming",
+      "DDD"
     ],
     "vendorPartnerships": [
       "Microsoft Partner",
       "AWS Partner",
       "Google Cloud Partner",
       "Crown Commercial Service Supplier",
-      "Databricks Partner",
-      "New Relic Partner"
+      "Databricks",
+      "New Relic"
     ],
     "location": "London, UK",
     "confidenceScore": 92,
@@ -3211,6 +3235,18 @@
         "date": "22 Apr 2026",
         "source": "https://www.codurance.com/publications/case-study-accelerating-legacy-modernisation-with-ai-driven-engineering",
         "sourceType": "publication"
+      },
+      {
+        "title": "memento-auto-nag-bot repository update",
+        "date": "2026-02-09",
+        "source": "https://github.com/codurance/memento-auto-nag-bot",
+        "sourceType": "github"
+      },
+      {
+        "title": "rag-poc repository created",
+        "date": "2026-01-26",
+        "source": "https://github.com/codurance/rag-poc",
+        "sourceType": "github"
       }
     ],
     "reviewNotes": [
@@ -3265,9 +3301,9 @@
       "Digitalisierung",
       "Regulatorik",
       "KI-Transformation",
-      "Geschäftsmodell-Modernisierung",
+      "IT-Architekturen",
       "Prozessoptimierung",
-      "IT-Architektur-Modernisierung"
+      "Finanzdienstleistungen"
     ],
     "technologies": [],
     "vendorPartnerships": [],
@@ -3323,23 +3359,22 @@
     "website": "https://www.cognizant.com/",
     "description": "Cognizant (Nasdaq-100: CTSH) engineers modern businesses. We help our clients modernize technology, reimagine processes and transform experiences so they can stay ahead in our fast-changing world.",
     "services": [
-      "AI and artificial intelligence solutions",
+      "AI and artificial intelligence",
       "Digital transformation consulting",
+      "Cloud solutions",
       "Technology modernization",
       "Process reimagination",
       "Experience transformation",
-      "Cloud solutions",
       "ServiceNow services",
       "Research and development engineering"
     ],
     "focusAreas": [
       "Artificial Intelligence",
-      "Digital Transformation",
-      "Cloud Solutions",
+      "Digital transformation",
+      "Cloud solutions",
       "Enterprise AI",
-      "Technology Modernization",
-      "Process Innovation",
-      "Experience Transformation"
+      "Innovation and research",
+      "Business modernization"
     ],
     "technologies": [
       "AI",
@@ -3348,14 +3383,14 @@
       "SAP"
     ],
     "vendorPartnerships": [
-      "SAP - RISE with SAP Validated Partner",
-      "Rubrik - Alliance Partner",
-      "ServiceNow - Services Partner"
+      "SAP RISE with SAP Validated Partner",
+      "Rubrik Partner",
+      "ServiceNow Partner"
     ],
     "location": "Teaneck, New Jersey, United States",
     "confidenceScore": 95,
     "githubUrl": "https://github.com/cognizant",
-    "linkedinUrl": "https://linkedin.com/company/cognizant",
+    "linkedinUrl": "http://www.linkedin.com/company/cognizant",
     "logoUrl": "/logos/cognizant.com/logo.png",
     "recentActivity": [
       {
@@ -3544,6 +3579,7 @@
       "Digitale Transformation",
       "Cloud-native Softwareentwicklung",
       "Container-Plattform-Betrieb",
+      "Architekturberatung",
       "Modernisierung von Alt-Systemen",
       "Künstliche Intelligenz",
       "Digitale Souveränität"
@@ -3553,11 +3589,12 @@
       "SUSE Rancher Prime",
       "SUSE Virtualization",
       "Nagios",
-      "Open-Source-Technologien"
+      "Open-Source-Technologien",
+      "SQS-Queues"
     ],
     "vendorPartnerships": [],
     "location": "Munich, Germany",
-    "confidenceScore": 95,
+    "confidenceScore": 92,
     "githubUrl": "https://github.com/ConSol",
     "linkedinUrl": null,
     "logoUrl": "/logos/consol.de/logo.png",
@@ -3577,7 +3614,7 @@
       {
         "title": "Von Vendor Lock-In zu echter Freiheit: Managed Red Hat OpenShift auf der IONOS Cloud",
         "date": null,
-        "source": "https://www.consol.de/fileadmin/_processed_/9/f/csm_Webcast_Contentboxbild_3b85f7050f.jpg",
+        "source": "https://www.consol.de/",
         "sourceType": "webcast"
       }
     ],
@@ -3611,11 +3648,8 @@
     "focusAreas": [
       "Cloud Native engineering",
       "Digital transformation",
-      "Internal developer platforms",
-      "Cloud modernisation",
-      "DevOps",
-      "DevSecOps",
-      "Site Reliability Engineering"
+      "Cloud Native strategy",
+      "Cloud Native ways of working"
     ],
     "technologies": [
       "Cloud Native",
@@ -3669,17 +3703,15 @@
       "Digital Transformation",
       "DevOps Transformation",
       "Cloud Migration",
+      "Enterprise Transformation",
       "Cloud-Native Development",
-      "Enterprise Modernization",
-      "Security and Compliance",
       "Data Analytics",
-      "Skills Development and Upskilling"
+      "Security and Compliance"
     ],
     "technologies": [
       "AWS",
       "Google Cloud Platform",
-      "Machine Learning",
-      "DevSecOps"
+      "Machine Learning"
     ],
     "vendorPartnerships": [
       "Cognizant"
@@ -3691,13 +3723,13 @@
     "logoUrl": "/logos/contino.io/logo.png",
     "recentActivity": [
       {
-        "title": "Cloud sustainability dashboard development",
+        "title": "Cloud sustainability dashboard repository updated",
         "date": "2023-03-16",
         "source": "https://github.com/contino/cloud-sustainability-dashboard",
         "sourceType": "github"
       },
       {
-        "title": "Cucumber declarative gherkin testing framework",
+        "title": "Cucumber declarative gherkin repository updated",
         "date": "2023-08-28",
         "source": "https://github.com/contino/cucumber-declarative-gherkin",
         "sourceType": "github"
@@ -3756,16 +3788,12 @@
       "DevSecOps",
       "Platform Engineering",
       "GitOps",
-      "Secrets Management",
-      "Compliance",
-      "Threat Modeling"
+      "Compliance"
     ],
     "technologies": [
       "Kubernetes",
       "Flux CD",
       "OpenBao",
-      "SLSA",
-      "Netassert",
       "AWS",
       "Azure",
       "Google Cloud"
@@ -3838,8 +3866,8 @@
     "focusAreas": [
       "Cloud Migration",
       "AWS Infrastructure",
-      "Automation",
       "DevOps",
+      "Automation",
       "IoT",
       "Kubernetes"
     ],
@@ -3879,35 +3907,38 @@
     "services": [
       "AI transformation consulting",
       "Atlassian Cloud migration",
-      "ServiceNow implementation",
-      "Enterprise performance optimization",
-      "Workflow orchestration",
-      "Change management",
       "Strategic transformation",
-      "Digital transformation",
       "Agile consulting",
-      "Training and enablement"
+      "Change management",
+      "Enterprise service management",
+      "Portfolio management",
+      "Financial transformation",
+      "HR service delivery",
+      "Customer experience optimization",
+      "Employee experience design",
+      "Workflow orchestration",
+      "Operating model design"
     ],
     "focusAreas": [
       "Human-first AI transformation",
-      "Enterprise operating model design",
-      "Workflow orchestration",
-      "Connected intelligent foundations",
-      "Customer experience optimization",
-      "Employee experience enhancement",
-      "Financial optimization",
+      "Enterprise agility",
+      "Digital transformation",
+      "Organizational change management",
       "Service management",
+      "Financial optimization",
       "Portfolio management",
-      "Organizational change management"
+      "Customer experience",
+      "Employee experience",
+      "Workflow automation"
     ],
     "technologies": [
       "Atlassian Cloud",
       "ServiceNow"
     ],
     "vendorPartnerships": [
-      "Atlassian",
-      "ServiceNow",
       "IBM",
+      "ServiceNow",
+      "Atlassian",
       "SAP",
       "Glean"
     ],
@@ -3919,25 +3950,25 @@
     "recentActivity": [
       {
         "title": "Ebook: Atlassian Cloud—From First Step to Full Mastery",
-        "date": "April 7, 2026",
+        "date": "2026-04-07",
         "source": "https://www.cprime.com/resource/ebook-atlassian-cloud-from-first-step-to-full-mastery/",
         "sourceType": "ebook"
       },
       {
         "title": "The Power of Human + AI Collaboration: Building Operating Models That Actually Work",
-        "date": "March 13, 2026",
+        "date": "2026-03-13",
         "source": "https://www.cprime.com/blog/the-power-of-human-ai-collaboration-building-operating-models-that-actually-work/",
         "sourceType": "blog"
       },
       {
         "title": "Design Smarter Support for the Deskless Workforce",
-        "date": "August 5, 2025",
+        "date": "2025-08-05",
         "source": "https://www.cprime.com/blog/modern-service-management-for-a-deskless-world/",
         "sourceType": "blog"
       },
       {
         "title": "The Real Cost of Organizational Silos",
-        "date": "August 7, 2025",
+        "date": "2025-08-07",
         "source": "https://www.cprime.com/blog/the-real-cost-of-organizational-silos-and-how-to-break-them/",
         "sourceType": "blog"
       }
@@ -3966,7 +3997,7 @@
       "PostgreSQL services",
       "Linux consulting",
       "Open Source infrastructure support",
-      "Technical support with guaranteed service level agreements",
+      "Technical support",
       "Monitoring solutions",
       "Spam and virus defense",
       "Backup solutions",
@@ -3974,10 +4005,10 @@
     ],
     "focusAreas": [
       "Open Source infrastructure",
-      "PostgreSQL database services",
+      "PostgreSQL databases",
       "Linux systems",
       "Enterprise Open Source support",
-      "Infrastructure solutions"
+      "Database migration"
     ],
     "technologies": [
       "Linux",
@@ -3994,15 +4025,15 @@
     "logoUrl": "/logos/credativ.de/logo.png",
     "recentActivity": [
       {
-        "title": "plutono - Fork of Grafana keeping the Apache License",
-        "date": "2026-06-12",
-        "source": "https://github.com/credativ/plutono",
-        "sourceType": "GitHub"
-      },
-      {
         "title": "credativ-pg-migrator - Migrator from proprietary and legacy databases into PostgreSQL",
         "date": "2026-06-12",
         "source": "https://github.com/credativ/credativ-pg-migrator",
+        "sourceType": "GitHub"
+      },
+      {
+        "title": "plutono - Fork of Grafana keeping the Apache License",
+        "date": "2026-06-12",
+        "source": "https://github.com/credativ/plutono",
         "sourceType": "GitHub"
       },
       {
@@ -4036,14 +4067,14 @@
     "country": "Switzerland",
     "companyName": "D ONE",
     "website": "https://www.d-one.ai/",
-    "description": "Data-driven value creation company focused on industrializing Data & AI. Specializes in helping organizations navigate the transformation driven by data, language, and algorithms, addressing people-related and organizational obstacles in AI adoption.",
+    "description": "Industrializing Data & AI: Data, language, and algorithms are the new drivers of transformation. For every organization, this shift is mission-critical. Yet most are not fully prepared. As with any seismic change, the biggest obstacles are not technological—they're people-related and organizational.",
     "services": [
       "Data & AI at Scale"
     ],
     "focusAreas": [
-      "Data & AI industrialization",
-      "Organizational transformation",
-      "Data-driven value creation"
+      "Data & AI",
+      "MLOps",
+      "Data Governance"
     ],
     "technologies": [],
     "vendorPartnerships": [],
@@ -4088,46 +4119,66 @@
   },
   {
     "domain": "datagroup.de",
-    "country": null,
-    "companyName": "DATAGROUP - IT Dienstleister auf Augenhöhe",
+    "country": "Germany",
+    "companyName": "DATAGROUP",
     "website": "https://www.datagroup.de/",
-    "description": "Einer der führenden deutschen IT Dienstleister macht IT für Sie einfacher. Das Portfolio umfasst alle Services für einen sorgenfreien IT-Betrieb.",
+    "description": "Leistungsstarke IT-Services \"Made in Germany\". DATAGROUP konzipiert, implementiert und betreibt IT-Infrastrukturen und Business-Applikationen für mittelständische und große Unternehmen. Rund 4.000 IT-Spezialist*innen sorgen für einen sicheren und stabilen Betrieb – auch für geschäftskritische Systeme.",
     "services": [
-      "Managed Services",
-      "DevOps",
-      "Kubernetes",
-      "Security"
+      "IT-Infrastrukturen",
+      "Business-Applikationen",
+      "SAP-Beratung und Transformation",
+      "SAP Application Management Services",
+      "S/4HANA-Transformation",
+      "NIS2-Compliance Beratung",
+      "Cyber-Security-Strukturen",
+      "VMware-Services",
+      "Cloud Services",
+      "Application and Data Management",
+      "IT-Outsourcing",
+      "Mobile Device Management",
+      "Service Desk und Field Service",
+      "Security Services",
+      "Managed SIEM",
+      "Network Security Monitoring"
     ],
     "focusAreas": [
-      "DevOps",
-      "Kubernetes",
-      "Security"
+      "IT-Services",
+      "SAP-Transformation",
+      "Cybersecurity",
+      "Cloud-Infrastruktur",
+      "Compliance",
+      "IT-Betrieb"
     ],
-    "technologies": [],
+    "technologies": [
+      "SAP",
+      "S/4HANA",
+      "SAP Business One"
+    ],
     "vendorPartnerships": [
-      "VMware"
+      "SAP Gold Partner",
+      "VCSP Pinnacle Partner"
     ],
-    "location": null,
-    "confidenceScore": 70,
+    "location": "Deutschland",
+    "confidenceScore": 85,
     "githubUrl": "https://github.com/datagroup-one",
     "linkedinUrl": null,
     "logoUrl": "/logos/datagroup.de/logo.png",
     "recentActivity": [
       {
-        "title": "spark-streaming-cookbook",
+        "title": "spark-streaming-cookbook repository activity",
         "date": "2025-08-08",
         "source": "https://github.com/datagroup-one/spark-streaming-cookbook",
-        "sourceType": "github"
+        "sourceType": "GitHub"
       },
       {
-        "title": "shopware-data-pipeline",
+        "title": "shopware-data-pipeline repository activity",
         "date": "2025-07-21",
         "source": "https://github.com/datagroup-one/shopware-data-pipeline",
-        "sourceType": "github"
+        "sourceType": "GitHub"
       }
     ],
     "reviewNotes": [
-      "No technologies were extracted from website content."
+      "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
       "logo": "/logos/datagroup.de/logo.png",
@@ -4240,8 +4291,8 @@
       "AI-powered insights",
       "Intelligent automation",
       "Digital commerce platforms",
-      "Cybersecurity solutions",
-      "Software-defined products"
+      "Software-defined solutions",
+      "Cybersecurity testing"
     ],
     "technologies": [
       "Salesforce"
@@ -4266,10 +4317,10 @@
         "sourceType": "study"
       },
       {
-        "title": "Webinars in German",
-        "date": null,
-        "source": "https://diconium.com/de/webinare",
-        "sourceType": "webinar"
+        "title": "ethereal-nexus repository activity",
+        "date": "2026-06-16",
+        "source": "https://github.com/diconium/ethereal-nexus",
+        "sourceType": "github"
       }
     ],
     "reviewNotes": [
@@ -4306,7 +4357,7 @@
     "focusAreas": [
       "Digital talent acquisition",
       "Technology recruitment",
-      "Business transformation",
+      "Business transformation projects",
       "Global talent sourcing"
     ],
     "technologies": [],
@@ -4426,40 +4477,38 @@
     "country": "United States",
     "companyName": "DoiT",
     "website": "https://www.doit.com/",
-    "description": "Cloud Intelligence™ pairs AI-driven FinOps automation with Forward Deployed Engineers who ship real savings across Kubernetes, anomalies, and workflows. The only cloud optimization platform where Forward Deployed Engineers ship savings alongside your team.",
+    "description": "DoiT Cloud Intelligence™ is an AI FinOps platform that pairs AI-driven FinOps automation with Forward Deployed Engineers who ship real savings across Kubernetes, anomalies, and workflows. The platform provides closed-loop optimization with embedded Forward Deployed Engineers for self-optimizing infrastructure.",
     "services": [
-      "AI FinOps Platform",
-      "Cloud Cost Optimization",
-      "Kubernetes Optimization",
+      "Cloud Intelligence™ AI FinOps Platform",
       "Forward Deployed Engineering",
-      "Enterprise-grade FinOps",
-      "FinOps for GenAI",
-      "Headless FinOps",
       "Usage Optimization",
       "Rate Optimization",
-      "Saving Plan Automation",
-      "Procurement Advisory",
+      "Kubernetes Optimization",
+      "LLM/GenAI Optimization",
       "Architecture Optimization",
-      "Enterprise Support & Training"
+      "Enterprise Support & Training",
+      "Procurement Advisory",
+      "Saving Plan Automation"
     ],
     "focusAreas": [
-      "Cloud Cost Management",
       "FinOps",
-      "Kubernetes Optimization",
-      "Multi-cloud Management",
+      "Cloud Cost Optimization",
+      "Kubernetes",
       "GenAI/LLM Optimization",
+      "Multi-cloud Management",
       "Data Platform Optimization",
-      "Cloud Infrastructure Optimization"
+      "Infrastructure Automation"
     ],
     "technologies": [
       "Kubernetes",
-      "AWS",
       "Snowflake",
       "Databricks",
       "BigQuery",
-      "MongoDB",
+      "AWS",
+      "Azure",
       "Anthropic",
-      "OpenAI"
+      "OpenAI",
+      "MongoDB"
     ],
     "vendorPartnerships": [],
     "location": "Santa Clara, California, United States",
@@ -4496,12 +4545,12 @@
     "description": "Swiss cybersecurity solutions provider with 25+ years of experience combining Swiss made intelligence and international expertise to produce, evaluate and control cyberspace protection based on measurable and verifiable open source technologies. Dreamlab advises people, organizations and authorities to help them integrate cybersecurity governance and strategy into their management cycle.",
     "services": [
       "Cybersecurity consulting",
-      "IT security audit",
+      "IT consulting",
       "Penetration testing",
       "System monitoring",
+      "Audit services",
       "Digital forensics",
-      "Cybersecurity education and training",
-      "Courses and workshops"
+      "Cybersecurity education and training"
     ],
     "focusAreas": [
       "Cybersecurity",
@@ -4509,8 +4558,7 @@
       "Real-time data analysis",
       "Complex data analytics",
       "Security standards development",
-      "Critical infrastructure protection",
-      "Supply chain security"
+      "Critical infrastructure protection"
     ],
     "technologies": [
       "CyObs"
@@ -4580,12 +4628,12 @@
       "24x7 Operations Support"
     ],
     "focusAreas": [
-      "Digital Growth",
-      "AI Adoption",
       "Digital Transformation",
-      "Software Architecture",
+      "AI Adoption",
+      "Software Engineering",
+      "Infrastructure Automation",
       "Distributed Systems",
-      "REST API Design",
+      "REST Architecture",
       "Constrained Resources Computing",
       "Edge Computing",
       "Embedded Systems"
@@ -4604,7 +4652,7 @@
     ],
     "vendorPartnerships": [],
     "location": "Stansstad, Nidwalden, Switzerland",
-    "confidenceScore": 92,
+    "confidenceScore": 95,
     "githubUrl": "https://github.com/ecociel",
     "linkedinUrl": "http://www.linkedin.com/company/ecociel-ch",
     "logoUrl": "/logos/ecociel.swiss/logo.png",
@@ -4654,16 +4702,16 @@
       "Platform engineering",
       "IT Service Management",
       "Cloud migration",
-      "Managed services",
-      "Training and advisory"
+      "Training and support",
+      "Managed services"
     ],
     "focusAreas": [
       "AI-native software development",
       "DevOps",
       "Software development lifecycle",
       "Cloud native solutions",
-      "Automated testing",
-      "CI/CD processes"
+      "IT Service Management",
+      "Platform engineering"
     ],
     "technologies": [
       "Atlassian",
@@ -4671,10 +4719,10 @@
       "GitLab",
       "AWS",
       "Azure",
-      "Jira Service Management",
-      "Atlassian Rovo",
       "GitHub Copilot",
-      "GitLab Duo"
+      "Atlassian Rovo",
+      "GitLab Duo",
+      "Jira Service Management"
     ],
     "vendorPartnerships": [
       "Atlassian",
@@ -4748,7 +4796,7 @@
       "Digital sovereignty",
       "Critical software infrastructure",
       "AI workloads",
-      "Hybrid and multi-cloud deployment"
+      "Hybrid and multi-cloud deployments"
     ],
     "technologies": [
       "Kubernetes",
@@ -4888,13 +4936,13 @@
       "User Interface Design"
     ],
     "focusAreas": [
-      "Custom Software Development",
       "Product Design",
       "AI Solutions",
       "Web Applications",
       "Mobile Applications",
-      "User Experience Design",
-      "User Interface Design"
+      "User Experience",
+      "User Interface Design",
+      "Agile Development"
     ],
     "technologies": [
       "React Native",
