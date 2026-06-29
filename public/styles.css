@@ -815,6 +815,15 @@ a:hover {
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.82fr) minmax(96px, 0.45fr) minmax(140px, 0.58fr) minmax(190px, 0.82fr);
 }
 
+.adminReviewTable .adminTableHeader,
+.adminReviewTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.48fr) minmax(92px, 0.34fr) minmax(84px, 0.3fr) minmax(300px, 0.86fr);
+}
+
+.adminReviewTable .adminTableHeader span:last-child {
+  text-align: right;
+}
+
 .adminCompactProviderTable .adminTableHeader,
 .adminCompactProviderTable .adminTableRow {
   grid-template-columns: minmax(0, 1fr) 112px 96px;
@@ -838,6 +847,19 @@ a:hover {
 .adminDashboardJobRow .adminCell:nth-child(3) {
   justify-items: center;
   text-align: center;
+}
+
+.adminDashboardProviderRow,
+.adminDashboardJobRow {
+  height: 76px;
+  overflow: hidden;
+}
+
+.adminDashboardProviderRow .adminCellPrimary strong,
+.adminDashboardJobRow .adminCellPrimary strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .adminCell {
@@ -1022,6 +1044,10 @@ a:hover {
   justify-content: flex-end;
   gap: 6px;
   min-width: 0;
+}
+
+.adminReviewTable .adminCellAction {
+  flex-wrap: nowrap;
 }
 
 .compactAction {
@@ -1962,6 +1988,7 @@ a:hover {
   .adminTableRow,
   .adminPublishedTable .adminTableRow,
   .adminJobsTable .adminTableRow,
+  .adminReviewTable .adminTableRow,
   .adminCompactProviderTable .adminTableRow,
   .adminCompactJobsTable .adminTableRow {
     grid-template-columns: 1fr;

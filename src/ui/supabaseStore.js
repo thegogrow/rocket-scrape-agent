@@ -145,8 +145,10 @@ async function loadBundledProfiles() {
   return Array.isArray(profiles) ? profiles : [];
 }
 
-async function seedProvidersIfEmpty(providers) {
-  if (providers.length > 0) {
+async function seedPublishedProvidersIfMissing(providers) {
+  const hasPublishedProviders = providers.some((provider) => provider.status === "published");
+
+  if (hasPublishedProviders) {
     return providers;
   }
 
@@ -156,7 +158,13 @@ async function seedProvidersIfEmpty(providers) {
     return providers;
   }
 
+  const existingDomains = new Set(
+    providers
+      .map((provider) => provider.domain)
+      .filter(Boolean)
+  );
   const rows = bundledProfiles
+    .filter((profile) => !existingDomains.has(profile?.domain))
     .filter((profile) => profile?.domain && (profile.companyName || profile.domain))
     .map((profile) => profileToRow(profile, "published"));
 
@@ -269,7 +277,7 @@ async function listAdminState() {
     supabaseFetch("/rest/v1/scrape_jobs?select=*&order=created_at.desc&limit=100"),
     supabaseFetch("/rest/v1/providers?select=*&order=status.asc,company_name.asc&limit=1000"),
   ]);
-  const providers = await seedProvidersIfEmpty(providerRows);
+  const providers = await seedPublishedProvidersIfMissing(providerRows);
 
   return {
     jobs,
