@@ -9,6 +9,7 @@ const START_PORT = Number.parseInt(process.env.PROFILE_UI_PORT || "3001", 10);
 const PUBLIC_DIR = path.resolve(process.cwd(), "public");
 const API_HANDLERS = {
   "/api/admin-login": require("../../api/admin-login"),
+  "/api/admin-job": require("../../api/admin-job"),
   "/api/admin-publish": require("../../api/admin-publish"),
   "/api/admin-provider": require("../../api/admin-provider"),
   "/api/admin-run-job": require("../../api/admin-run-job"),

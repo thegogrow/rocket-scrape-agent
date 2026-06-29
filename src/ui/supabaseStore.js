@@ -1,3 +1,6 @@
+const fs = require("fs-extra");
+const path = require("path");
+
 const DEFAULT_ADMIN_EMAILS = ["phil@thegogrow.ch", "nunezkathleenm@gmail.com"];
 
 function supabaseConfig() {
@@ -66,7 +69,9 @@ async function supabaseFetch(path, options = {}) {
     return null;
   }
 
-  return response.json();
+  const text = await response.text();
+
+  return text ? JSON.parse(text) : null;
 }
 
 function rowToProfile(row) {
@@ -126,6 +131,48 @@ function jobPatchToRow(patch = {}) {
     ...(patch.error !== undefined ? { error: patch.error } : {}),
     ...(patch.resultProviderId !== undefined ? { result_provider_id: patch.resultProviderId } : {}),
   };
+}
+
+async function loadBundledProfiles() {
+  const profilesPath = path.resolve(process.cwd(), "public", "profiles.json");
+
+  if (!(await fs.pathExists(profilesPath))) {
+    return [];
+  }
+
+  const profiles = await fs.readJson(profilesPath);
+
+  return Array.isArray(profiles) ? profiles : [];
+}
+
+async function seedProvidersIfEmpty(providers) {
+  if (providers.length > 0) {
+    return providers;
+  }
+
+  const bundledProfiles = await loadBundledProfiles();
+
+  if (bundledProfiles.length === 0) {
+    return providers;
+  }
+
+  const rows = bundledProfiles
+    .filter((profile) => profile?.domain && (profile.companyName || profile.domain))
+    .map((profile) => profileToRow(profile, "published"));
+
+  if (rows.length === 0) {
+    return providers;
+  }
+
+  await supabaseFetch("/rest/v1/providers?on_conflict=domain", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify(rows),
+  });
+
+  return supabaseFetch("/rest/v1/providers?select=*&order=status.asc,company_name.asc&limit=1000");
 }
 
 async function signInWithPassword(email, password) {
@@ -218,10 +265,11 @@ async function listPublishedProviders() {
 }
 
 async function listAdminState() {
-  const [jobs, providers] = await Promise.all([
-    supabaseFetch("/rest/v1/scrape_jobs?select=*&order=created_at.desc&limit=25"),
-    supabaseFetch("/rest/v1/providers?select=*&order=updated_at.desc&limit=50"),
+  const [jobs, providerRows] = await Promise.all([
+    supabaseFetch("/rest/v1/scrape_jobs?select=*&order=created_at.desc&limit=100"),
+    supabaseFetch("/rest/v1/providers?select=*&order=status.asc,company_name.asc&limit=1000"),
   ]);
+  const providers = await seedProvidersIfEmpty(providerRows);
 
   return {
     jobs,
@@ -359,9 +407,18 @@ async function deleteProvider(id) {
   return { id, deleted: true };
 }
 
+async function deleteScrapeJob(id) {
+  await supabaseFetch(`/rest/v1/scrape_jobs?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+
+  return { id, deleted: true };
+}
+
 module.exports = {
   createScrapeJob,
   deleteProvider,
+  deleteScrapeJob,
   getNextQueuedScrapeJob,
   getScrapeJob,
   isSupabaseConfigured,

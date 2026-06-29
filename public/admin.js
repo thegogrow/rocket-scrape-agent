@@ -170,7 +170,11 @@ function setSection(section) {
 }
 
 function statusPill(status) {
-  return `<span class="statusPill">${escapeHtml(status || "draft")}</span>`;
+  const label = String(status || "draft")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  return `<span class="statusPill statusPill-${escapeHtml(status || "draft")}">${escapeHtml(label)}</span>`;
 }
 
 function emptyState(label) {
@@ -229,6 +233,7 @@ function providerLogo(provider) {
 
 function actionButton(kind, label, attrs = "") {
   const icons = {
+    process: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z" /></svg>`,
     edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>`,
     unpublish: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5V5Z" /><path d="m8 8 8 8M16 8l-8 8" /></svg>`,
     delete: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12" /><path d="M9 7V5h6v2" /><path d="M8 10v9h8v-9" /></svg>`,
@@ -248,9 +253,9 @@ function actionLink(kind, label, href) {
 }
 
 function providerActions(provider, options = {}) {
-  const { includePublish = false, includeManage = false } = options;
+  const { includePublish = false, includeManage = false, includeProfile = true } = options;
   const actions = [
-    provider.domain
+    includeProfile && provider.domain
       ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
       : "",
     includePublish && provider.id
@@ -275,48 +280,48 @@ function providerRow(provider, options = {}) {
   const action = providerActions(provider, {
     includePublish: includeAction,
     includeManage: compact,
+    includeProfile: compact,
   });
 
-  if (compact) {
-    return `
-      <article class="adminTableRow adminPublishedRow">
-        <div class="adminCell adminCellPrimary">
-          <span class="adminProviderIdentity">
-            ${providerLogo(provider)}
-            <span>
-              <strong>${escapeHtml(provider.companyName || provider.domain)}</strong>
-              <span>${escapeHtml(provider.domain || "")}</span>
-            </span>
+  return `
+    <article class="adminTableRow ${compact ? "adminPublishedRow" : "adminReviewRow"}">
+      <div class="adminCell adminCellPrimary">
+        <span class="adminProviderIdentity">
+          ${providerLogo(provider)}
+          <span>
+            <strong>${escapeHtml(provider.companyName || provider.domain)}</strong>
+            <span title="${escapeHtml(provider.domain || provider.website || "")}">${escapeHtml(provider.domain || provider.website || "")}</span>
           </span>
-        </div>
-        <div class="adminCell"><span>${escapeHtml(provider.country || provider.location || "Unknown")}</span></div>
-        <div class="adminCell">${statusPill(provider.status || "published")}</div>
-        <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
-        <div class="adminCell adminCellAction">${action}</div>
-      </article>
-    `;
-  }
+        </span>
+      </div>
+      <div class="adminCell"><span>${escapeHtml(provider.country || provider.location || "Unknown")}</span></div>
+      <div class="adminCell">${statusPill(provider.status || "published")}</div>
+      <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
+      <div class="adminCell adminCellAction">${action}</div>
+    </article>
+  `;
+}
+
+function compactProviderRow(provider) {
+  const actions = [
+    provider.id ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id)}"`) : "",
+    provider.id ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`) : "",
+  ].filter(Boolean).join("");
 
   return `
-    <article class="adminTableRow">
+    <article class="adminTableRow adminReviewRow adminCompactRow">
       <div class="adminCell adminCellPrimary">
-        <span class="adminCellLabel">Company</span>
-        <strong>${escapeHtml(provider.companyName || provider.domain)}</strong>
-        <span>${escapeHtml(provider.website || provider.domain || "")}</span>
+        <span class="adminProviderIdentity">
+          ${providerLogo(provider)}
+          <span>
+            <strong>${escapeHtml(provider.companyName || provider.domain)}</strong>
+            <span>${escapeHtml(provider.domain || "")}</span>
+          </span>
+        </span>
       </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Country</span>
-        <span>${escapeHtml(provider.country || provider.location || "Unknown")}</span>
-      </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Status</span>
-        ${statusPill(provider.status || "published")}
-      </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Confidence</span>
-        <span>${escapeHtml(provider.confidenceScore || 0)}%</span>
-      </div>
-      <div class="adminCell adminCellAction">${action}</div>
+      <div class="adminCell">${statusPill(provider.status || "draft")}</div>
+      <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
+      <div class="adminCell adminCellAction">${actions}</div>
     </article>
   `;
 }
@@ -477,34 +482,41 @@ function renderPublishedPagination(totalPages, totalCount) {
 }
 
 function jobRow(job) {
-  const action = job.status === "queued"
-    ? actionButton("publish", "Process", `data-run-job="${escapeHtml(job.id || "")}"`)
-    : "";
+  const actions = [
+    job.status === "queued"
+      ? actionButton("process", "Process", `data-run-job="${escapeHtml(job.id || "")}"`)
+      : "",
+    job.result_provider_id
+      ? actionButton("edit", "Profile", `data-edit-provider="${escapeHtml(job.result_provider_id)}"`)
+      : "",
+    job.id
+      ? actionButton("delete", "Delete", `data-delete-job="${escapeHtml(job.id)}"`)
+      : "",
+  ].filter(Boolean).join("");
 
   return `
-    <article class="adminTableRow">
+    <article class="adminTableRow adminJobRow">
       <div class="adminCell adminCellPrimary">
-        <span class="adminCellLabel">Company</span>
         <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
-        <span>${escapeHtml(job.url || "")}</span>
+        <span title="${escapeHtml(job.url || job.error || "")}">${escapeHtml(job.error ? `Error: ${job.error}` : job.url || "")}</span>
       </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Requested by</span>
-        <span>${escapeHtml(job.requested_by || "Unknown")}</span>
+      <div class="adminCell"><span>${escapeHtml(job.requested_by || "Unknown")}</span></div>
+      <div class="adminCell">${statusPill(job.status)}</div>
+      <div class="adminCell"><span>${escapeHtml(job.created_at ? new Date(job.created_at).toLocaleString() : "No date")}</span></div>
+      <div class="adminCell adminCellAction">${actions}</div>
+    </article>
+  `;
+}
+
+function compactJobRow(job) {
+  return `
+    <article class="adminTableRow adminJobRow adminCompactRow">
+      <div class="adminCell adminCellPrimary">
+        <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
+        <span>${escapeHtml(job.domain || "")}</span>
       </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Status</span>
-        ${statusPill(job.status)}
-      </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Created</span>
-        <span>${escapeHtml(job.created_at ? new Date(job.created_at).toLocaleString() : "No date")}</span>
-      </div>
-      <div class="adminCell">
-        <span class="adminCellLabel">Error</span>
-        <span>${escapeHtml(job.error || "")}</span>
-        ${action}
-      </div>
+      <div class="adminCell">${statusPill(job.status)}</div>
+      <div class="adminCell"><span>${escapeHtml(job.created_at ? new Date(job.created_at).toLocaleDateString() : "No date")}</span></div>
     </article>
   `;
 }
@@ -546,6 +558,12 @@ function bindPublishButtons() {
     });
   });
 
+  document.querySelectorAll("[data-delete-job]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await deleteJob(button.dataset.deleteJob);
+    });
+  });
+
   document.querySelectorAll("[data-run-job]").forEach((button) => {
     button.addEventListener("click", async () => {
       button.disabled = true;
@@ -576,19 +594,19 @@ function renderLists() {
   );
 
   elements.dashboardReviewList.innerHTML = reviewProviders.length
-    ? reviewProviders.slice(0, 5).map((provider) => providerRow(provider, { includeAction: true })).join("")
+    ? `${tableHeader(["Company", "Status", "Confidence", "Actions"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
     : emptyState("No profiles need review.");
 
   elements.dashboardJobList.innerHTML = state.jobs.length
-    ? state.jobs.slice(0, 5).map(jobRow).join("")
+    ? `${tableHeader(["Company", "Status", "Created"])}${state.jobs.slice(0, 5).map(compactJobRow).join("")}`
     : emptyState("No scrape jobs yet.");
 
   elements.jobList.innerHTML = state.jobs.length
-    ? state.jobs.map(jobRow).join("")
+    ? `${tableHeader(["Company", "Requested by", "Status", "Created", "Actions"])}${state.jobs.map(jobRow).join("")}`
     : emptyState("No scrape jobs yet.");
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Action"])}${reviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
+    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${reviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
     : emptyState("No draft profiles need review.");
 
   elements.publishedProviderList.innerHTML = filteredPublishedProviders.length
@@ -690,7 +708,6 @@ async function handleScrapeSubmit(event) {
     elements.scrapeCompanyName.value = "";
     renderStats();
     renderLists();
-    setSection("jobs");
     return;
   }
 
@@ -812,6 +829,33 @@ async function deleteProvider(key) {
   if (response.ok) {
     await refreshAdminState();
   }
+}
+
+async function deleteJob(id) {
+  if (!id || !window.confirm("Delete this scrape job?")) {
+    return;
+  }
+
+  if (DEV_ADMIN_ACCESS) {
+    state.jobs = state.jobs.filter((job) => String(job.id || "") !== String(id));
+    renderStats();
+    renderLists();
+    return;
+  }
+
+  const response = await fetch("/api/admin-job", {
+    method: "DELETE",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    window.alert(payload.error || "Failed to delete job.");
+    return;
+  }
+
+  await refreshAdminState();
 }
 
 async function saveProfileEdit(event) {

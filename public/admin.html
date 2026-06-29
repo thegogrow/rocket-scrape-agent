@@ -45,10 +45,6 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z" /></svg>
             <span>Scrape Company</span>
           </button>
-          <button type="button" data-admin-section="jobs" title="Jobs">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v3H5V5Zm0 5h14v3H5v-3Zm0 5h9v3H5v-3Z" /></svg>
-            <span>Jobs</span>
-          </button>
           <button type="button" data-admin-section="review" title="Provider Review">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z" /></svg>
             <span>Provider Review</span>
@@ -120,7 +116,7 @@
                   <p>Draft provider profiles waiting for approval.</p>
                 </div>
               </div>
-              <div id="dashboardReviewList" class="adminList"></div>
+              <div id="dashboardReviewList" class="adminTable adminCompactProviderTable"></div>
             </section>
             <section class="adminPanel">
               <div class="panelHeader">
@@ -129,7 +125,7 @@
                   <p>Latest scrape requests and failures.</p>
                 </div>
               </div>
-              <div id="dashboardJobList" class="adminList"></div>
+              <div id="dashboardJobList" class="adminTable adminCompactJobsTable"></div>
             </section>
           </div>
         </section>
@@ -155,17 +151,15 @@
               <button type="submit">Queue Scrape</button>
             </form>
           </section>
-        </section>
 
-        <section class="adminSection" data-admin-panel="jobs">
           <section class="adminPanel">
             <div class="panelHeader">
               <div>
                 <h2>Jobs</h2>
-                <p>Scrape requests, status, requester, and errors.</p>
+                <p>Scrape requests, requester, status, and created date.</p>
               </div>
             </div>
-            <div id="jobList" class="adminTable"></div>
+            <div id="jobList" class="adminTable adminJobsTable"></div>
           </section>
         </section>
 

@@ -400,13 +400,45 @@ a:hover {
 
 .statusPill {
   align-self: start;
-  padding: 3px 8px;
-  border-radius: 4px;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid #cfe0f6;
+  border-radius: 999px;
   background: #edf4ff;
   color: var(--blue-dark);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.1;
   white-space: nowrap;
+}
+
+.statusPill-published {
+  border-color: #b9dfc8;
+  background: #ecf8f0;
+  color: #116332;
+}
+
+.statusPill-draft,
+.statusPill-needs_review {
+  border-color: #ffd49f;
+  background: #fff6e8;
+  color: #8a4b00;
+}
+
+.statusPill-queued,
+.statusPill-running {
+  border-color: #cfe0f6;
+  background: #edf4ff;
+  color: var(--blue-dark);
+}
+
+.statusPill-failed {
+  border-color: #f3b9b9;
+  background: #fff0f0;
+  color: #9b1c1c;
 }
 
 .adminBody {
@@ -739,11 +771,12 @@ a:hover {
   display: grid;
   gap: 8px;
   min-width: 0;
+  overflow-x: auto;
 }
 
 .adminTableHeader {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(110px, 0.7fr) minmax(100px, 0.55fr) minmax(100px, 0.6fr) minmax(90px, auto);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.72fr) minmax(92px, 0.45fr) minmax(92px, 0.48fr) minmax(150px, 0.78fr);
   gap: 12px;
   padding: 0 12px 4px;
   color: var(--muted);
@@ -758,7 +791,7 @@ a:hover {
 
 .adminTableRow {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(110px, 0.7fr) minmax(100px, 0.55fr) minmax(100px, 0.6fr) minmax(90px, auto);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.72fr) minmax(92px, 0.45fr) minmax(92px, 0.48fr) minmax(150px, 0.78fr);
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -770,11 +803,26 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
-  grid-template-columns: minmax(260px, 1.55fr) minmax(120px, 0.62fr) minmax(100px, 0.5fr) minmax(100px, 0.5fr) minmax(410px, 1.35fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.58fr) minmax(92px, 0.42fr) minmax(92px, 0.42fr) minmax(220px, 0.9fr);
 }
 
 .adminPublishedTable .adminTableHeader span:last-child {
   text-align: right;
+}
+
+.adminJobsTable .adminTableHeader,
+.adminJobsTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.82fr) minmax(96px, 0.45fr) minmax(140px, 0.58fr) minmax(190px, 0.82fr);
+}
+
+.adminCompactProviderTable .adminTableHeader,
+.adminCompactProviderTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.42fr) minmax(90px, 0.36fr) minmax(140px, 0.72fr);
+}
+
+.adminCompactJobsTable .adminTableHeader,
+.adminCompactJobsTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.45fr) minmax(104px, 0.5fr);
 }
 
 .adminCell {
@@ -803,6 +851,22 @@ a:hover {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.adminTableRow strong,
+.adminTableRow .adminCell > span,
+.adminProviderIdentity span span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adminTableRow .adminCell > span,
+.adminProviderIdentity span span {
+  white-space: nowrap;
+}
+
+.adminTableRow .statusPill {
+  display: inline-flex;
 }
 
 .adminTableRow .adminCellPrimary > span:not(.adminCellLabel) {
@@ -903,6 +967,12 @@ a:hover {
   display: none;
 }
 
+.adminJobRow .adminCellLabel,
+.adminReviewRow .adminCellLabel,
+.adminCompactRow .adminCellLabel {
+  display: none;
+}
+
 .adminProviderIdentity {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
@@ -936,6 +1006,7 @@ a:hover {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
 }
 
 .compactAction {
@@ -1873,7 +1944,11 @@ a:hover {
     justify-content: stretch;
   }
 
-  .adminTableRow {
+  .adminTableRow,
+  .adminPublishedTable .adminTableRow,
+  .adminJobsTable .adminTableRow,
+  .adminCompactProviderTable .adminTableRow,
+  .adminCompactJobsTable .adminTableRow {
     grid-template-columns: 1fr;
   }
 
