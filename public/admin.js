@@ -5,6 +5,10 @@ const state = {
   jobs: [],
   providers: [],
   sidebarCollapsed: window.localStorage.getItem("rocketEngineersAdminSidebar") === "collapsed",
+  jobsPage: 1,
+  jobsPageSize: 10,
+  reviewPage: 1,
+  reviewPageSize: 10,
   publishedPage: 1,
   publishedPageSize: 20,
   publishedFilters: {
@@ -58,7 +62,15 @@ const elements = {
   scrapeCompanyName: document.querySelector("#scrapeCompanyName"),
   scrapeMessage: document.querySelector("#scrapeMessage"),
   jobList: document.querySelector("#jobList"),
+  jobsPrevButton: document.querySelector("#jobsPrevButton"),
+  jobsNextButton: document.querySelector("#jobsNextButton"),
+  jobsPageInfo: document.querySelector("#jobsPageInfo"),
+  jobsPageNumbers: document.querySelector("#jobsPageNumbers"),
   reviewProviderList: document.querySelector("#reviewProviderList"),
+  reviewPrevButton: document.querySelector("#reviewPrevButton"),
+  reviewNextButton: document.querySelector("#reviewNextButton"),
+  reviewPageInfo: document.querySelector("#reviewPageInfo"),
+  reviewPageNumbers: document.querySelector("#reviewPageNumbers"),
   publishedFilters: document.querySelector("#publishedFilters"),
   publishedNameFilter: document.querySelector("#publishedNameFilter"),
   publishedSortFilter: document.querySelector("#publishedSortFilter"),
@@ -458,34 +470,33 @@ function visiblePageNumbers(currentPage, totalPages) {
     .sort((left, right) => left - right);
 }
 
-function renderPublishedPagination(totalPages, totalCount) {
-  const pages = visiblePageNumbers(state.publishedPage, totalPages);
+function renderPagination({ currentPage, totalPages, totalCount, label, elements: controls, onPageChange }) {
+  const pages = visiblePageNumbers(currentPage, totalPages);
   let previousPage = 0;
 
-  elements.publishedPageNumbers.innerHTML = pages
+  controls.pageNumbers.innerHTML = pages
     .map((page) => {
       const gap = page - previousPage > 1 ? `<span class="paginationGap">...</span>` : "";
       previousPage = page;
 
       return `
         ${gap}
-        <button class="${page === state.publishedPage ? "active" : ""}" type="button" data-published-page="${page}" aria-label="Go to page ${page}">
+        <button class="${page === currentPage ? "active" : ""}" type="button" data-page="${page}" aria-label="Go to ${label} page ${page}">
           ${page}
         </button>
       `;
     })
     .join("");
 
-  elements.publishedPageInfo.textContent = totalCount
-    ? `Page ${state.publishedPage} of ${totalPages} · ${totalCount} providers`
-    : "Page 1 of 1 · 0 providers";
-  elements.publishedPrevButton.disabled = state.publishedPage <= 1;
-  elements.publishedNextButton.disabled = state.publishedPage >= totalPages;
+  controls.pageInfo.textContent = totalCount
+    ? `Page ${currentPage} of ${totalPages} · ${totalCount} ${label}`
+    : `Page 1 of 1 · 0 ${label}`;
+  controls.prevButton.disabled = currentPage <= 1;
+  controls.nextButton.disabled = currentPage >= totalPages;
 
-  elements.publishedPageNumbers.querySelectorAll("[data-published-page]").forEach((button) => {
+  controls.pageNumbers.querySelectorAll("[data-page]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.publishedPage = Number.parseInt(button.dataset.publishedPage, 10);
-      renderLists();
+      onPageChange(Number.parseInt(button.dataset.page, 10));
     });
   });
 }
@@ -589,10 +600,24 @@ function renderLists() {
   const reviewProviders = state.providers.filter((provider) => provider.status && provider.status !== "published");
   const publishedProviders = state.providers.filter((provider) => !provider.status || provider.status === "published");
   const filteredPublishedProviders = filterPublishedProviders(publishedProviders);
+  const totalJobsPages = Math.max(1, Math.ceil(state.jobs.length / state.jobsPageSize));
+  const totalReviewPages = Math.max(1, Math.ceil(reviewProviders.length / state.reviewPageSize));
   const totalPublishedPages = Math.max(1, Math.ceil(filteredPublishedProviders.length / state.publishedPageSize));
 
+  state.jobsPage = Math.min(Math.max(1, state.jobsPage), totalJobsPages);
+  state.reviewPage = Math.min(Math.max(1, state.reviewPage), totalReviewPages);
   state.publishedPage = Math.min(Math.max(1, state.publishedPage), totalPublishedPages);
 
+  const jobsStart = (state.jobsPage - 1) * state.jobsPageSize;
+  const visibleJobs = state.jobs.slice(
+    jobsStart,
+    jobsStart + state.jobsPageSize
+  );
+  const reviewStart = (state.reviewPage - 1) * state.reviewPageSize;
+  const visibleReviewProviders = reviewProviders.slice(
+    reviewStart,
+    reviewStart + state.reviewPageSize
+  );
   const publishedStart = (state.publishedPage - 1) * state.publishedPageSize;
   const visiblePublishedProviders = filteredPublishedProviders.slice(
     publishedStart,
@@ -608,18 +633,65 @@ function renderLists() {
     : emptyState("No scrape jobs yet.");
 
   elements.jobList.innerHTML = state.jobs.length
-    ? `${tableHeader(["Company", "Requested by", "Status", "Created", "Actions"])}${state.jobs.map(jobRow).join("")}`
+    ? `${tableHeader(["Company", "Requested by", "Status", "Created", "Actions"])}${visibleJobs.map(jobRow).join("")}`
     : emptyState("No scrape jobs yet.");
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${reviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
+    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
     : emptyState("No draft profiles need review.");
 
   elements.publishedProviderList.innerHTML = filteredPublishedProviders.length
     ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
     : emptyState("No published providers match the current filters.");
 
-  renderPublishedPagination(totalPublishedPages, filteredPublishedProviders.length);
+  renderPagination({
+    currentPage: state.jobsPage,
+    totalPages: totalJobsPages,
+    totalCount: state.jobs.length,
+    label: "jobs",
+    elements: {
+      prevButton: elements.jobsPrevButton,
+      nextButton: elements.jobsNextButton,
+      pageInfo: elements.jobsPageInfo,
+      pageNumbers: elements.jobsPageNumbers,
+    },
+    onPageChange(page) {
+      state.jobsPage = page;
+      renderLists();
+    },
+  });
+  renderPagination({
+    currentPage: state.reviewPage,
+    totalPages: totalReviewPages,
+    totalCount: reviewProviders.length,
+    label: "profiles",
+    elements: {
+      prevButton: elements.reviewPrevButton,
+      nextButton: elements.reviewNextButton,
+      pageInfo: elements.reviewPageInfo,
+      pageNumbers: elements.reviewPageNumbers,
+    },
+    onPageChange(page) {
+      state.reviewPage = page;
+      renderLists();
+    },
+  });
+  renderPagination({
+    currentPage: state.publishedPage,
+    totalPages: totalPublishedPages,
+    totalCount: filteredPublishedProviders.length,
+    label: "providers",
+    elements: {
+      prevButton: elements.publishedPrevButton,
+      nextButton: elements.publishedNextButton,
+      pageInfo: elements.publishedPageInfo,
+      pageNumbers: elements.publishedPageNumbers,
+    },
+    onPageChange(page) {
+      state.publishedPage = page;
+      renderLists();
+    },
+  });
 
   bindPublishButtons();
 }
@@ -639,6 +711,8 @@ async function refreshAdminState() {
   if (DEV_ADMIN_ACCESS) {
     elements.setupNotice.hidden = true;
     await loadPublicProfilesForDevelopment();
+    state.jobsPage = 1;
+    state.reviewPage = 1;
     state.publishedPage = 1;
     renderStats();
     renderLists();
@@ -658,6 +732,8 @@ async function refreshAdminState() {
     elements.setupNotice.hidden = true;
     state.jobs = payload.jobs || [];
     state.providers = payload.providers || [];
+    state.jobsPage = 1;
+    state.reviewPage = 1;
     state.publishedPage = 1;
   }
 
@@ -958,6 +1034,22 @@ function bindEvents() {
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
   elements.refreshButton.addEventListener("click", refreshAdminState);
+  elements.jobsPrevButton.addEventListener("click", () => {
+    state.jobsPage -= 1;
+    renderLists();
+  });
+  elements.jobsNextButton.addEventListener("click", () => {
+    state.jobsPage += 1;
+    renderLists();
+  });
+  elements.reviewPrevButton.addEventListener("click", () => {
+    state.reviewPage -= 1;
+    renderLists();
+  });
+  elements.reviewNextButton.addEventListener("click", () => {
+    state.reviewPage += 1;
+    renderLists();
+  });
   elements.publishedPrevButton.addEventListener("click", () => {
     state.publishedPage -= 1;
     renderLists();
