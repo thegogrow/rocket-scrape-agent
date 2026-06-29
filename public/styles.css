@@ -817,12 +817,27 @@ a:hover {
 
 .adminCompactProviderTable .adminTableHeader,
 .adminCompactProviderTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.42fr) minmax(90px, 0.36fr);
+  grid-template-columns: minmax(0, 1fr) 112px 96px;
 }
 
 .adminCompactJobsTable .adminTableHeader,
 .adminCompactJobsTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.45fr) minmax(104px, 0.5fr);
+  grid-template-columns: minmax(0, 1fr) 112px 116px;
+}
+
+.adminCompactProviderTable .adminTableHeader span:nth-child(2),
+.adminCompactProviderTable .adminTableHeader span:nth-child(3),
+.adminCompactJobsTable .adminTableHeader span:nth-child(2),
+.adminCompactJobsTable .adminTableHeader span:nth-child(3) {
+  text-align: center;
+}
+
+.adminDashboardProviderRow .adminCell:nth-child(2),
+.adminDashboardProviderRow .adminCell:nth-child(3),
+.adminDashboardJobRow .adminCell:nth-child(2),
+.adminDashboardJobRow .adminCell:nth-child(3) {
+  justify-items: center;
+  text-align: center;
 }
 
 .adminCell {

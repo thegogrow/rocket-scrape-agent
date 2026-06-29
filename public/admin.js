@@ -267,6 +267,7 @@ function actionLink(kind, label, href) {
 function providerActions(provider, options = {}) {
   const {
     includeEdit = false,
+    includeDelete = false,
     includePublish = false,
     includeManage = false,
     includeProfile = true,
@@ -280,6 +281,9 @@ function providerActions(provider, options = {}) {
       : "",
     includePublish && provider.id
       ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`)
+      : "",
+    includeDelete
+      ? actionButton("delete", "Delete", `data-delete-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includeManage
       ? actionButton("edit", "Edit Profile", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
@@ -298,6 +302,7 @@ function providerActions(provider, options = {}) {
 function providerRow(provider, options = {}) {
   const { includeAction = false, compact = false } = options;
   const action = providerActions(provider, {
+    includeDelete: includeAction,
     includeEdit: includeAction,
     includePublish: includeAction,
     includeManage: compact,
@@ -325,7 +330,7 @@ function providerRow(provider, options = {}) {
 
 function compactProviderRow(provider) {
   return `
-    <article class="adminTableRow adminReviewRow adminCompactRow">
+    <article class="adminTableRow adminReviewRow adminCompactRow adminDashboardProviderRow">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -521,7 +526,7 @@ function jobRow(job) {
 
 function compactJobRow(job) {
   return `
-    <article class="adminTableRow adminJobRow adminCompactRow">
+    <article class="adminTableRow adminJobRow adminCompactRow adminDashboardJobRow">
       <div class="adminCell adminCellPrimary">
         <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
         <span>${escapeHtml(job.domain || "")}</span>
