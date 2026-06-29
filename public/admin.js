@@ -94,7 +94,10 @@ const elements = {
   profileEditActivities: document.querySelector("#profileEditActivities"),
   profileEditNotes: document.querySelector("#profileEditNotes"),
   profileEditMessage: document.querySelector("#profileEditMessage"),
+  toastRegion: document.querySelector("#adminToastRegion"),
 };
+
+let toastCounter = 0;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -191,6 +194,72 @@ function statusPill(status) {
 
 function emptyState(label) {
   return `<div class="emptyResults">${escapeHtml(label)}</div>`;
+}
+
+function showToast(message, type = "success") {
+  if (!elements.toastRegion) {
+    return;
+  }
+
+  const toastId = `adminToast-${toastCounter += 1}`;
+  const toast = document.createElement("div");
+  toast.id = toastId;
+  toast.className = `adminToast adminToast-${type}`;
+  toast.setAttribute("role", type === "error" ? "alert" : "status");
+  toast.innerHTML = `
+    <span>${escapeHtml(message)}</span>
+    <button type="button" aria-label="Dismiss notification">x</button>
+  `;
+  elements.toastRegion.appendChild(toast);
+
+  const dismiss = () => {
+    toast.classList.add("dismiss");
+    window.setTimeout(() => toast.remove(), 180);
+  };
+
+  toast.querySelector("button").addEventListener("click", dismiss);
+  window.setTimeout(dismiss, type === "error" ? 6500 : 4200);
+}
+
+function setBusy(button, busy, label) {
+  document.body.classList.toggle("adminBusy", busy);
+
+  if (!button) {
+    return;
+  }
+
+  if (busy) {
+    button.dataset.originalText = button.textContent.trim();
+    button.disabled = true;
+    button.classList.add("isLoading");
+
+    if (label) {
+      button.dataset.loadingLabel = label;
+    }
+  } else {
+    button.disabled = false;
+    button.classList.remove("isLoading");
+    delete button.dataset.loadingLabel;
+  }
+}
+
+async function runAdminAction(button, loadingLabel, successMessage, action) {
+  setBusy(button, true, loadingLabel);
+
+  try {
+    const result = await action();
+
+    if (successMessage && result !== false && !result?.cancelled) {
+      showToast(successMessage);
+    }
+
+    return result;
+  } catch (error) {
+    showToast(error.message || "Admin action failed.", "error");
+    return null;
+  } finally {
+    setBusy(button, false);
+  }
 }
 
 function tableHeader(columns) {
@@ -412,6 +481,23 @@ function listToText(items) {
     .join("\n");
 }
 
+function recentActivitiesToText(items) {
+  return (items || [])
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+
+      const title = item?.title || item?.summary || item?.name || "";
+      const date = item?.date || item?.publishedAt || item?.timestamp || "";
+      const source = item?.source || item?.url || "";
+
+      return [date, title, source].filter(Boolean).join(" | ");
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function textToList(value) {
   return String(value || "")
     .split("\n")
@@ -420,7 +506,24 @@ function textToList(value) {
 }
 
 function textToRecentActivities(value) {
-  return textToList(value).map((title) => ({ title, source: "Admin edit" }));
+  return textToList(value).map((line) => {
+    const parts = line.split("|").map((part) => part.trim()).filter(Boolean);
+    const firstPartLooksLikeDate = /^\d{4}-\d{2}-\d{2}/.test(parts[0] || "");
+
+    if (parts.length >= 3) {
+      return { date: parts[0], title: parts[1], source: parts.slice(2).join(" | ") };
+    }
+
+    if (parts.length === 2) {
+      if (firstPartLooksLikeDate) {
+        return { date: parts[0], title: parts[1], source: "Admin edit" };
+      }
+
+      return { title: parts[0], source: parts[1] };
+    }
+
+    return { title: line, source: "Admin edit" };
+  });
 }
 
 function openEditProfile(key) {
@@ -438,7 +541,7 @@ function openEditProfile(key) {
   elements.profileEditServices.value = listToText(provider.services);
   elements.profileEditTechnologies.value = listToText(provider.technologies);
   elements.profileEditPartnerships.value = listToText(provider.vendorPartnerships);
-  elements.profileEditActivities.value = listToText(provider.recentActivity);
+  elements.profileEditActivities.value = recentActivitiesToText(provider.recentActivity);
   elements.profileEditNotes.value = listToText(provider.reviewNotes);
   elements.profileEditMessage.textContent = "";
   elements.profileEditMessage.classList.remove("error");
@@ -552,45 +655,48 @@ function renderStats() {
 function bindPublishButtons() {
   document.querySelectorAll("[data-publish-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await publishProvider(button.dataset.publishProvider);
+      await runAdminAction(button, "Publishing", "Provider published.", () => (
+        publishProvider(button.dataset.publishProvider)
+      ));
     });
   });
 
   document.querySelectorAll("[data-edit-provider]").forEach((button) => {
     button.addEventListener("click", () => {
       openEditProfile(button.dataset.editProvider);
+      showToast("Profile editor opened.");
     });
   });
 
   document.querySelectorAll("[data-unpublish-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await updateProviderStatus(button.dataset.unpublishProvider, "draft");
+      await runAdminAction(button, "Unpublishing", "Provider moved to review.", () => (
+        updateProviderStatus(button.dataset.unpublishProvider, "draft")
+      ));
     });
   });
 
   document.querySelectorAll("[data-delete-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await deleteProvider(button.dataset.deleteProvider);
+      await runAdminAction(button, "Deleting", "Provider deleted.", () => (
+        deleteProvider(button.dataset.deleteProvider)
+      ));
     });
   });
 
   document.querySelectorAll("[data-delete-job]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await deleteJob(button.dataset.deleteJob);
+      await runAdminAction(button, "Deleting", "Job deleted.", () => (
+        deleteJob(button.dataset.deleteJob)
+      ));
     });
   });
 
   document.querySelectorAll("[data-run-job]").forEach((button) => {
     button.addEventListener("click", async () => {
-      button.disabled = true;
-
-      try {
-        await runScrapeJob(button.dataset.runJob);
-      } catch (error) {
-        elements.scrapeMessage.textContent = error.message;
-        elements.scrapeMessage.classList.add("error");
-        button.disabled = false;
-      }
+      await runAdminAction(button, "Processing", "Scrape complete. Draft profile is ready for review.", () => (
+        runScrapeJob(button.dataset.runJob)
+      ));
     });
   });
 }
@@ -742,8 +848,10 @@ async function refreshAdminState() {
 
 async function handleLogin(event) {
   event.preventDefault();
+  const submitButton = event.submitter || elements.loginForm.querySelector("button[type='submit']");
   elements.loginMessage.textContent = "";
   elements.loginMessage.classList.remove("error");
+  setBusy(submitButton, true, "Signing in");
 
   try {
     const response = await fetch("/api/admin-login", {
@@ -764,16 +872,22 @@ async function handleLogin(event) {
     elements.password.value = "";
     showShell();
     await refreshAdminState();
+    showToast("Signed in.");
   } catch (error) {
     elements.loginMessage.textContent = error.message;
     elements.loginMessage.classList.add("error");
+    showToast(error.message || "Sign in failed.", "error");
+  } finally {
+    setBusy(submitButton, false);
   }
 }
 
 async function handleScrapeSubmit(event) {
   event.preventDefault();
+  const submitButton = event.submitter || elements.scrapeForm.querySelector("button[type='submit']");
   elements.scrapeMessage.textContent = "Queueing scrape job...";
   elements.scrapeMessage.classList.remove("error");
+  setBusy(submitButton, true, "Queueing");
 
   if (DEV_ADMIN_ACCESS) {
     state.jobs.unshift({
@@ -789,6 +903,8 @@ async function handleScrapeSubmit(event) {
     elements.scrapeCompanyName.value = "";
     renderStats();
     renderLists();
+    showToast("Development job queued.");
+    setBusy(submitButton, false);
     return;
   }
 
@@ -814,9 +930,13 @@ async function handleScrapeSubmit(event) {
     elements.scrapeMessage.textContent = "Scrape complete. Draft profile is ready for review.";
     setSection("review");
     await refreshAdminState();
+    showToast("Scrape complete. Draft profile is ready for review.");
   } catch (error) {
     elements.scrapeMessage.textContent = error.message;
     elements.scrapeMessage.classList.add("error");
+    showToast(error.message || "Scrape failed.", "error");
+  } finally {
+    setBusy(submitButton, false);
   }
 }
 
@@ -845,14 +965,14 @@ async function runScrapeJob(id, options = {}) {
 
 async function publishProvider(id) {
   if (!id) {
-    return;
+    return false;
   }
 
   if (DEV_ADMIN_ACCESS) {
     patchProviderInState(id, { status: "published" });
     renderStats();
     renderLists();
-    return;
+    return true;
   }
 
   const response = await fetch("/api/admin-publish", {
@@ -861,14 +981,18 @@ async function publishProvider(id) {
     body: JSON.stringify({ id, status: "published" }),
   });
 
-  if (response.ok) {
-    await refreshAdminState();
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to publish provider.");
   }
+
+  await refreshAdminState();
+  return true;
 }
 
 async function updateProviderStatus(key, status) {
   if (!key) {
-    return;
+    return false;
   }
 
   if (DEV_ADMIN_ACCESS) {
@@ -878,7 +1002,7 @@ async function updateProviderStatus(key, status) {
     if (status !== "published") {
       setSection("review");
     }
-    return;
+    return true;
   }
 
   const response = await fetch("/api/admin-provider", {
@@ -887,24 +1011,28 @@ async function updateProviderStatus(key, status) {
     body: JSON.stringify({ id: key, status }),
   });
 
-  if (response.ok) {
-    await refreshAdminState();
-    if (status !== "published") {
-      setSection("review");
-    }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to update provider.");
   }
+
+  await refreshAdminState();
+  if (status !== "published") {
+    setSection("review");
+  }
+  return true;
 }
 
 async function deleteProvider(key) {
   if (!key || !window.confirm("Delete this provider from the admin list?")) {
-    return;
+    return { cancelled: true };
   }
 
   if (DEV_ADMIN_ACCESS) {
     state.providers = state.providers.filter((provider) => providerKey(provider) !== key);
     renderStats();
     renderLists();
-    return;
+    return true;
   }
 
   const response = await fetch("/api/admin-provider", {
@@ -913,21 +1041,25 @@ async function deleteProvider(key) {
     body: JSON.stringify({ id: key }),
   });
 
-  if (response.ok) {
-    await refreshAdminState();
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to delete provider.");
   }
+
+  await refreshAdminState();
+  return true;
 }
 
 async function deleteJob(id) {
   if (!id || !window.confirm("Delete this scrape job?")) {
-    return;
+    return { cancelled: true };
   }
 
   if (DEV_ADMIN_ACCESS) {
     state.jobs = state.jobs.filter((job) => String(job.id || "") !== String(id));
     renderStats();
     renderLists();
-    return;
+    return true;
   }
 
   const response = await fetch("/api/admin-job", {
@@ -938,15 +1070,16 @@ async function deleteJob(id) {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    window.alert(payload.error || "Failed to delete job.");
-    return;
+    throw new Error(payload.error || "Failed to delete job.");
   }
 
   await refreshAdminState();
+  return true;
 }
 
 async function saveProfileEdit(event) {
   event.preventDefault();
+  const submitButton = event.submitter || elements.profileEditForm.querySelector("button[type='submit']");
   const key = elements.profileEditKey.value;
   const patch = {
     companyName: elements.profileEditName.value.trim(),
@@ -962,6 +1095,7 @@ async function saveProfileEdit(event) {
 
   elements.profileEditMessage.textContent = "Saving profile...";
   elements.profileEditMessage.classList.remove("error");
+  setBusy(submitButton, true, "Saving");
 
   try {
     if (DEV_ADMIN_ACCESS) {
@@ -969,6 +1103,7 @@ async function saveProfileEdit(event) {
       elements.profileEditDialog.close();
       renderStats();
       renderLists();
+      showToast("Profile saved.");
       return;
     }
 
@@ -985,9 +1120,13 @@ async function saveProfileEdit(event) {
 
     elements.profileEditDialog.close();
     await refreshAdminState();
+    showToast("Profile saved.");
   } catch (error) {
     elements.profileEditMessage.textContent = error.message;
     elements.profileEditMessage.classList.add("error");
+    showToast(error.message || "Failed to save profile.", "error");
+  } finally {
+    setBusy(submitButton, false);
   }
 }
 
@@ -1038,7 +1177,9 @@ function bindEvents() {
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
-  elements.refreshButton.addEventListener("click", refreshAdminState);
+  elements.refreshButton.addEventListener("click", () => {
+    runAdminAction(elements.refreshButton, "Refreshing", "Admin data refreshed.", refreshAdminState);
+  });
   elements.jobsPrevButton.addEventListener("click", () => {
     state.jobsPage -= 1;
     renderLists();
@@ -1066,6 +1207,7 @@ function bindEvents() {
   elements.signOutButton.addEventListener("click", () => {
     clearAdminSession();
     showShell();
+    showToast("Signed out.");
   });
 
   elements.navButtons.forEach((button) => {

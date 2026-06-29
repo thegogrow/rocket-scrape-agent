@@ -446,6 +446,14 @@ a:hover {
   background: #eef2f6;
 }
 
+.adminBusy,
+.adminBusy button,
+.adminBusy input,
+.adminBusy textarea,
+.adminBusy select {
+  cursor: progress;
+}
+
 .adminLoginScreen {
   min-height: 100vh;
   display: grid;
@@ -1077,6 +1085,95 @@ a:hover {
 
 .compactAction:hover {
   text-decoration: none;
+}
+
+button.isLoading,
+.secondaryAction.isLoading,
+.primaryAction.isLoading {
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+button.isLoading::after,
+.secondaryAction.isLoading::after,
+.primaryAction.isLoading::after {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: adminSpin 720ms linear infinite;
+}
+
+@keyframes adminSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.adminToastRegion {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
+}
+
+.adminToast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid #b9dfc8;
+  border-radius: 8px;
+  background: #ecf8f0;
+  color: #116332;
+  box-shadow: 0 16px 40px rgba(24, 24, 24, 0.16);
+  font-weight: 800;
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: adminToastIn 160ms ease-out;
+}
+
+.adminToast-error {
+  border-color: #f3b9b9;
+  background: #fff0f0;
+  color: #9b1c1c;
+}
+
+.adminToast button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: currentColor;
+  font-weight: 900;
+}
+
+.adminToast.dismiss {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+@keyframes adminToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .paginationBar {
