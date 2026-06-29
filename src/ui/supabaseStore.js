@@ -135,7 +135,17 @@ async function signInWithPassword(email, password) {
   });
 
   if (!response.ok) {
-    throw new Error("Invalid admin email or password");
+    const text = await response.text();
+    let message = text;
+
+    try {
+      const payload = JSON.parse(text);
+      message = payload.msg || payload.message || payload.error_description || payload.error || text;
+    } catch (error) {
+      message = text;
+    }
+
+    throw new Error(message || "Invalid admin email or password");
   }
 
   const payload = await response.json();
