@@ -1,4 +1,4 @@
-const DEV_ADMIN_ACCESS = true;
+const DEV_ADMIN_ACCESS = false;
 
 const state = {
   activeSection: "dashboard",
@@ -477,6 +477,10 @@ function renderPublishedPagination(totalPages, totalCount) {
 }
 
 function jobRow(job) {
+  const action = job.status === "queued"
+    ? actionButton("publish", "Process", `data-run-job="${escapeHtml(job.id || "")}"`)
+    : "";
+
   return `
     <article class="adminTableRow">
       <div class="adminCell adminCellPrimary">
@@ -499,6 +503,7 @@ function jobRow(job) {
       <div class="adminCell">
         <span class="adminCellLabel">Error</span>
         <span>${escapeHtml(job.error || "")}</span>
+        ${action}
       </div>
     </article>
   `;
@@ -540,6 +545,20 @@ function bindPublishButtons() {
       await deleteProvider(button.dataset.deleteProvider);
     });
   });
+
+  document.querySelectorAll("[data-run-job]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+
+      try {
+        await runScrapeJob(button.dataset.runJob);
+      } catch (error) {
+        elements.scrapeMessage.textContent = error.message;
+        elements.scrapeMessage.classList.add("error");
+        button.disabled = false;
+      }
+    });
+  });
 }
 
 function renderLists() {
@@ -565,7 +584,7 @@ function renderLists() {
     : emptyState("No scrape jobs yet.");
 
   elements.jobList.innerHTML = state.jobs.length
-    ? `${tableHeader(["Company", "Requested by", "Status", "Created", "Error"])}${state.jobs.map(jobRow).join("")}`
+    ? state.jobs.map(jobRow).join("")
     : emptyState("No scrape jobs yet.");
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
@@ -690,13 +709,39 @@ async function handleScrapeSubmit(event) {
       throw new Error(payload.error || "Failed to queue scrape job.");
     }
 
-    elements.scrapeMessage.textContent = "Scrape job queued.";
+    elements.scrapeMessage.textContent = "Scrape job queued. Running scraper...";
     elements.scrapeUrl.value = "";
     elements.scrapeCompanyName.value = "";
+    await runScrapeJob(payload.id, { stayOnScrape: true });
+    elements.scrapeMessage.textContent = "Scrape complete. Draft profile is ready for review.";
+    setSection("review");
     await refreshAdminState();
   } catch (error) {
     elements.scrapeMessage.textContent = error.message;
     elements.scrapeMessage.classList.add("error");
+  }
+}
+
+async function runScrapeJob(id, options = {}) {
+  if (!id) {
+    return;
+  }
+
+  const response = await fetch("/api/admin-run-job", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to run scrape job.");
+  }
+
+  await refreshAdminState();
+
+  if (!options.stayOnScrape) {
+    setSection("review");
   }
 }
 

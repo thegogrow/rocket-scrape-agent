@@ -71,6 +71,7 @@ function rowToProfile(row) {
     recentActivity: row.recent_activity || [],
     reviewNotes: row.review_notes || [],
     files: row.files || {},
+    sourceData: row.source_data || {},
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -96,7 +97,16 @@ function profileToRow(profile, status = "draft") {
     recent_activity: profile.recentActivity || [],
     review_notes: profile.reviewNotes || [],
     files: profile.files || {},
+    source_data: profile.sourceData || {},
     status,
+  };
+}
+
+function jobPatchToRow(patch = {}) {
+  return {
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.error !== undefined ? { error: patch.error } : {}),
+    ...(patch.resultProviderId !== undefined ? { result_provider_id: patch.resultProviderId } : {}),
   };
 }
 
@@ -210,6 +220,72 @@ async function createScrapeJob({ url, companyName, requestedBy }) {
   return rows[0];
 }
 
+async function getScrapeJob(id) {
+  const rows = await supabaseFetch(
+    `/rest/v1/scrape_jobs?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+
+  return rows[0] || null;
+}
+
+async function getNextQueuedScrapeJob() {
+  const rows = await supabaseFetch(
+    "/rest/v1/scrape_jobs?select=*&status=eq.queued&order=created_at.asc&limit=1"
+  );
+
+  return rows[0] || null;
+}
+
+async function updateScrapeJob(id, patch) {
+  const rows = await supabaseFetch(`/rest/v1/scrape_jobs?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(jobPatchToRow(patch)),
+  });
+
+  return rows[0] || null;
+}
+
+async function upsertProvider(profile, status = "draft") {
+  const rows = await supabaseFetch("/rest/v1/providers?on_conflict=domain", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify(profileToRow(profile, status)),
+  });
+
+  return rowToProfile(rows[0]);
+}
+
+async function uploadProviderLogo({ domain, filename, contentType, body }) {
+  const config = supabaseConfig();
+  const objectPath = `${domain}/${filename}`;
+  const response = await fetch(
+    `${normalizeSupabaseUrl(config.url)}/storage/v1/object/provider-logos/${objectPath}`,
+    {
+      method: "PUT",
+      headers: {
+        apikey: config.serviceRoleKey,
+        Authorization: `Bearer ${config.serviceRoleKey}`,
+        "Content-Type": contentType,
+        "Cache-Control": "3600",
+        "x-upsert": "true",
+      },
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Supabase logo upload failed: ${response.status}`);
+  }
+
+  return `${normalizeSupabaseUrl(config.url)}/storage/v1/object/public/provider-logos/${objectPath}`;
+}
+
 async function publishProvider(id, status = "published") {
   const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -258,6 +334,8 @@ async function deleteProvider(id) {
 module.exports = {
   createScrapeJob,
   deleteProvider,
+  getNextQueuedScrapeJob,
+  getScrapeJob,
   isSupabaseConfigured,
   listAdminState,
   listPublishedProviders,
@@ -265,6 +343,9 @@ module.exports = {
   publishProvider,
   signInWithPassword,
   supabaseConfig,
+  updateScrapeJob,
   updateProvider,
+  uploadProviderLogo,
+  upsertProvider,
   verifyAdminToken,
 };

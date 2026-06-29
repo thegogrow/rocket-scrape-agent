@@ -11,6 +11,7 @@ const API_HANDLERS = {
   "/api/admin-login": require("../../api/admin-login"),
   "/api/admin-publish": require("../../api/admin-publish"),
   "/api/admin-provider": require("../../api/admin-provider"),
+  "/api/admin-run-job": require("../../api/admin-run-job"),
   "/api/admin-scrape": require("../../api/admin-scrape"),
   "/api/admin-state": require("../../api/admin-state"),
   "/api/logo": require("../../api/logo"),
