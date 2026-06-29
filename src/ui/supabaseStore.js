@@ -72,6 +72,7 @@ function rowToProfile(row) {
     reviewNotes: row.review_notes || [],
     files: row.files || {},
     status: row.status,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -221,8 +222,42 @@ async function publishProvider(id, status = "published") {
   return rowToProfile(rows[0]);
 }
 
+async function updateProvider(id, profilePatch = {}, status) {
+  const rowPatch = {
+    ...(profilePatch.companyName !== undefined ? { company_name: profilePatch.companyName } : {}),
+    ...(profilePatch.logoUrl !== undefined ? { logo_url: profilePatch.logoUrl } : {}),
+    ...(profilePatch.website !== undefined ? { website: profilePatch.website } : {}),
+    ...(profilePatch.country !== undefined ? { country: profilePatch.country } : {}),
+    ...(profilePatch.services !== undefined ? { services: profilePatch.services || [] } : {}),
+    ...(profilePatch.technologies !== undefined ? { technologies: profilePatch.technologies || [] } : {}),
+    ...(profilePatch.vendorPartnerships !== undefined ? { vendor_partnerships: profilePatch.vendorPartnerships || [] } : {}),
+    ...(profilePatch.recentActivity !== undefined ? { recent_activity: profilePatch.recentActivity || [] } : {}),
+    ...(profilePatch.reviewNotes !== undefined ? { review_notes: profilePatch.reviewNotes || [] } : {}),
+    ...(status ? { status } : {}),
+  };
+
+  const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(rowPatch),
+  });
+
+  return rowToProfile(rows[0]);
+}
+
+async function deleteProvider(id) {
+  await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+
+  return { id, deleted: true };
+}
+
 module.exports = {
   createScrapeJob,
+  deleteProvider,
   isSupabaseConfigured,
   listAdminState,
   listPublishedProviders,
@@ -230,5 +265,6 @@ module.exports = {
   publishProvider,
   signInWithPassword,
   supabaseConfig,
+  updateProvider,
   verifyAdminToken,
 };

@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rocket Engineers Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="adminBody">
+    <section id="adminLoginScreen" class="adminLoginScreen" hidden>
+      <form id="adminLoginForm" class="adminLoginCard">
+        <div class="cloudLogo">Rocket Engineers</div>
+        <h1>Admin Sign In</h1>
+        <p>Use an approved admin account to manage scrape jobs and provider profiles.</p>
+        <label>
+          Email
+          <input id="adminEmail" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Password
+          <input id="adminPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <div id="adminLoginMessage" class="authMessage" role="status"></div>
+        <button type="submit">Sign In</button>
+      </form>
+    </section>
+
+    <main id="adminApp" class="adminApp" hidden>
+      <aside class="adminSidebar">
+        <div class="adminBrandRow">
+          <a class="adminBrand" href="/admin" aria-label="Rocket Engineers Admin">
+            <span class="cloudLogo">Rocket Engineers</span>
+            <span class="adminBrandText">Admin</span>
+          </a>
+        </div>
+        <nav class="adminSideNav" aria-label="Admin navigation">
+          <button class="active" type="button" data-admin-section="dashboard" title="Dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" /></svg>
+            <span>Dashboard</span>
+          </button>
+          <button type="button" data-admin-section="scrape" title="Scrape Company">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z" /></svg>
+            <span>Scrape Company</span>
+          </button>
+          <button type="button" data-admin-section="jobs" title="Jobs">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v3H5V5Zm0 5h14v3H5v-3Zm0 5h9v3H5v-3Z" /></svg>
+            <span>Jobs</span>
+          </button>
+          <button type="button" data-admin-section="review" title="Provider Review">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z" /></svg>
+            <span>Provider Review</span>
+          </button>
+          <button type="button" data-admin-section="published" title="Published Providers">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
+            <span>Published Providers</span>
+          </button>
+        </nav>
+        <div class="adminSidebarFooter">
+          <button id="sidebarToggle" class="sidebarToggle sidebarToggleWide" type="button" aria-label="Collapse sidebar" aria-expanded="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M10 12h10" /></svg>
+            <span>Collapse Sidebar</span>
+          </button>
+          <a class="publicSiteLink" href="/" title="Public Provider Site">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5V5Zm2 2v10h10V7H7Zm2 2h6v2H9V9Zm0 4h4v2H9v-2Z" /></svg>
+            <span>Public Provider Site</span>
+          </a>
+        </div>
+      </aside>
+
+      <section class="adminMain">
+        <header class="adminTopbar">
+          <div class="adminTopbarActions">
+            <span id="adminSignedInAs">dev-admin@rocketengineers.local</span>
+            <button id="adminRefreshButton" class="secondaryAction iconButtonText" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.2L13 11h8V3l-3.3 3.3Z" /></svg>
+              Refresh
+            </button>
+            <button id="adminSignOutButton" class="secondaryAction iconButtonText" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h8v2H7v12h6v2H5V4Zm10.5 4.5L19 12l-3.5 3.5-1.4-1.4 1.1-1.1H10v-2h5.2l-1.1-1.1 1.4-1.4Z" /></svg>
+              Sign Out
+            </button>
+          </div>
+        </header>
+
+        <section id="adminSetupNotice" class="adminNotice" hidden>
+          Supabase is not configured yet. Add SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, and ADMIN_EMAILS.
+        </section>
+
+        <section class="adminSection active" data-admin-panel="dashboard">
+          <div class="adminStats">
+            <article>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v3H5V5Zm0 5h14v3H5v-3Zm0 5h9v3H5v-3Z" /></svg>
+              <span>Queued Jobs</span>
+              <strong id="queuedCount">0</strong>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z" /></svg>
+              <span>Needs Review</span>
+              <strong id="reviewCount">0</strong>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
+              <span>Published</span>
+              <strong id="publishedCount">0</strong>
+            </article>
+            <article>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" /></svg>
+              <span>Failed Jobs</span>
+              <strong id="failedCount">0</strong>
+            </article>
+          </div>
+          <div class="adminTwoColumn">
+            <section class="adminPanel">
+              <div class="panelHeader">
+                <div>
+                  <h2>Profiles Needing Review</h2>
+                  <p>Draft provider profiles waiting for approval.</p>
+                </div>
+              </div>
+              <div id="dashboardReviewList" class="adminList"></div>
+            </section>
+            <section class="adminPanel">
+              <div class="panelHeader">
+                <div>
+                  <h2>Recent Jobs</h2>
+                  <p>Latest scrape requests and failures.</p>
+                </div>
+              </div>
+              <div id="dashboardJobList" class="adminList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="adminSection" data-admin-panel="scrape">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Scrape Company</h2>
+                <p>Queue one company website for extraction and review.</p>
+              </div>
+            </div>
+            <form id="scrapeForm" class="adminForm">
+              <label>
+                Company Website
+                <input id="scrapeUrl" type="url" placeholder="https://company.com" required />
+              </label>
+              <label>
+                Company Name
+                <input id="scrapeCompanyName" type="text" placeholder="Optional" />
+              </label>
+              <div id="scrapeMessage" class="authMessage" role="status"></div>
+              <button type="submit">Queue Scrape</button>
+            </form>
+          </section>
+        </section>
+
+        <section class="adminSection" data-admin-panel="jobs">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Jobs</h2>
+                <p>Scrape requests, status, requester, and errors.</p>
+              </div>
+            </div>
+            <div id="jobList" class="adminTable"></div>
+          </section>
+        </section>
+
+        <section class="adminSection" data-admin-panel="review">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Provider Review</h2>
+                <p>Draft profiles that should be checked before publishing.</p>
+              </div>
+            </div>
+            <div id="reviewProviderList" class="adminTable"></div>
+          </section>
+        </section>
+
+        <section class="adminSection" data-admin-panel="published">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Published Providers</h2>
+                <p>Profiles currently visible on the public provider site.</p>
+              </div>
+            </div>
+            <form id="publishedFilters" class="adminFilterBar">
+              <label>
+                Name
+                <span class="adminSearchControl">
+                  <input id="publishedNameFilter" type="search" placeholder="Search provider name" />
+                  <button class="adminSearchIconButton" type="submit" aria-label="Search providers">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
+                  </button>
+                </span>
+              </label>
+              <label>
+                Filter By
+                <select id="publishedSortFilter">
+                  <option value="name">Name</option>
+                  <option value="country">Country</option>
+                  <option value="confidence">Confidence</option>
+                </select>
+              </label>
+              <button id="publishedFlipButton" class="secondaryAction iconButtonText" type="button" aria-label="Flip list order">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v14" /><path d="m3 14 4 4 4-4" /><path d="M17 20V6" /><path d="m13 10 4-4 4 4" /></svg>
+                A-Z
+              </button>
+            </form>
+            <div id="publishedProviderList" class="adminTable adminPublishedTable"></div>
+            <div class="paginationBar">
+              <button id="publishedPrevButton" class="secondaryAction iconButtonText" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
+                Previous
+              </button>
+              <div id="publishedPageNumbers" class="paginationNumbers" aria-label="Published provider pages"></div>
+              <button id="publishedNextButton" class="secondaryAction iconButtonText" type="button">
+                Next
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+              <span id="publishedPageInfo">Page 1 of 1</span>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="profileEditDialog" class="adminDialog">
+      <form id="profileEditForm" class="adminDialogCard">
+        <div class="panelHeader">
+          <div>
+            <h2>Edit Profile</h2>
+            <p>Update public profile content and review details.</p>
+          </div>
+          <button id="profileEditClose" class="secondaryAction compactAction" type="button">Close</button>
+        </div>
+        <input id="profileEditKey" type="hidden" />
+        <div class="adminEditGrid">
+          <label>
+            Company Name
+            <input id="profileEditName" type="text" required />
+          </label>
+          <label>
+            Logo URL
+            <input id="profileEditLogo" type="text" placeholder="/logos/company.com/logo.png" />
+          </label>
+          <label>
+            Website
+            <input id="profileEditWebsite" type="url" />
+          </label>
+          <label>
+            Country
+            <input id="profileEditCountry" type="text" />
+          </label>
+        </div>
+        <label>
+          Services
+          <textarea id="profileEditServices" rows="3" placeholder="One item per line"></textarea>
+        </label>
+        <label>
+          Technologies
+          <textarea id="profileEditTechnologies" rows="3" placeholder="One item per line"></textarea>
+        </label>
+        <label>
+          Vendor Partnerships
+          <textarea id="profileEditPartnerships" rows="3" placeholder="One item per line"></textarea>
+        </label>
+        <label>
+          Recent Activities
+          <textarea id="profileEditActivities" rows="4" placeholder="One activity per line"></textarea>
+        </label>
+        <label>
+          Review Notes
+          <textarea id="profileEditNotes" rows="3" placeholder="One note per line"></textarea>
+        </label>
+        <div id="profileEditMessage" class="authMessage" role="status"></div>
+        <div class="adminDialogActions">
+          <button class="primaryAction iconButtonText" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
+            Save Profile
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

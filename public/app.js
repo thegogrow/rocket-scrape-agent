@@ -6,38 +6,12 @@ const state = {
   profileMode: false,
   quickFilter: "all",
   activeDetailTab: "overview",
-  adminJobs: [],
-  adminProviders: [],
 };
 
 const elements = {
   status: document.querySelector("#status"),
-  authButton: document.querySelector("#authButton"),
-  authModal: document.querySelector("#authModal"),
-  authCloseButton: document.querySelector("#authCloseButton"),
-  authForm: document.querySelector("#authForm"),
-  authEmail: document.querySelector("#authEmail"),
-  authPassword: document.querySelector("#authPassword"),
-  authMessage: document.querySelector("#authMessage"),
   searchHero: document.querySelector(".searchHero"),
   homePage: document.querySelector("#homePage"),
-  adminPage: document.querySelector("#adminPage"),
-  adminSetupNotice: document.querySelector("#adminSetupNotice"),
-  adminLoginPanel: document.querySelector("#adminLoginPanel"),
-  adminLoginForm: document.querySelector("#adminLoginForm"),
-  adminEmail: document.querySelector("#adminEmail"),
-  adminPassword: document.querySelector("#adminPassword"),
-  adminLoginMessage: document.querySelector("#adminLoginMessage"),
-  adminWorkspace: document.querySelector("#adminWorkspace"),
-  adminSignedInAs: document.querySelector("#adminSignedInAs"),
-  adminSignOutButton: document.querySelector("#adminSignOutButton"),
-  adminRefreshButton: document.querySelector("#adminRefreshButton"),
-  scrapeForm: document.querySelector("#scrapeForm"),
-  scrapeUrl: document.querySelector("#scrapeUrl"),
-  scrapeCompanyName: document.querySelector("#scrapeCompanyName"),
-  scrapeMessage: document.querySelector("#scrapeMessage"),
-  jobList: document.querySelector("#jobList"),
-  adminProviderList: document.querySelector("#adminProviderList"),
   providersPage: document.querySelector("#providersPage"),
   navTabs: document.querySelectorAll("[data-nav-tab]"),
   searchInput: document.querySelector("#searchInput"),
@@ -55,11 +29,6 @@ const elements = {
   resetButton: document.querySelector("#resetButton"),
   profileList: document.querySelector("#profileList"),
   detailContent: document.querySelector("#detailContent"),
-};
-
-const DEMO_ACCOUNT = {
-  email: "phil@thegogrow.ch",
-  password: "REscraper26!",
 };
 
 const CATEGORY_RULES = [
@@ -187,12 +156,15 @@ function logoMarkup(profile, large = false) {
   const label = escapeHtml(profile.companyName || profile.domain);
   const fallback = escapeHtml(initials(profile));
   const className = large ? "logoBox logoLarge" : "logoBox";
+  const logoUrl = profile.logoUrl && profile.domain && String(profile.logoUrl).startsWith("/logos/")
+    ? `/api/logo?domain=${encodeURIComponent(profile.domain)}`
+    : profile.logoUrl;
 
-  if (!profile.logoUrl) {
+  if (!logoUrl) {
     return `<div class="${className}" aria-label="${label}">${fallback}</div>`;
   }
 
-  return `<div class="${className}"><img src="${escapeHtml(profile.logoUrl)}" alt="${label} logo" onerror="this.parentElement.textContent='${fallback}'" /></div>`;
+  return `<div class="${className}"><img src="${escapeHtml(logoUrl)}" alt="${label} logo" onerror="this.parentElement.textContent='${fallback}'" /></div>`;
 }
 
 function starRatingMarkup(score) {
@@ -656,261 +628,15 @@ function resetFilters() {
 }
 
 function setActivePage(page) {
-  elements.searchHero.hidden = page !== "providers";
-  elements.homePage.hidden = page !== "home";
-  elements.adminPage.hidden = page !== "admin";
-  elements.providersPage.hidden = page !== "providers";
+  const requestedPage = page === "home" ? "home" : "providers";
 
-  if (page === "admin") {
-    refreshAdminState();
-  }
+  elements.searchHero.hidden = requestedPage !== "providers";
+  elements.homePage.hidden = requestedPage !== "home";
+  elements.providersPage.hidden = requestedPage !== "providers";
 
   elements.navTabs.forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.navTab === page);
+    tab.classList.toggle("active", tab.dataset.navTab === requestedPage);
   });
-}
-
-function adminToken() {
-  return window.localStorage.getItem("rocketEngineersAdminToken");
-}
-
-function adminEmail() {
-  return window.localStorage.getItem("rocketEngineersAdminEmail");
-}
-
-function setAdminSession(session) {
-  window.localStorage.setItem("rocketEngineersAdminToken", session.accessToken);
-  window.localStorage.setItem("rocketEngineersAdminEmail", session.email);
-}
-
-function clearAdminSession() {
-  window.localStorage.removeItem("rocketEngineersAdminToken");
-  window.localStorage.removeItem("rocketEngineersAdminEmail");
-}
-
-function renderAdminShell(configured = true) {
-  const signedIn = Boolean(adminToken());
-
-  elements.adminSetupNotice.hidden = configured;
-  elements.adminLoginPanel.hidden = !configured || signedIn;
-  elements.adminWorkspace.hidden = !configured || !signedIn;
-  elements.adminSignedInAs.textContent = signedIn ? `Signed in as ${adminEmail()}` : "";
-}
-
-function adminHeaders() {
-  return {
-    Authorization: `Bearer ${adminToken()}`,
-    "Content-Type": "application/json",
-  };
-}
-
-function adminItemMarkup(title, meta, status, body = "", action = "") {
-  return `
-    <article class="adminItem">
-      <div class="adminItemHeader">
-        <strong>${escapeHtml(title)}</strong>
-        ${status ? `<span class="statusPill">${escapeHtml(status)}</span>` : ""}
-      </div>
-      ${meta ? `<span>${escapeHtml(meta)}</span>` : ""}
-      ${body ? `<p>${escapeHtml(body)}</p>` : ""}
-      ${action}
-    </article>
-  `;
-}
-
-function renderAdminLists() {
-  elements.jobList.innerHTML =
-    state.adminJobs.length === 0
-      ? `<div class="emptyResults">No scrape jobs yet.</div>`
-      : state.adminJobs
-          .map((job) =>
-            adminItemMarkup(
-              job.company_name || job.domain || job.url,
-              `${job.url} · ${job.created_at ? new Date(job.created_at).toLocaleString() : "No date"}`,
-              job.status,
-              job.error || ""
-            )
-          )
-          .join("");
-
-  elements.adminProviderList.innerHTML =
-    state.adminProviders.length === 0
-      ? `<div class="emptyResults">No database providers yet.</div>`
-      : state.adminProviders
-          .map((provider) => {
-            const action =
-              provider.status === "published"
-                ? ""
-                : `<button class="secondaryAction" type="button" data-publish-provider="${escapeHtml(provider.id || "")}">Publish</button>`;
-
-            return adminItemMarkup(
-              provider.companyName || provider.domain,
-              provider.website || provider.domain,
-              provider.status || "draft",
-              `${(provider.services || []).slice(0, 3).join(", ") || "No services yet"}`,
-              action
-            );
-          })
-          .join("");
-
-  elements.adminProviderList.querySelectorAll("[data-publish-provider]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await publishAdminProvider(button.dataset.publishProvider);
-    });
-  });
-}
-
-async function refreshAdminState() {
-  try {
-    const response = await fetch(
-      "/api/admin-state",
-      adminToken() ? { headers: adminHeaders() } : {}
-    );
-    const payload = await response.json();
-
-    if (payload.configured === false) {
-      renderAdminShell(false);
-      return;
-    }
-
-    renderAdminShell(true);
-
-    if (!adminToken()) {
-      return;
-    }
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Failed to load admin state.");
-    }
-
-    renderAdminShell(payload.configured !== false);
-    state.adminJobs = payload.jobs || [];
-    state.adminProviders = payload.providers || [];
-    renderAdminLists();
-  } catch (error) {
-    elements.adminLoginMessage.textContent = error.message;
-    elements.adminLoginMessage.classList.add("error");
-    clearAdminSession();
-    renderAdminShell(true);
-  }
-}
-
-async function handleAdminLogin(event) {
-  event.preventDefault();
-  elements.adminLoginMessage.textContent = "";
-  elements.adminLoginMessage.classList.remove("error");
-
-  try {
-    const response = await fetch("/api/admin-login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: elements.adminEmail.value,
-        password: elements.adminPassword.value,
-      }),
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Admin sign in failed.");
-    }
-
-    setAdminSession(payload);
-    elements.adminPassword.value = "";
-    await refreshAdminState();
-  } catch (error) {
-    elements.adminLoginMessage.textContent = error.message;
-    elements.adminLoginMessage.classList.add("error");
-  }
-}
-
-async function handleScrapeSubmit(event) {
-  event.preventDefault();
-  elements.scrapeMessage.textContent = "Queueing scrape job...";
-  elements.scrapeMessage.classList.remove("error");
-
-  try {
-    const response = await fetch("/api/admin-scrape", {
-      method: "POST",
-      headers: adminHeaders(),
-      body: JSON.stringify({
-        url: elements.scrapeUrl.value,
-        companyName: elements.scrapeCompanyName.value,
-      }),
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(payload.error || "Failed to queue scrape job.");
-    }
-
-    elements.scrapeMessage.textContent = "Scrape job queued.";
-    elements.scrapeUrl.value = "";
-    elements.scrapeCompanyName.value = "";
-    await refreshAdminState();
-  } catch (error) {
-    elements.scrapeMessage.textContent = error.message;
-    elements.scrapeMessage.classList.add("error");
-  }
-}
-
-async function publishAdminProvider(id) {
-  if (!id) {
-    return;
-  }
-
-  const response = await fetch("/api/admin-publish", {
-    method: "POST",
-    headers: adminHeaders(),
-    body: JSON.stringify({ id, status: "published" }),
-  });
-
-  if (response.ok) {
-    await refreshAdminState();
-  }
-}
-
-function currentUserEmail() {
-  return window.localStorage.getItem("rocketEngineersUserEmail");
-}
-
-function renderAuthState() {
-  const email = currentUserEmail();
-
-  elements.authButton.textContent = email || "Sign Up";
-  elements.authButton.title = email ? "Signed in" : "Sign up or sign in";
-}
-
-function openAuthModal() {
-  elements.authModal.hidden = false;
-  elements.authEmail.value = currentUserEmail() || DEMO_ACCOUNT.email;
-  elements.authPassword.value = "";
-  elements.authMessage.textContent = "";
-  elements.authMessage.classList.remove("error");
-  elements.authEmail.focus();
-}
-
-function closeAuthModal() {
-  elements.authModal.hidden = true;
-}
-
-function handleAuthSubmit(event) {
-  event.preventDefault();
-
-  const email = elements.authEmail.value.trim().toLowerCase();
-  const password = elements.authPassword.value;
-
-  if (email !== DEMO_ACCOUNT.email || password !== DEMO_ACCOUNT.password) {
-    elements.authMessage.textContent = "Email or password is incorrect.";
-    elements.authMessage.classList.add("error");
-    return;
-  }
-
-  window.localStorage.setItem("rocketEngineersUserEmail", DEMO_ACCOUNT.email);
-  elements.authMessage.textContent = "Signed in.";
-  elements.authMessage.classList.remove("error");
-  renderAuthState();
-  closeAuthModal();
 }
 
 function bindEvents() {
@@ -928,21 +654,6 @@ function bindEvents() {
   });
 
   elements.resetButton.addEventListener("click", resetFilters);
-  elements.adminLoginForm.addEventListener("submit", handleAdminLogin);
-  elements.scrapeForm.addEventListener("submit", handleScrapeSubmit);
-  elements.adminRefreshButton.addEventListener("click", refreshAdminState);
-  elements.adminSignOutButton.addEventListener("click", () => {
-    clearAdminSession();
-    renderAdminShell(true);
-  });
-  elements.authButton.addEventListener("click", openAuthModal);
-  elements.authCloseButton.addEventListener("click", closeAuthModal);
-  elements.authForm.addEventListener("submit", handleAuthSubmit);
-  elements.authModal.addEventListener("click", (event) => {
-    if (event.target === elements.authModal) {
-      closeAuthModal();
-    }
-  });
 
   elements.navTabs.forEach((tab) => {
     tab.addEventListener("click", (event) => {
@@ -995,9 +706,17 @@ async function loadProfiles() {
   elements.status.textContent = `${state.profiles.length} loaded`;
   populateFilters();
   bindEvents();
-  renderAuthState();
   renderQuickFilters();
   applyFilters();
+
+  const requestedProvider = new URLSearchParams(window.location.search).get("provider");
+
+  if (requestedProvider && state.profiles.some((profile) => profile.domain === requestedProvider)) {
+    state.selectedDomain = requestedProvider;
+    state.activeDetailTab = "overview";
+    state.profileMode = true;
+    renderDetail();
+  }
 }
 
 loadProfiles().catch((error) => {

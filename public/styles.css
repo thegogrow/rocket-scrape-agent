@@ -409,6 +409,633 @@ a:hover {
   white-space: nowrap;
 }
 
+.adminBody {
+  min-height: 100vh;
+  background: #eef2f6;
+}
+
+.adminLoginScreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.adminLoginScreen[hidden],
+.adminApp[hidden],
+.adminSection {
+  display: none;
+}
+
+.adminLoginCard {
+  width: min(430px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.adminLoginCard h1,
+.adminLoginCard p {
+  margin: 0;
+}
+
+.adminLoginCard p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.adminLoginCard label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.adminLoginCard input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #9faab5;
+  border-radius: 6px;
+}
+
+.adminLoginCard button[type="submit"] {
+  min-height: 44px;
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 800;
+}
+
+.adminApp {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  transition: grid-template-columns 160ms ease;
+}
+
+.adminApp.sidebarCollapsed {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.adminSidebar {
+  z-index: 2;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 22px;
+  padding: 22px 18px;
+  border-right: 1px solid var(--line);
+  background: #fff;
+}
+
+.adminBrandRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adminBrand {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--blue-dark);
+  font-family: "Poppins", "Inter", sans-serif;
+  font-weight: 800;
+}
+
+.adminBrand:hover {
+  text-decoration: none;
+}
+
+.adminBrandText {
+  font-size: 18px;
+}
+
+.adminSidebarFooter {
+  display: grid;
+  gap: 8px;
+}
+
+.sidebarToggle {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--blue-dark);
+}
+
+.sidebarToggle svg,
+.adminSideNav svg,
+.publicSiteLink svg,
+.iconButtonText svg,
+.adminStats svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.sidebarToggle svg,
+.iconButtonText svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.adminApp.sidebarCollapsed .sidebarToggle svg {
+  transform: rotate(180deg);
+}
+
+.adminSideNav {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.adminSideNav button,
+.publicSiteLink {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+  text-align: left;
+}
+
+.adminSideNav button svg,
+.publicSiteLink svg {
+  flex: 0 0 auto;
+  color: var(--blue);
+}
+
+.adminSideNav button.active {
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.publicSiteLink {
+  border: 1px solid var(--line);
+  justify-content: center;
+}
+
+.iconButtonText {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.adminApp.sidebarCollapsed .adminSidebar {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.adminApp.sidebarCollapsed .adminBrand {
+  justify-content: center;
+}
+
+.adminApp.sidebarCollapsed .cloudLogo {
+  width: 44px;
+  font-size: 0;
+}
+
+.adminApp.sidebarCollapsed .cloudLogo::before {
+  content: "RE";
+  font-size: 13px;
+}
+
+.adminApp.sidebarCollapsed .adminBrandText,
+.adminApp.sidebarCollapsed .adminSideNav span,
+.adminApp.sidebarCollapsed .sidebarToggle span,
+.adminApp.sidebarCollapsed .publicSiteLink span {
+  display: none;
+}
+
+.adminApp.sidebarCollapsed .adminBrandRow {
+  display: grid;
+  justify-items: center;
+}
+
+.adminApp.sidebarCollapsed .adminSideNav button,
+.adminApp.sidebarCollapsed .sidebarToggle,
+.adminApp.sidebarCollapsed .publicSiteLink {
+  width: 100%;
+  grid-template-columns: 1fr;
+  justify-content: center;
+  padding: 0;
+}
+
+.adminMain {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  padding: 24px 28px 42px;
+}
+
+.adminTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  min-width: 0;
+}
+
+.adminTopbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 0;
+}
+
+.adminTopbarActions > span {
+  min-width: 0;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminSection.active {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.adminStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminStats article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(24, 24, 24, 0.06);
+}
+
+.adminStats span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.adminStats strong {
+  grid-column: 1 / -1;
+  color: var(--blue-dark);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.adminTwoColumn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  min-width: 0;
+}
+
+.adminTable {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.adminTableHeader {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(110px, 0.7fr) minmax(100px, 0.55fr) minmax(100px, 0.6fr) minmax(90px, auto);
+  gap: 12px;
+  padding: 0 12px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminTableHeader span {
+  min-width: 0;
+}
+
+.adminTableRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(110px, 0.7fr) minmax(100px, 0.55fr) minmax(100px, 0.6fr) minmax(90px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+  min-width: 0;
+}
+
+.adminPublishedTable .adminTableHeader,
+.adminPublishedTable .adminTableRow {
+  grid-template-columns: minmax(260px, 1.55fr) minmax(120px, 0.62fr) minmax(100px, 0.5fr) minmax(100px, 0.5fr) minmax(410px, 1.35fr);
+}
+
+.adminPublishedTable .adminTableHeader span:last-child {
+  text-align: right;
+}
+
+.adminCell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.adminCellPrimary {
+  align-content: center;
+}
+
+.adminCellAction {
+  justify-content: end;
+}
+
+.adminCellLabel {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminTableRow strong,
+.adminTableRow span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.adminTableRow .adminCellPrimary > span:not(.adminCellLabel) {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.adminTableRow .secondaryAction {
+  white-space: nowrap;
+}
+
+.adminPanel {
+  min-width: 0;
+}
+
+.adminFilterBar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.6fr) auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.adminFilterBar label,
+.adminDialogCard label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.adminFilterBar input,
+.adminFilterBar select,
+.adminDialogCard input,
+.adminDialogCard textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #9faab5;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-transform: none;
+}
+
+.adminSearchControl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: stretch;
+}
+
+.adminFilterBar .adminSearchControl input {
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.adminSearchIconButton {
+  min-width: 42px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--blue);
+  border-radius: 0 6px 6px 0;
+  background: var(--blue);
+  color: #fff;
+}
+
+.adminSearchIconButton svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.adminSearchIconButton path {
+  fill: none;
+  stroke: currentColor;
+}
+
+.adminDialogCard textarea {
+  min-height: auto;
+  padding: 10px;
+  resize: vertical;
+}
+
+.adminPublishedRow .adminCellLabel {
+  display: none;
+}
+
+.adminProviderIdentity {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.adminProviderLogo {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.adminProviderLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.adminCellAction {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.compactAction {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.compactAction svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.compactAction:hover {
+  text-decoration: none;
+}
+
+.paginationBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.paginationBar span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.paginationNumbers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.paginationNumbers button {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.paginationNumbers button.active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
+.paginationGap {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+}
+
+.paginationBar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.adminDialog {
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(24, 24, 24, 0.28);
+}
+
+.adminDialog::backdrop {
+  background: rgba(24, 24, 24, 0.42);
+}
+
+.adminDialogCard {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  background: #fff;
+}
+
+.adminEditGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminDialogActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .marketplace {
   display: grid;
   grid-template-columns: 412px minmax(0, 1fr);
@@ -1221,8 +1848,56 @@ a:hover {
   .listingHero,
   .mediaStrip,
   .highlightGrid,
+  .adminApp,
+  .adminStats,
+  .adminTwoColumn,
   .adminGrid {
     grid-template-columns: 1fr;
+  }
+
+  .adminSidebar {
+    position: static;
+    height: auto;
+  }
+
+  .adminTopbar,
+  .adminTopbarActions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .adminTableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .adminFilterBar,
+  .adminEditGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminFilterBar button,
+  .adminDialogActions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .adminTableHeader {
+    display: none;
+  }
+
+  .paginationBar {
+    display: grid;
+  }
+
+  .paginationBar > button,
+  .paginationBar span {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .paginationNumbers button {
+    width: auto;
   }
 
   .listingDetail {

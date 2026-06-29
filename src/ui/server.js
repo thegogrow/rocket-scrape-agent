@@ -10,8 +10,10 @@ const PUBLIC_DIR = path.resolve(process.cwd(), "public");
 const API_HANDLERS = {
   "/api/admin-login": require("../../api/admin-login"),
   "/api/admin-publish": require("../../api/admin-publish"),
+  "/api/admin-provider": require("../../api/admin-provider"),
   "/api/admin-scrape": require("../../api/admin-scrape"),
   "/api/admin-state": require("../../api/admin-state"),
+  "/api/logo": require("../../api/logo"),
 };
 
 function sendJson(response, statusCode, payload) {
@@ -34,6 +36,18 @@ function createApiResponse(response) {
   let statusCode = 200;
   const headers = {};
 
+  function writeHeaders(contentType) {
+    if (response.headersSent) {
+      return;
+    }
+
+    response.writeHead(statusCode, {
+      ...(contentType ? { "Content-Type": contentType } : {}),
+      "Cache-Control": "no-store",
+      ...headers,
+    });
+  }
+
   return {
     setHeader(name, value) {
       headers[name] = value;
@@ -43,12 +57,39 @@ function createApiResponse(response) {
       return this;
     },
     json(payload) {
-      response.writeHead(statusCode, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-        ...headers,
-      });
+      writeHeaders("application/json; charset=utf-8");
       response.end(JSON.stringify(payload, null, 2));
+    },
+    send(body) {
+      writeHeaders(typeof body === "string" ? "text/plain; charset=utf-8" : "application/octet-stream");
+      response.end(body);
+    },
+    write(chunk) {
+      writeHeaders();
+      return response.write(chunk);
+    },
+    end(chunk) {
+      writeHeaders();
+      return response.end(chunk);
+    },
+    on(...args) {
+      response.on(...args);
+      return this;
+    },
+    once(...args) {
+      response.once(...args);
+      return this;
+    },
+    removeListener(...args) {
+      response.removeListener(...args);
+      return this;
+    },
+    off(...args) {
+      response.off(...args);
+      return this;
+    },
+    emit(...args) {
+      return response.emit(...args);
     },
   };
 }
@@ -63,7 +104,7 @@ function contentTypeFor(filePath) {
 }
 
 async function handleStatic(requestPath, response) {
-  const relativePath = requestPath === "/" ? "index.html" : requestPath.slice(1);
+  const relativePath = requestPath === "/" ? "index.html" : requestPath === "/admin" ? "admin.html" : requestPath.slice(1);
   const staticPath = path.resolve(PUBLIC_DIR, relativePath);
 
   if (!staticPath.startsWith(PUBLIC_DIR) || !(await fs.pathExists(staticPath))) {
@@ -86,6 +127,7 @@ async function handleRequest(request, response) {
     const apiHandler = API_HANDLERS[requestPath];
 
     if (apiHandler) {
+      request.query = Object.fromEntries(requestUrl.searchParams.entries());
       await apiHandler(request, createApiResponse(response));
       return;
     }

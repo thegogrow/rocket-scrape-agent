@@ -1,6 +1,12 @@
 const fs = require("fs-extra");
 const { logoPathForDomain, safeDomain } = require("../src/ui/profileData");
 
+async function logoContentType(filePath) {
+  const head = (await fs.readFile(filePath)).subarray(0, 128).toString("utf8").trimStart();
+
+  return head.startsWith("<svg") || head.startsWith("<?xml") ? "image/svg+xml" : "image/png";
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
     response.status(405).send("Method not allowed");
@@ -15,7 +21,7 @@ module.exports = async function handler(request, response) {
     return;
   }
 
-  response.setHeader("Content-Type", "image/png");
+  response.setHeader("Content-Type", await logoContentType(logoPath));
   response.setHeader("Cache-Control", "no-store");
   fs.createReadStream(logoPath).pipe(response);
 };

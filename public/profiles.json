@@ -1397,7 +1397,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/aspectran",
     "linkedinUrl": null,
-    "logoUrl": null,
+    "logoUrl": "/logos/aspectra.ch/logo.png",
     "recentActivity": [
       {
         "title": "Updated aspectow repository",
@@ -1431,7 +1431,7 @@
       "No local logo file was saved."
     ],
     "files": {
-      "logo": null,
+      "logo": "/logos/aspectra.ch/logo.png",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -2883,7 +2883,7 @@
     "confidenceScore": 45,
     "githubUrl": "https://github.com/cloudical-io",
     "linkedinUrl": null,
-    "logoUrl": null,
+    "logoUrl": "/logos/cloudical.io/logo.png",
     "recentActivity": [
       {
         "title": "Updated psono-helm-secret-helper repository",
@@ -2912,7 +2912,7 @@
       "No local logo file was saved."
     ],
     "files": {
-      "logo": null,
+      "logo": "/logos/cloudical.io/logo.png",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -9928,7 +9928,7 @@
     "domain": "novatec-gmbh.de",
     "country": "Germany",
     "companyName": "Novatec GmbH Verpackungstechnik",
-    "website": "https://www.novatec-gmbh.de/",
+    "website": "https://novatec-v.de/",
     "description": null,
     "services": [],
     "focusAreas": [],
@@ -9938,7 +9938,7 @@
     "confidenceScore": 25,
     "githubUrl": "https://github.com/Novatec-GmbH-Verpackungstechnik",
     "linkedinUrl": null,
-    "logoUrl": null,
+    "logoUrl": "/logos/novatec-gmbh.de/logo.png",
     "recentActivity": [],
     "reviewNotes": [
       "Website crawl text is empty or thin, so extraction confidence should be reviewed.",
@@ -9948,7 +9948,7 @@
       "No local logo file was saved."
     ],
     "files": {
-      "logo": null,
+      "logo": "/logos/novatec-gmbh.de/logo.png",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -10865,7 +10865,7 @@
     "confidenceScore": 65,
     "githubUrl": "https://github.com/polarsquad",
     "linkedinUrl": null,
-    "logoUrl": null,
+    "logoUrl": "/logos/polar-squad.com/logo.png",
     "recentActivity": [
       {
         "title": "Recent GitHub activity includes Terraform/Terragrunt infrastructure work (January 2026)",
@@ -10899,7 +10899,7 @@
       "No local logo file was saved."
     ],
     "files": {
-      "logo": null,
+      "logo": "/logos/polar-squad.com/logo.png",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
