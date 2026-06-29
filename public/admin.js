@@ -324,11 +324,6 @@ function providerRow(provider, options = {}) {
 }
 
 function compactProviderRow(provider) {
-  const actions = [
-    provider.id ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id)}"`) : "",
-    provider.id ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`) : "",
-  ].filter(Boolean).join("");
-
   return `
     <article class="adminTableRow adminReviewRow adminCompactRow">
       <div class="adminCell adminCellPrimary">
@@ -342,7 +337,6 @@ function compactProviderRow(provider) {
       </div>
       <div class="adminCell">${statusPill(provider.status || "draft")}</div>
       <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
-      <div class="adminCell adminCellAction">${actions}</div>
     </article>
   `;
 }
@@ -625,7 +619,7 @@ function renderLists() {
   );
 
   elements.dashboardReviewList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Company", "Status", "Confidence", "Actions"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
+    ? `${tableHeader(["Company", "Status", "Confidence"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
     : emptyState("No profiles need review.");
 
   elements.dashboardJobList.innerHTML = state.jobs.length

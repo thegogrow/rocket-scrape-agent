@@ -817,7 +817,7 @@ a:hover {
 
 .adminCompactProviderTable .adminTableHeader,
 .adminCompactProviderTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.42fr) minmax(90px, 0.36fr) minmax(140px, 0.72fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(96px, 0.42fr) minmax(90px, 0.36fr);
 }
 
 .adminCompactJobsTable .adminTableHeader,
