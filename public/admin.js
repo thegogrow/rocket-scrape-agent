@@ -253,10 +253,18 @@ function actionLink(kind, label, href) {
 }
 
 function providerActions(provider, options = {}) {
-  const { includePublish = false, includeManage = false, includeProfile = true } = options;
+  const {
+    includeEdit = false,
+    includePublish = false,
+    includeManage = false,
+    includeProfile = true,
+  } = options;
   const actions = [
     includeProfile && provider.domain
       ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
+      : "",
+    includeEdit
+      ? actionButton("edit", "Edit Profile", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includePublish && provider.id
       ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`)
@@ -278,6 +286,7 @@ function providerActions(provider, options = {}) {
 function providerRow(provider, options = {}) {
   const { includeAction = false, compact = false } = options;
   const action = providerActions(provider, {
+    includeEdit: includeAction,
     includePublish: includeAction,
     includeManage: compact,
     includeProfile: compact,
@@ -485,9 +494,6 @@ function jobRow(job) {
   const actions = [
     job.status === "queued"
       ? actionButton("process", "Process", `data-run-job="${escapeHtml(job.id || "")}"`)
-      : "",
-    job.result_provider_id
-      ? actionButton("edit", "Profile", `data-edit-provider="${escapeHtml(job.result_provider_id)}"`)
       : "",
     job.id
       ? actionButton("delete", "Delete", `data-delete-job="${escapeHtml(job.id)}"`)
