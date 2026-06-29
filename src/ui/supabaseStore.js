@@ -19,7 +19,25 @@ function isSupabaseConfigured() {
 }
 
 function normalizeSupabaseUrl(url) {
-  return String(url || "").replace(/\/$/, "");
+  const value = String(url || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  let parsed;
+
+  try {
+    parsed = new URL(value);
+  } catch (error) {
+    throw new Error("SUPABASE_URL must be a valid Supabase project URL.");
+  }
+
+  if (!/\.supabase\.(co|in)$/.test(parsed.hostname)) {
+    throw new Error("SUPABASE_URL must be your Supabase project URL, like https://your-project.supabase.co.");
+  }
+
+  return parsed.origin;
 }
 
 async function supabaseFetch(path, options = {}) {
