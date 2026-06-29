@@ -803,7 +803,7 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.58fr) minmax(92px, 0.42fr) minmax(92px, 0.42fr) minmax(220px, 0.9fr);
+  grid-template-columns: minmax(0, 1.34fr) minmax(0, 0.45fr) minmax(88px, 0.32fr) minmax(82px, 0.28fr) minmax(340px, 1fr);
 }
 
 .adminPublishedTable .adminTableHeader span:last-child {
@@ -1047,6 +1047,10 @@ a:hover {
 }
 
 .adminReviewTable .adminCellAction {
+  flex-wrap: nowrap;
+}
+
+.adminPublishedTable .adminCellAction {
   flex-wrap: nowrap;
 }
 

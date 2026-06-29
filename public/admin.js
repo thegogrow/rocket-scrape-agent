@@ -277,7 +277,7 @@ function providerActions(provider, options = {}) {
       ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
       : "",
     includeEdit
-      ? actionButton("edit", "Edit Profile", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
+      ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includePublish && provider.id
       ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`)
@@ -286,7 +286,7 @@ function providerActions(provider, options = {}) {
       ? actionButton("delete", "Delete", `data-delete-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includeManage
-      ? actionButton("edit", "Edit Profile", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
+      ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includeManage
       ? actionButton("unpublish", "Unpublish", `data-unpublish-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
@@ -875,6 +875,9 @@ async function updateProviderStatus(key, status) {
     patchProviderInState(key, { status });
     renderStats();
     renderLists();
+    if (status !== "published") {
+      setSection("review");
+    }
     return;
   }
 
@@ -886,6 +889,9 @@ async function updateProviderStatus(key, status) {
 
   if (response.ok) {
     await refreshAdminState();
+    if (status !== "published") {
+      setSection("review");
+    }
   }
 }
 
