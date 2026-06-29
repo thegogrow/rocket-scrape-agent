@@ -1,4 +1,5 @@
 const fs = require("fs-extra");
+const path = require("path");
 const { logoPathForDomain, safeDomain } = require("../src/ui/profileData");
 
 async function logoContentType(filePath) {
@@ -14,7 +15,13 @@ module.exports = async function handler(request, response) {
   }
 
   const domain = safeDomain(request.query.domain);
-  const logoPath = domain ? logoPathForDomain(domain) : null;
+  const outputLogoPath = domain ? logoPathForDomain(domain) : null;
+  const publicLogoPath = domain
+    ? path.join(process.cwd(), "public", "logos", domain, "logo.png")
+    : null;
+  const logoPath = outputLogoPath && (await fs.pathExists(outputLogoPath))
+    ? outputLogoPath
+    : publicLogoPath;
 
   if (!logoPath || !(await fs.pathExists(logoPath))) {
     response.status(404).send("Logo not found");
