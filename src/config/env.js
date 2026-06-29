@@ -24,6 +24,26 @@ function getRequiredEnv(name, options = {}) {
   return getEnv(name, { ...options, required: true });
 }
 
+function defaultOutputDir() {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join("/tmp", "rocket-scrape-output");
+  }
+
+  return "output";
+}
+
+function resolveOutputDir() {
+  const configuredOutputDir = getEnv("OUTPUT_DIR", { defaultValue: defaultOutputDir() });
+
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    if (!path.isAbsolute(configuredOutputDir) || configuredOutputDir.startsWith(process.cwd())) {
+      return path.join("/tmp", "rocket-scrape-output");
+    }
+  }
+
+  return path.resolve(process.cwd(), configuredOutputDir);
+}
+
 const env = Object.freeze({
   nodeEnv: getEnv("NODE_ENV", { defaultValue: "development" }),
   firecrawl: {
@@ -58,10 +78,7 @@ const env = Object.freeze({
   },
   paths: {
     rootDir: process.cwd(),
-    outputDir: path.resolve(
-      process.cwd(),
-      getEnv("OUTPUT_DIR", { defaultValue: "output" })
-    ),
+    outputDir: resolveOutputDir(),
     dataDir: path.resolve(
       process.cwd(),
       getEnv("DATA_DIR", { defaultValue: "data" })
