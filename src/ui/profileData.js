@@ -114,6 +114,24 @@ function logoPathForDomain(domain) {
   return path.join(env.paths.outputDir, domain, "logo.png");
 }
 
+async function logoFileForDomain(domain) {
+  const companyDir = path.join(env.paths.outputDir, domain);
+  const candidates = [
+    path.join(companyDir, "logo.svg"),
+    path.join(companyDir, "logo.png"),
+    path.join(env.paths.rootDir, "public", "logos", domain, "logo.svg"),
+    path.join(env.paths.rootDir, "public", "logos", domain, "logo.png"),
+  ];
+
+  for (const candidate of candidates) {
+    if (await fs.pathExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 async function loadProfile(domain) {
   const companyDir = path.join(env.paths.outputDir, domain);
   const profile = await readJsonIfExists(path.join(companyDir, "profile.json"));
@@ -123,10 +141,11 @@ async function loadProfile(domain) {
   const enrichment = await readJsonIfExists(path.join(companyDir, "enrichment.json"));
   const brandfetch = await readJsonIfExists(path.join(companyDir, "brandfetch.json"));
   const logoSource = await readJsonIfExists(path.join(companyDir, "logo-source.json"));
-  const hasLogo = await fs.pathExists(logoPathForDomain(domain));
+  const logoFile = await logoFileForDomain(domain);
+  const logoExt = logoFile ? path.extname(logoFile) : "";
   const country = normalizeCountry(profile, sourceBundle);
   const files = {
-    logo: hasLogo ? `/logos/${domain}/logo.png` : null,
+    logo: logoFile ? `/logos/${domain}/logo${logoExt}` : null,
     profile: Boolean(profile),
     sourceBundle: Boolean(sourceBundle),
     raw: Boolean(raw),
@@ -191,6 +210,7 @@ module.exports = {
   listStaticProfiles,
   listProfiles,
   loadProfile,
+  logoFileForDomain,
   logoPathForDomain,
   safeDomain,
 };

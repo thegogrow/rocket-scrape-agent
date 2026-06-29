@@ -41,6 +41,25 @@ const CATEGORY_RULES = [
   { name: "Software Engineering", match: ["software engineering", "application", "development", "engineering"] },
 ];
 
+const SVG_LOGO_DOMAINS = new Set([
+  "2ndwatch.com",
+  "adesso.de",
+  "andrena.de",
+  "b1-systems.de",
+  "bespinian.io",
+  "cloud303.io",
+  "codurance.com",
+  "innoq.com",
+  "isolutions.ch",
+  "kreuzwerker.de",
+  "maibornwolff.de",
+  "novatec-gmbh.de",
+  "opsguru.com",
+  "redguard.ch",
+  "terreactive.ch",
+  "viadee.de",
+]);
+
 function getProfileCategory(profile) {
   const text = [
     profile.services,
@@ -152,13 +171,27 @@ function initials(profile) {
     .toUpperCase();
 }
 
+function logoUrlForProfile(profile) {
+  const logoUrl = profile.logoUrl;
+
+  if (
+    logoUrl &&
+    profile.domain &&
+    SVG_LOGO_DOMAINS.has(profile.domain) &&
+    String(logoUrl).startsWith(`/logos/${profile.domain}/`) &&
+    String(logoUrl).endsWith("/logo.png")
+  ) {
+    return `/logos/${profile.domain}/logo.svg`;
+  }
+
+  return logoUrl;
+}
+
 function logoMarkup(profile, large = false) {
   const label = escapeHtml(profile.companyName || profile.domain);
   const fallback = escapeHtml(initials(profile));
   const className = large ? "logoBox logoLarge" : "logoBox";
-  const logoUrl = profile.logoUrl && profile.domain && String(profile.logoUrl).startsWith("/logos/")
-    ? `/api/logo?domain=${encodeURIComponent(profile.domain)}`
-    : profile.logoUrl;
+  const logoUrl = logoUrlForProfile(profile);
 
   if (!logoUrl) {
     return `<div class="${className}" aria-label="${label}">${fallback}</div>`;

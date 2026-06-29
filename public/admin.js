@@ -14,6 +14,25 @@ const state = {
   publishedSortDirection: "asc",
 };
 
+const SVG_LOGO_DOMAINS = new Set([
+  "2ndwatch.com",
+  "adesso.de",
+  "andrena.de",
+  "b1-systems.de",
+  "bespinian.io",
+  "cloud303.io",
+  "codurance.com",
+  "innoq.com",
+  "isolutions.ch",
+  "kreuzwerker.de",
+  "maibornwolff.de",
+  "novatec-gmbh.de",
+  "opsguru.com",
+  "redguard.ch",
+  "terreactive.ch",
+  "viadee.de",
+]);
+
 const elements = {
   loginScreen: document.querySelector("#adminLoginScreen"),
   loginForm: document.querySelector("#adminLoginForm"),
@@ -176,12 +195,26 @@ function initials(profile) {
     .toUpperCase();
 }
 
+function logoUrlForProvider(provider) {
+  const logoUrl = provider.logoUrl;
+
+  if (
+    logoUrl &&
+    provider.domain &&
+    SVG_LOGO_DOMAINS.has(provider.domain) &&
+    String(logoUrl).startsWith(`/logos/${provider.domain}/`) &&
+    String(logoUrl).endsWith("/logo.png")
+  ) {
+    return `/logos/${provider.domain}/logo.svg`;
+  }
+
+  return logoUrl;
+}
+
 function providerLogo(provider) {
   const label = escapeHtml(provider.companyName || provider.domain || "Provider");
   const fallback = escapeHtml(initials(provider));
-  const logoUrl = provider.logoUrl && provider.domain && String(provider.logoUrl).startsWith("/logos/")
-    ? `/api/logo?domain=${encodeURIComponent(provider.domain)}`
-    : provider.logoUrl;
+  const logoUrl = logoUrlForProvider(provider);
 
   if (!logoUrl) {
     return `<span class="adminProviderLogo" aria-label="${label}">${fallback}</span>`;

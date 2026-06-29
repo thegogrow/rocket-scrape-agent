@@ -173,7 +173,7 @@
     "confidenceScore": 85,
     "githubUrl": null,
     "linkedinUrl": null,
-    "logoUrl": "/logos/2ndwatch.com/logo.png",
+    "logoUrl": "/logos/2ndwatch.com/logo.svg",
     "recentActivity": [
       {
         "title": "From Guesswork to Greatness: AI-Driven Product Placement at the Speed of Live",
@@ -198,7 +198,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/2ndwatch.com/logo.png",
+      "logo": "/logos/2ndwatch.com/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -763,7 +763,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/adessoSE",
     "linkedinUrl": null,
-    "logoUrl": "/logos/adesso.de/logo.png",
+    "logoUrl": "/logos/adesso.de/logo.svg",
     "recentActivity": [
       {
         "title": "Was passiert, wenn Maschinen zuhören",
@@ -800,7 +800,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/adesso.de/logo.png",
+      "logo": "/logos/adesso.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -1172,7 +1172,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/andrena",
     "linkedinUrl": null,
-    "logoUrl": "/logos/andrena.de/logo.png",
+    "logoUrl": "/logos/andrena.de/logo.svg",
     "recentActivity": [
       {
         "title": "Sandboxing gegen Supply-Chain-Attacken",
@@ -1197,7 +1197,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/andrena.de/logo.png",
+      "logo": "/logos/andrena.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -1647,7 +1647,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/b1-systems",
     "linkedinUrl": null,
-    "logoUrl": "/logos/b1-systems.de/logo.png",
+    "logoUrl": "/logos/b1-systems.de/logo.svg",
     "recentActivity": [
       {
         "title": "Nextcloud Summit",
@@ -1684,7 +1684,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/b1-systems.de/logo.png",
+      "logo": "/logos/b1-systems.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -1956,7 +1956,7 @@
     "confidenceScore": 92,
     "githubUrl": "https://github.com/bespinian",
     "linkedinUrl": "https://linkedin.com/company/bespinian",
-    "logoUrl": "/logos/bespinian.io/logo.png",
+    "logoUrl": "/logos/bespinian.io/logo.svg",
     "recentActivity": [
       {
         "title": "Using Claude Code on AWS Bedrock",
@@ -1987,7 +1987,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/bespinian.io/logo.png",
+      "logo": "/logos/bespinian.io/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -2769,7 +2769,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/Cloud303",
     "linkedinUrl": null,
-    "logoUrl": "/logos/cloud303.io/logo.png",
+    "logoUrl": "/logos/cloud303.io/logo.svg",
     "recentActivity": [
       {
         "title": "WAFR Remediations Repository",
@@ -2800,7 +2800,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/cloud303.io/logo.png",
+      "logo": "/logos/cloud303.io/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -3216,7 +3216,7 @@
     "confidenceScore": 92,
     "githubUrl": "https://github.com/codurance",
     "linkedinUrl": null,
-    "logoUrl": "/logos/codurance.com/logo.png",
+    "logoUrl": "/logos/codurance.com/logo.svg",
     "recentActivity": [
       {
         "title": "The Value Multiplier for CTOs: Navigating the Shift from Technical Delivery to Commercial Impact",
@@ -3253,7 +3253,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/codurance.com/logo.png",
+      "logo": "/logos/codurance.com/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -6724,7 +6724,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/innoq",
     "linkedinUrl": "https://www.linkedin.com/company/innoq/",
-    "logoUrl": "/logos/innoq.com/logo.png",
+    "logoUrl": "/logos/innoq.com/logo.svg",
     "recentActivity": [
       {
         "title": "Faster Is Not Better: On Experimentation Culture and What It Costs",
@@ -6756,7 +6756,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/innoq.com/logo.png",
+      "logo": "/logos/innoq.com/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -7053,13 +7053,13 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/isolutions-sa",
     "linkedinUrl": null,
-    "logoUrl": "/logos/isolutions.ch/logo.png",
+    "logoUrl": "/logos/isolutions.ch/logo.svg",
     "recentActivity": [],
     "reviewNotes": [
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/isolutions.ch/logo.png",
+      "logo": "/logos/isolutions.ch/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -7573,7 +7573,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/kreuzwerker",
     "linkedinUrl": null,
-    "logoUrl": "/logos/kreuzwerker.de/logo.png",
+    "logoUrl": "/logos/kreuzwerker.de/logo.svg",
     "recentActivity": [
       {
         "title": "terraform-provider-docker",
@@ -7598,7 +7598,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/kreuzwerker.de/logo.png",
+      "logo": "/logos/kreuzwerker.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -7995,7 +7995,7 @@
     "confidenceScore": 85,
     "githubUrl": "https://github.com/MaibornWolff",
     "linkedinUrl": null,
-    "logoUrl": "/logos/maibornwolff.de/logo.png",
+    "logoUrl": "/logos/maibornwolff.de/logo.svg",
     "recentActivity": [
       {
         "title": "CodeCharta - Code visualization tool development",
@@ -8020,7 +8020,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/maibornwolff.de/logo.png",
+      "logo": "/logos/maibornwolff.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -9938,7 +9938,7 @@
     "confidenceScore": 25,
     "githubUrl": "https://github.com/Novatec-GmbH-Verpackungstechnik",
     "linkedinUrl": null,
-    "logoUrl": "/logos/novatec-gmbh.de/logo.png",
+    "logoUrl": "/logos/novatec-gmbh.de/logo.svg",
     "recentActivity": [],
     "reviewNotes": [
       "Website crawl text is empty or thin, so extraction confidence should be reviewed.",
@@ -9948,7 +9948,7 @@
       "No local logo file was saved."
     ],
     "files": {
-      "logo": "/logos/novatec-gmbh.de/logo.png",
+      "logo": "/logos/novatec-gmbh.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -10433,7 +10433,7 @@
     "confidenceScore": 70,
     "githubUrl": "https://github.com/opsguru",
     "linkedinUrl": null,
-    "logoUrl": "/logos/opsguru.com/logo.png",
+    "logoUrl": "/logos/opsguru.com/logo.svg",
     "recentActivity": [
       {
         "title": "grafana-docker - Grafana docker container",
@@ -10470,7 +10470,7 @@
       "Profile has website/source data, logo output, and no obvious missing review flags."
     ],
     "files": {
-      "logo": "/logos/opsguru.com/logo.png",
+      "logo": "/logos/opsguru.com/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -11622,7 +11622,7 @@
     "confidenceScore": 65,
     "githubUrl": "https://github.com/Redguard",
     "linkedinUrl": null,
-    "logoUrl": "/logos/redguard.ch/logo.png",
+    "logoUrl": "/logos/redguard.ch/logo.svg",
     "recentActivity": [
       {
         "title": "csvs - Container Security Verification Standard",
@@ -11659,7 +11659,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/redguard.ch/logo.png",
+      "logo": "/logos/redguard.ch/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -13104,7 +13104,7 @@
     "confidenceScore": 65,
     "githubUrl": "https://github.com/terreactive",
     "linkedinUrl": null,
-    "logoUrl": "/logos/terreactive.ch/logo.png",
+    "logoUrl": "/logos/terreactive.ch/logo.svg",
     "recentActivity": [
       {
         "title": "rrd-ffi - A ruby wrapper for librrd (rrdtool) using ffi.",
@@ -13141,7 +13141,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/terreactive.ch/logo.png",
+      "logo": "/logos/terreactive.ch/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
@@ -13815,7 +13815,7 @@
     "confidenceScore": 65,
     "githubUrl": "https://github.com/viadee",
     "linkedinUrl": null,
-    "logoUrl": "/logos/viadee.de/logo.png",
+    "logoUrl": "/logos/viadee.de/logo.svg",
     "recentActivity": [
       {
         "title": "contextTesting - Block-Based Context Dependent Testing",
@@ -13853,7 +13853,7 @@
       "No explicit vendor partnerships or certifications were found."
     ],
     "files": {
-      "logo": "/logos/viadee.de/logo.png",
+      "logo": "/logos/viadee.de/logo.svg",
       "profile": true,
       "sourceBundle": true,
       "raw": true,
