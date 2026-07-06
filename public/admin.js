@@ -88,9 +88,17 @@ const elements = {
   profileEditLogo: document.querySelector("#profileEditLogo"),
   profileEditWebsite: document.querySelector("#profileEditWebsite"),
   profileEditCountry: document.querySelector("#profileEditCountry"),
+  profileEditCity: document.querySelector("#profileEditCity"),
+  profileEditClaimed: document.querySelector("#profileEditClaimed"),
+  profileEditSubscriptionTier: document.querySelector("#profileEditSubscriptionTier"),
   profileEditServices: document.querySelector("#profileEditServices"),
+  profileEditIndustries: document.querySelector("#profileEditIndustries"),
   profileEditTechnologies: document.querySelector("#profileEditTechnologies"),
   profileEditPartnerships: document.querySelector("#profileEditPartnerships"),
+  profileEditSuccessStories: document.querySelector("#profileEditSuccessStories"),
+  profileEditAddSuccessStory: document.querySelector("#profileEditAddSuccessStory"),
+  profileEditSolutions: document.querySelector("#profileEditSolutions"),
+  profileEditAddSolution: document.querySelector("#profileEditAddSolution"),
   profileEditActivities: document.querySelector("#profileEditActivities"),
   profileEditNotes: document.querySelector("#profileEditNotes"),
   profileEditMessage: document.querySelector("#profileEditMessage"),
@@ -389,7 +397,7 @@ function providerRow(provider, options = {}) {
           </span>
         </span>
       </div>
-      <div class="adminCell"><span>${escapeHtml(provider.country || provider.location || "Unknown")}</span></div>
+      <div class="adminCell"><span>${escapeHtml([provider.companyLocation?.city || provider.city, provider.companyLocation?.country || provider.country].filter(Boolean).join(", ") || provider.location || "Unknown")}</span></div>
       <div class="adminCell">${statusPill(provider.status || "published")}</div>
       <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
       <div class="adminCell adminCellAction">${action}</div>
@@ -526,6 +534,72 @@ function textToRecentActivities(value) {
   });
 }
 
+function normalizeEditableEntry(item = {}) {
+  if (typeof item === "string") {
+    return { title: item, shortText: "", link: "" };
+  }
+
+  return {
+    title: item.title || item.name || "",
+    shortText: item.shortText || item.text || item.summary || item.description || "",
+    link: item.link || item.url || item.source || "",
+  };
+}
+
+function editableEntryRowMarkup(entry = {}) {
+  const normalizedEntry = normalizeEditableEntry(entry);
+
+  return `
+    <article class="structuredEntryRow">
+      <label>
+        Title
+        <input data-entry-field="title" type="text" value="${escapeHtml(normalizedEntry.title)}" placeholder="Title" />
+      </label>
+      <label>
+        Short text
+        <textarea data-entry-field="shortText" rows="2" placeholder="Short text">${escapeHtml(normalizedEntry.shortText)}</textarea>
+      </label>
+      <label>
+        Link
+        <input data-entry-field="link" type="url" value="${escapeHtml(normalizedEntry.link)}" placeholder="https://example.com/story" />
+      </label>
+      <button class="secondaryAction compactAction structuredEntryRemove" type="button">Remove</button>
+    </article>
+  `;
+}
+
+function renderEditableEntries(container, entries = []) {
+  const normalizedEntries = (entries || []).map(normalizeEditableEntry);
+  const renderEntries = normalizedEntries.length > 0 ? normalizedEntries : [{ title: "", shortText: "", link: "" }];
+
+  container.innerHTML = renderEntries.map(editableEntryRowMarkup).join("");
+}
+
+function collectEditableEntries(container) {
+  return Array.from(container.querySelectorAll(".structuredEntryRow"))
+    .map((row) => ({
+      title: row.querySelector('[data-entry-field="title"]').value.trim(),
+      shortText: row.querySelector('[data-entry-field="shortText"]').value.trim(),
+      link: row.querySelector('[data-entry-field="link"]').value.trim(),
+    }))
+    .filter((entry) => entry.title || entry.shortText || entry.link)
+    .map((entry) => ({ ...entry, title: entry.title || "Untitled" }));
+}
+
+function addEditableEntry(container) {
+  container.insertAdjacentHTML("beforeend", editableEntryRowMarkup());
+}
+
+function hasPremiumProfileAccess(profile = {}) {
+  const tier = String(profile.subscriptionTier || profile.subscription_tier || profile.plan || "").toLowerCase();
+
+  return Boolean(profile.isPremium || profile.premium || ["premium", "pro", "paid"].includes(tier));
+}
+
+function subscriptionTierForProfile(profile = {}) {
+  return hasPremiumProfileAccess(profile) ? "premium" : "free";
+}
+
 function openEditProfile(key) {
   const provider = findProvider(key);
 
@@ -537,10 +611,16 @@ function openEditProfile(key) {
   elements.profileEditName.value = provider.companyName || provider.domain || "";
   elements.profileEditLogo.value = provider.logoUrl || "";
   elements.profileEditWebsite.value = provider.website || "";
-  elements.profileEditCountry.value = provider.country || "";
+  elements.profileEditCountry.value = provider.companyLocation?.country || provider.country || "";
+  elements.profileEditCity.value = provider.companyLocation?.city || provider.city || "";
+  elements.profileEditClaimed.checked = Boolean(provider.claimed);
+  elements.profileEditSubscriptionTier.value = subscriptionTierForProfile(provider);
   elements.profileEditServices.value = listToText(provider.services);
+  elements.profileEditIndustries.value = listToText(provider.industries);
   elements.profileEditTechnologies.value = listToText(provider.technologies);
   elements.profileEditPartnerships.value = listToText(provider.vendorPartnerships);
+  renderEditableEntries(elements.profileEditSuccessStories, provider.successStories);
+  renderEditableEntries(elements.profileEditSolutions, provider.solutions);
   elements.profileEditActivities.value = recentActivitiesToText(provider.recentActivity);
   elements.profileEditNotes.value = listToText(provider.reviewNotes);
   elements.profileEditMessage.textContent = "";
@@ -1081,14 +1161,37 @@ async function saveProfileEdit(event) {
   event.preventDefault();
   const submitButton = event.submitter || elements.profileEditForm.querySelector("button[type='submit']");
   const key = elements.profileEditKey.value;
+  const provider = findProvider(key) || {};
+  const successStories = collectEditableEntries(elements.profileEditSuccessStories);
+  const solutions = collectEditableEntries(elements.profileEditSolutions);
+  const subscriptionTier = elements.profileEditSubscriptionTier.value;
+  const editedProfile = { ...provider, subscriptionTier };
+
+  if (!hasPremiumProfileAccess(editedProfile) && (successStories.length > 1 || solutions.length > 1)) {
+    elements.profileEditMessage.textContent =
+      "Multiple success stories or solutions require premium subscription.";
+    elements.profileEditMessage.classList.add("error");
+    return;
+  }
+
   const patch = {
     companyName: elements.profileEditName.value.trim(),
     logoUrl: elements.profileEditLogo.value.trim() || null,
     website: elements.profileEditWebsite.value.trim(),
     country: elements.profileEditCountry.value.trim(),
+    city: elements.profileEditCity.value.trim(),
+    claimed: elements.profileEditClaimed.checked,
+    subscriptionTier,
+    companyLocation: {
+      country: elements.profileEditCountry.value.trim(),
+      city: elements.profileEditCity.value.trim(),
+    },
     services: textToList(elements.profileEditServices.value),
+    industries: textToList(elements.profileEditIndustries.value),
     technologies: textToList(elements.profileEditTechnologies.value),
     vendorPartnerships: textToList(elements.profileEditPartnerships.value),
+    successStories,
+    solutions,
     recentActivity: textToRecentActivities(elements.profileEditActivities.value),
     reviewNotes: textToList(elements.profileEditNotes.value),
   };
@@ -1176,6 +1279,27 @@ function bindEvents() {
   elements.publishedFlipButton.addEventListener("click", flipPublishedList);
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
+  elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));
+  elements.profileEditAddSolution.addEventListener("click", () => addEditableEntry(elements.profileEditSolutions));
+  [elements.profileEditSuccessStories, elements.profileEditSolutions].forEach((container) => {
+    container.addEventListener("click", (event) => {
+      if (!event.target.closest(".structuredEntryRemove")) {
+        return;
+      }
+
+      const rows = container.querySelectorAll(".structuredEntryRow");
+      const row = event.target.closest(".structuredEntryRow");
+
+      if (rows.length > 1) {
+        row.remove();
+        return;
+      }
+
+      row.querySelectorAll("input, textarea").forEach((input) => {
+        input.value = "";
+      });
+    });
+  });
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
   elements.refreshButton.addEventListener("click", () => {
     runAdminAction(elements.refreshButton, "Refreshing", "Admin data refreshed.", refreshAdminState);

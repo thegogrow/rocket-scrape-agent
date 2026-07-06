@@ -1,6 +1,7 @@
 const fs = require("fs-extra");
 const path = require("path");
 const { env } = require("../config/env");
+const { asArray, normalizeProfile, normalizeProfiles } = require("./normalizeProfile");
 
 function safeDomain(value) {
   const decoded = decodeURIComponent(String(value || ""));
@@ -18,30 +19,6 @@ async function readJsonIfExists(filePath) {
   }
 
   return fs.readJson(filePath);
-}
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
-function normalizeCountry(profile, sourceBundle) {
-  const locationText = [
-    profile?.location,
-    sourceBundle?.enrichmentData?.location?.country,
-    sourceBundle?.enrichmentData?.location?.state,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  if (/switzerland|swiss|schweiz|suisse|zurich|zürich|bern|basel|lausanne/i.test(locationText)) {
-    return "Switzerland";
-  }
-
-  if (/germany|deutschland|berlin|munich|münchen|hamburg|frankfurt|köln|cologne/i.test(locationText)) {
-    return "Germany";
-  }
-
-  return sourceBundle?.enrichmentData?.location?.country || null;
 }
 
 function buildReviewNotes(profile, sourceBundle, files) {
@@ -143,7 +120,6 @@ async function loadProfile(domain) {
   const logoSource = await readJsonIfExists(path.join(companyDir, "logo-source.json"));
   const logoFile = await logoFileForDomain(domain);
   const logoExt = logoFile ? path.extname(logoFile) : "";
-  const country = normalizeCountry(profile, sourceBundle);
   const files = {
     logo: logoFile ? `/logos/${domain}/logo${logoExt}` : null,
     profile: Boolean(profile),
@@ -154,21 +130,25 @@ async function loadProfile(domain) {
     brandfetch: Boolean(brandfetch),
   };
 
-  return {
+  return normalizeProfile({
     domain,
-    country,
     companyName: profile?.companyName || sourceBundle?.brandfetchData?.companyName || domain,
     website: profile?.website || sourceBundle?.url || raw?.url || null,
     description: profile?.description || null,
     services: asArray(profile?.services),
     focusAreas: asArray(profile?.focusAreas),
+    industries: asArray(profile?.industries),
     technologies: asArray(profile?.technologies),
     vendorPartnerships: asArray(profile?.vendorPartnerships),
+    successStories: asArray(profile?.successStories),
+    solutions: asArray(profile?.solutions),
+    companyLocation: profile?.companyLocation,
     location: profile?.location || null,
     confidenceScore: profile?.confidenceScore || 0,
     githubUrl: profile?.githubUrl || github?.organization?.url || null,
     linkedinUrl: profile?.linkedinUrl || null,
     logoUrl: files.logo || profile?.logoUrl || sourceBundle?.brandfetchData?.bestLogo?.url || null,
+    claimed: profile?.claimed,
     recentActivity: summarizeActivity(profile?.recentActivity, github),
     reviewNotes: buildReviewNotes(profile, sourceBundle, files),
     files,
@@ -181,7 +161,7 @@ async function loadProfile(domain) {
       brandfetch,
       logoSource,
     },
-  };
+  }, { sourceBundle });
 }
 
 async function listProfiles() {
@@ -203,7 +183,7 @@ async function listStaticProfiles() {
     return [];
   }
 
-  return fs.readJson(staticPath);
+  return normalizeProfiles(await fs.readJson(staticPath));
 }
 
 module.exports = {

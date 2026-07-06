@@ -39,6 +39,7 @@ const SYSTEM_PROMPT = [
   "Do not infer facts from general world knowledge, URLs alone, broad industry norms, or customer case studies.",
   "If a scalar field is unknown, set it to null.",
   "For list fields, return an empty array when no explicit evidence is present.",
+  "Normalize all user-visible content to English. If source evidence is German or another language, translate extracted descriptions, services, focus areas, industries, activity titles, success stories, and solutions into concise English before returning JSON.",
   "Prefer Apollo/Clearbit enrichment for company size, founded year, LinkedIn URL, and location when available.",
   "Prefer website copy for description, services, focus areas, technologies, and vendor partnerships.",
   "For technologies, use website content as the primary evidence. Use GitHub languages or repositories only as supporting evidence when website content is thin or confirms the same technology.",
@@ -362,6 +363,7 @@ function buildUserPrompt(scrapedData, retryMessage = null) {
   const instructions = [
     "Extract a company profile from the provided source bundle.",
     "Use only information explicitly supported by the supplied data.",
+    "Normalize all user-visible profile content to English, translating supported non-English source text when needed.",
     "If a scalar value is not supported, set it to null.",
     "For list fields with no support, return an empty array.",
     "Keep list values concise and deduplicated.",

@@ -1,6 +1,24 @@
 const { deleteProvider, updateProvider, verifyAdminToken } = require("../src/ui/supabaseStore");
 const { readJsonBody } = require("../src/ui/readJsonBody");
 
+function hasPremiumProfileAccess(profile = {}) {
+  const tier = String(profile.subscriptionTier || profile.subscription_tier || profile.plan || "").toLowerCase();
+
+  return Boolean(profile.isPremium || profile.premium || ["premium", "pro", "paid"].includes(tier));
+}
+
+function validateProviderPatch(profile = {}) {
+  if (hasPremiumProfileAccess(profile)) {
+    return null;
+  }
+
+  if ((profile.successStories || []).length > 1 || (profile.solutions || []).length > 1) {
+    return "Multiple success stories or solutions require premium subscription.";
+  }
+
+  return null;
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "PATCH" && request.method !== "DELETE") {
     response.status(405).json({ error: "Method not allowed" });
@@ -18,6 +36,13 @@ module.exports = async function handler(request, response) {
 
     if (request.method === "DELETE") {
       response.status(200).json(await deleteProvider(id));
+      return;
+    }
+
+    const validationError = validateProviderPatch(profile);
+
+    if (validationError) {
+      response.status(400).json({ error: validationError });
       return;
     }
 

@@ -2,10 +2,23 @@ const state = {
   profiles: [],
   filtered: [],
   selectedDomain: null,
-  activeCategory: null,
   profileMode: false,
-  quickFilter: "all",
   activeDetailTab: "overview",
+  sortMode: "recommended",
+  filters: {
+    country: [],
+    service: [],
+    technology: [],
+    partner: [],
+    industry: [],
+  },
+  filterSearches: {
+    country: "",
+    service: "",
+    technology: "",
+    partner: "",
+    industry: "",
+  },
 };
 
 const elements = {
@@ -16,20 +29,61 @@ const elements = {
   navTabs: document.querySelectorAll("[data-nav-tab]"),
   searchInput: document.querySelector("#searchInput"),
   filterSearchInput: document.querySelector("#filterSearchInput"),
+  filterDrawerButton: document.querySelector("#filterDrawerButton"),
+  filterDrawerClose: document.querySelector("#filterDrawerClose"),
   countryFilter: document.querySelector("#countryFilter"),
-  countryOptions: document.querySelector("#countryOptions"),
   serviceFilter: document.querySelector("#serviceFilter"),
-  serviceOptions: document.querySelector("#serviceOptions"),
   technologyFilter: document.querySelector("#technologyFilter"),
-  technologyOptions: document.querySelector("#technologyOptions"),
   partnerFilter: document.querySelector("#partnerFilter"),
-  partnerOptions: document.querySelector("#partnerOptions"),
-  confidenceFilter: document.querySelector("#confidenceFilter"),
-  confidenceValue: document.querySelector("#confidenceValue"),
+  industryFilter: document.querySelector("#industryFilter"),
+  activeFilters: document.querySelector("#activeFilters"),
   resetButton: document.querySelector("#resetButton"),
   profileList: document.querySelector("#profileList"),
   detailContent: document.querySelector("#detailContent"),
 };
+
+const FILTER_DEFS = [
+  {
+    key: "country",
+    label: "Country",
+    container: elements.countryFilter,
+    values(profile) {
+      return [profile.companyLocation?.country || profile.country].filter(Boolean);
+    },
+  },
+  {
+    key: "service",
+    label: "Service",
+    container: elements.serviceFilter,
+    values(profile) {
+      return Array.isArray(profile.services) ? profile.services : [];
+    },
+  },
+  {
+    key: "technology",
+    label: "Technology",
+    container: elements.technologyFilter,
+    values(profile) {
+      return Array.isArray(profile.technologies) ? profile.technologies : [];
+    },
+  },
+  {
+    key: "partner",
+    label: "Vendor Partner",
+    container: elements.partnerFilter,
+    values(profile) {
+      return Array.isArray(profile.vendorPartnerships) ? profile.vendorPartnerships : [];
+    },
+  },
+  {
+    key: "industry",
+    label: "Industries",
+    container: elements.industryFilter,
+    values(profile) {
+      return getIndustries(profile);
+    },
+  },
+];
 
 const CATEGORY_RULES = [
   { name: "Commerce", match: ["commerce", "ecommerce", "retail", "shopify", "salesforce", "sap"] },
@@ -77,79 +131,6 @@ function getProfileCategory(profile) {
   );
 
   return category?.name || "IT & Administration";
-}
-
-function isCloudNativeProfile(profile) {
-  const text = [
-    profile.services,
-    profile.technologies,
-    profile.focusAreas,
-    profile.description,
-    profile.vendorPartnerships,
-  ]
-    .flat(2)
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return /cloud|kubernetes|devops|platform|container|terraform|aws|azure|google cloud|openshift/.test(text);
-}
-
-function isIndustryProfile(profile) {
-  const text = [
-    profile.industries,
-    profile.services,
-    profile.focusAreas,
-    profile.description,
-  ]
-    .flat(2)
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    (Array.isArray(profile.industries) && profile.industries.length > 0) ||
-    /bank|finance|insurance|health|manufactur|retail|public sector|government|automotive|travel|hospitality|education|energy|telecom|media|commerce/.test(text)
-  );
-}
-
-function matchesQuickFilter(profile) {
-  if (state.quickFilter === "all") {
-    return true;
-  }
-
-  if (state.quickFilter === "Cloud Native") {
-    return isCloudNativeProfile(profile);
-  }
-
-  if (state.quickFilter === "Industries") {
-    return isIndustryProfile(profile);
-  }
-
-  if (state.quickFilter === "Vendor Programs") {
-    return Array.isArray(profile.vendorPartnerships) && profile.vendorPartnerships.length > 0;
-  }
-
-  if (state.quickFilter === "Switzerland" || state.quickFilter === "Germany") {
-    return profile.country === state.quickFilter || String(profile.location || "").includes(state.quickFilter);
-  }
-
-  return true;
-}
-
-function renderQuickFilters() {
-  document.querySelectorAll(".categoryTile").forEach((button) => {
-    const isActive = button.dataset.quickFilter === state.quickFilter;
-
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-}
-
-function uniqueSorted(values) {
-  return [...new Set(values.flat().filter(Boolean))].sort((left, right) =>
-    left.localeCompare(right)
-  );
 }
 
 function escapeHtml(value) {
@@ -225,35 +206,141 @@ function chips(values, emptyLabel = "None found", warn = false) {
   return list.map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join("");
 }
 
-function optionList(datalist, values) {
-  datalist.innerHTML = "";
+function chipButtons(values, type, emptyLabel = "None found", warn = false) {
+  const list = Array.isArray(values) ? values.filter(Boolean) : [];
 
-  values.forEach((value) => {
-    const option = document.createElement("option");
-    option.value = value;
-    datalist.appendChild(option);
+  if (list.length === 0) {
+    return `<span class="chip ${warn ? "warn" : ""}">${escapeHtml(emptyLabel)}</span>`;
+  }
+
+  return list
+    .map(
+      (value) =>
+        `<button class="chip chipButton" type="button" data-tag-type="${escapeHtml(type)}" data-tag-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`
+    )
+    .join("");
+}
+
+function getIndustries(profile) {
+  const industries = Array.isArray(profile.industries) ? profile.industries.filter(Boolean) : [];
+
+  if (industries.length > 0) {
+    return industries;
+  }
+
+  return Array.isArray(profile.focusAreas) ? profile.focusAreas.filter(Boolean) : [];
+}
+
+function locationParts(profile) {
+  if (profile.companyLocation && typeof profile.companyLocation === "object") {
+    return {
+      city: profile.companyLocation.city || null,
+      country: profile.companyLocation.country || profile.country || null,
+    };
+  }
+
+  if (profile.location && typeof profile.location === "object") {
+    return {
+      city: profile.location.city || profile.location.locality || null,
+      country: profile.location.country || profile.country || null,
+    };
+  }
+
+  const country = profile.country || null;
+  const location = String(profile.location || "").trim();
+
+  if (!location) {
+    return { city: null, country };
+  }
+
+  const parts = location
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    city: parts.length > 1 ? parts.slice(0, -1).join(", ") : parts[0],
+    country: country || (parts.length > 1 ? parts[parts.length - 1] : null),
+  };
+}
+
+function locationMarkup(profile) {
+  const location = locationParts(profile);
+  const country = location.country ? `<span><strong>Country</strong>${escapeHtml(location.country)}</span>` : "";
+  const city = location.city ? `<span><strong>City</strong>${escapeHtml(location.city)}</span>` : "";
+
+  if (!country && !city) {
+    return `<div class="locationObject mutedLocation" aria-label="Company location">Location not published</div>`;
+  }
+
+  return `
+    <div class="locationObject" aria-label="Company location">
+      ${country}
+      ${city}
+    </div>
+  `;
+}
+
+function countFilterValues(filterDef) {
+  const counts = new Map();
+
+  state.profiles.forEach((profile) => {
+    filterDef.values(profile).forEach((value) => {
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
   });
+
+  return counts;
+}
+
+function renderFilterOptions(filterDef) {
+  const counts = countFilterValues(filterDef);
+  const selected = new Set(state.filters[filterDef.key]);
+  const search = state.filterSearches[filterDef.key].toLowerCase();
+  const values = [...counts.keys()]
+    .filter((value) => !search || value.toLowerCase().includes(search))
+    .sort((left, right) => left.localeCompare(right));
+
+  filterDef.container.innerHTML = values.length
+    ? values
+        .map((value) => {
+          const inputId = `filter-${filterDef.key}-${value.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+          const checked = selected.has(value) ? " checked" : "";
+
+          return `
+            <label class="filterOption" for="${escapeHtml(inputId)}">
+              <input id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(value)}" data-filter-option="${escapeHtml(filterDef.key)}"${checked} />
+              <span>${escapeHtml(value)}</span>
+              <strong>${counts.get(value)}</strong>
+            </label>
+          `;
+        })
+        .join("")
+    : `<div class="filterOptionEmpty">No matching options.</div>`;
 }
 
 function populateFilters() {
-  optionList(elements.countryOptions, uniqueSorted(state.profiles.map((profile) => profile.country)));
-  optionList(elements.serviceOptions, uniqueSorted(state.profiles.map((profile) => profile.services)));
-  optionList(
-    elements.technologyOptions,
-    uniqueSorted(state.profiles.map((profile) => profile.technologies))
-  );
-  optionList(
-    elements.partnerOptions,
-    uniqueSorted(state.profiles.map((profile) => profile.vendorPartnerships))
-  );
+  FILTER_DEFS.forEach(renderFilterOptions);
 }
 
 function valueMatchesText(value, query) {
   return String(value || "").toLowerCase().includes(query);
 }
 
-function listMatchesText(values, query) {
-  return Array.isArray(values) && values.some((value) => valueMatchesText(value, query));
+function listMatchesSelected(values, selected) {
+  if (selected.length === 0) {
+    return true;
+  }
+
+  return Array.isArray(values) && values.some((value) => selected.includes(String(value || "")));
+}
+
+function valueMatchesSelected(value, selected) {
+  if (selected.length === 0) {
+    return true;
+  }
+
+  return selected.includes(String(value || ""));
 }
 
 function profileSearchText(profile) {
@@ -261,9 +348,11 @@ function profileSearchText(profile) {
     profile.companyName,
     profile.domain,
     profile.website,
-    profile.country,
+    profile.companyLocation?.country,
+    profile.companyLocation?.city,
     profile.description,
-    profile.location,
+    profile.focusAreas,
+    profile.industries,
     profile.services,
     profile.technologies,
     profile.vendorPartnerships,
@@ -280,27 +369,21 @@ function applyFilters() {
     .join(" ")
     .trim()
     .toLowerCase();
-  const country = elements.countryFilter.value.trim().toLowerCase();
-  const service = elements.serviceFilter.value.trim().toLowerCase();
-  const technology = elements.technologyFilter.value.trim().toLowerCase();
-  const partner = elements.partnerFilter.value.trim().toLowerCase();
-  const confidence = Number.parseInt(elements.confidenceFilter.value, 10);
+  const countries = state.filters.country;
+  const services = state.filters.service;
+  const technologies = state.filters.technology;
+  const partners = state.filters.partner;
+  const industries = state.filters.industry;
 
-  elements.confidenceValue.textContent = confidence;
-  renderQuickFilters();
-
-  state.filtered = state.profiles
-    .filter((profile) => {
+  state.filtered = state.profiles.filter((profile) => {
       if (query && !profileSearchText(profile).includes(query)) return false;
-      if (country && !valueMatchesText(profile.country, country) && !valueMatchesText(profile.location, country)) return false;
-      if (service && !listMatchesText(profile.services, service)) return false;
-      if (technology && !listMatchesText(profile.technologies, technology)) return false;
-      if (partner && !listMatchesText(profile.vendorPartnerships, partner)) return false;
-      if ((profile.confidenceScore || 0) < confidence) return false;
-      if (!matchesQuickFilter(profile)) return false;
+      if (!valueMatchesSelected(profile.companyLocation?.country || profile.country, countries)) return false;
+      if (!listMatchesSelected(profile.services, services)) return false;
+      if (!listMatchesSelected(profile.technologies, technologies)) return false;
+      if (!listMatchesSelected(profile.vendorPartnerships, partners)) return false;
+      if (!listMatchesSelected(getIndustries(profile), industries)) return false;
       return true;
-    })
-    .sort((left, right) => (right.confidenceScore || 0) - (left.confidenceScore || 0));
+    });
 
   renderList();
 
@@ -311,113 +394,136 @@ function applyFilters() {
   if (state.profileMode) {
     renderDetail();
   }
+
+  renderActiveFilters();
 }
 
 function renderList() {
-  const listProfiles = state.activeCategory
-    ? state.filtered.filter((profile) => getProfileCategory(profile) === state.activeCategory)
-    : state.filtered;
-
-  document.body.classList.toggle("categoryMode", Boolean(state.activeCategory));
+  const listProfiles = sortProfiles(state.filtered);
 
   if (listProfiles.length === 0) {
     elements.profileList.innerHTML = `<div class="emptyResults">No providers match the current filters.</div>`;
     return;
   }
 
-  if (state.activeCategory) {
-    const cards = listProfiles.map(cardMarkup).join("");
+  elements.profileList.innerHTML = `
+    <div class="resultsToolbar">
+      <div class="resultsHeader">
+        <h2>${listProfiles.length} provider${listProfiles.length === 1 ? "" : "s"}</h2>
+        <span>${resultSummaryText(listProfiles.length)}</span>
+      </div>
+      <label class="sortControl">
+        <span>Sort</span>
+        <select id="sortMode">
+          <option value="recommended" ${state.sortMode === "recommended" ? "selected" : ""}>Recommended</option>
+          <option value="name" ${state.sortMode === "name" ? "selected" : ""}>Name A-Z</option>
+          <option value="country" ${state.sortMode === "country" ? "selected" : ""}>Country</option>
+          <option value="verified" ${state.sortMode === "verified" ? "selected" : ""}>Verified first</option>
+        </select>
+      </label>
+    </div>
+    <div class="providerGrid">
+      ${listProfiles.map(cardMarkup).join("")}
+    </div>
+  `;
 
-    elements.profileList.innerHTML = `
-      <section class="categoryPage">
-        <div class="categoryPageHeader">
-          <div class="categoryTitleBlock">
-            <button class="backButton categoryBackButton" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M10 12h10" /></svg>
-              Back to providers
-            </button>
-            <h2>${escapeHtml(state.activeCategory)}</h2>
-          </div>
-          <span>${listProfiles.length} provider${listProfiles.length === 1 ? "" : "s"}</span>
-        </div>
-        <div class="categoryCards categoryPageGrid">${cards}</div>
-      </section>
-    `;
+  elements.profileList.querySelector("#sortMode").addEventListener("change", (event) => {
+    state.sortMode = event.target.value;
+    renderList();
+  });
+  bindProfileCards();
+}
 
-    bindProfileCards();
-    elements.profileList.querySelector(".categoryBackButton").addEventListener("click", () => {
-      state.activeCategory = null;
-      document.body.classList.remove("categoryMode");
-      renderList();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+function resultSummaryText(count) {
+  if (count === state.profiles.length) {
+    return "Showing all providers";
+  }
+
+  return `${count} of ${state.profiles.length} match current filters`;
+}
+
+function sortProfiles(profiles) {
+  const list = [...profiles];
+  const byConfidence = (left, right) => (right.confidenceScore || 0) - (left.confidenceScore || 0);
+  const byName = (left, right) => String(left.companyName || left.domain).localeCompare(String(right.companyName || right.domain));
+
+  if (state.sortMode === "name") {
+    return list.sort(byName);
+  }
+
+  if (state.sortMode === "country") {
+    return list.sort((left, right) => {
+      const leftLocation = locationParts(left);
+      const rightLocation = locationParts(right);
+      const leftKey = [leftLocation.country, leftLocation.city, left.companyName || left.domain].filter(Boolean).join(" ");
+      const rightKey = [rightLocation.country, rightLocation.city, right.companyName || right.domain].filter(Boolean).join(" ");
+      return leftKey.localeCompare(rightKey);
     });
+  }
+
+  if (state.sortMode === "verified") {
+    return list.sort((left, right) => Number(Boolean(right.claimed)) - Number(Boolean(left.claimed)) || byConfidence(left, right) || byName(left, right));
+  }
+
+  return list.sort((left, right) => byConfidence(left, right) || byName(left, right));
+}
+
+function renderActiveFilters() {
+  const activeFilters = FILTER_DEFS.flatMap((filterDef) =>
+    state.filters[filterDef.key].map((value) => ({ ...filterDef, value }))
+  );
+
+  if (activeFilters.length === 0) {
+    elements.activeFilters.hidden = true;
+    elements.activeFilters.innerHTML = "";
     return;
   }
 
-  const groupedProfiles = new Map();
-
-  listProfiles.forEach((profile) => {
-    const category = getProfileCategory(profile);
-
-    if (!groupedProfiles.has(category)) {
-      groupedProfiles.set(category, []);
-    }
-
-    groupedProfiles.get(category).push(profile);
-  });
-
-  elements.profileList.innerHTML = [...groupedProfiles.entries()]
-    .map(([category, profiles]) => {
-      const visibleProfiles = profiles.slice(0, 2);
-      const cards = visibleProfiles.map(cardMarkup).join("");
-
-      return `
-        <section class="categorySection">
-          <div class="categoryHeader">
-            <div>
-              <h3>${escapeHtml(category)}</h3>
-            </div>
-            <button class="moreButton" type="button" data-category="${escapeHtml(category)}">
-              More in ${escapeHtml(category)} <span aria-hidden="true">›</span>
-            </button>
-          </div>
-          <div class="categoryCards">${cards}</div>
-        </section>
-      `;
-    })
-    .join("");
-
-  bindProfileCards();
-
-  elements.profileList.querySelectorAll(".moreButton").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeCategory = button.dataset.category;
-      renderList();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-  });
+  elements.activeFilters.hidden = false;
+  elements.activeFilters.innerHTML = `
+    <span>Active filters</span>
+    ${activeFilters
+      .map(
+        (filter) => `
+          <button type="button" data-remove-filter="${escapeHtml(filter.key)}" data-filter-value="${escapeHtml(filter.value)}">
+            ${escapeHtml(filter.label)}: ${escapeHtml(filter.value)} <span aria-hidden="true">×</span>
+          </button>
+        `
+      )
+      .join("")}
+  `;
 }
 
 function cardMarkup(profile) {
   const active = profile.domain === state.selectedDomain ? " active" : "";
-  const services = profile.services.slice(0, 3).join(", ") || "No services listed";
-  const tags = [...profile.services.slice(0, 2), ...profile.technologies.slice(0, 2)];
-  const description = profile.description || services;
+  const location = locationParts(profile);
+  const services = profile.services.slice(0, 3);
+  const industries = getIndustries(profile).slice(0, 2);
+  const vendorCount = Array.isArray(profile.vendorPartnerships) ? profile.vendorPartnerships.length : 0;
+  const tags = [...services.slice(0, 2), ...industries.slice(0, 2)];
+  const description = profile.description || services.join(", ") || "Profile details available.";
+  const verifiedBadge = profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : "";
+  const locationText = [location.city, location.country].filter(Boolean).join(", ");
 
   return `
     <button class="profileCard${active}" type="button" data-domain="${escapeHtml(profile.domain)}">
       <span class="cardTop">
         ${logoMarkup(profile)}
         <span class="cardHeading">
-          <span class="cardTitle">${escapeHtml(profile.companyName)}</span>
-          <span class="cardMeta">${escapeHtml(profile.domain)}</span>
-          <span class="ratingLine">
-            ${starRatingMarkup(profile.confidenceScore)}
-          </span>
+          <span class="cardTitleRow"><span class="cardTitle">${escapeHtml(profile.companyName)}</span>${verifiedBadge}</span>
+          <span class="cardMeta">${escapeHtml(locationText || profile.domain)}</span>
         </span>
       </span>
-      <span class="cardText">${escapeHtml(description).slice(0, 220)}</span>
+      <span class="cardText">${escapeHtml(description).slice(0, 155)}</span>
+      <span class="cardFacts">
+        <span>${escapeHtml(profile.domain)}</span>
+        <span>${vendorCount} vendor partner${vendorCount === 1 ? "" : "s"}</span>
+      </span>
       <span class="cardTags">${chips(tags, "No tags found")}</span>
+      <span class="cardActions">
+        <span>View profile</span>
+        ${profile.website ? "<span>Website available</span>" : ""}
+      </span>
     </button>
   `;
 }
@@ -428,8 +534,6 @@ function bindProfileCards() {
       state.selectedDomain = button.dataset.domain;
       state.activeDetailTab = "overview";
       state.profileMode = true;
-      state.activeCategory = null;
-      document.body.classList.remove("categoryMode");
       renderDetail();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -442,6 +546,52 @@ function linkMarkup(url, label) {
   }
 
   return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+}
+
+function profileLinkSetMarkup(profile) {
+  const links = [
+    { label: "Website", url: profile.website },
+    { label: "LinkedIn", url: profile.linkedinUrl },
+    { label: "GitHub", url: profile.githubUrl },
+  ];
+
+  return links
+    .map((link) =>
+      link.url
+        ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`
+        : `<span class="mutedLink">${escapeHtml(link.label)}</span>`
+    )
+    .join("");
+}
+
+function isAdminVisitor() {
+  return Boolean(
+    window.localStorage.getItem("rocketEngineersAdminToken") &&
+      window.localStorage.getItem("rocketEngineersAdminEmail")
+  );
+}
+
+function visibleDetailTabs(adminVisible) {
+  return [
+    { key: "overview", label: "Overview" },
+    { key: "partnerships", label: "Partnerships" },
+    ...(adminVisible
+      ? [
+          { key: "activity", label: "Recent Activity" },
+          { key: "quality", label: "Data Quality" },
+          { key: "outreach", label: "Outreach Status" },
+        ]
+      : []),
+  ];
+}
+
+function detailTabsMarkup(adminVisible) {
+  return visibleDetailTabs(adminVisible)
+    .map(
+      (tab) =>
+        `<button type="button" data-detail-tab="${tab.key}" class="${state.activeDetailTab === tab.key ? "active" : ""}">${escapeHtml(tab.label)}</button>`
+    )
+    .join("");
 }
 
 function activityMarkup(profile) {
@@ -467,9 +617,126 @@ function activityMarkup(profile) {
     .join("");
 }
 
-function evidenceStatusMarkup(label, available) {
+function activityChannelItems(profile, channel) {
+  const activity = Array.isArray(profile.recentActivity) ? profile.recentActivity : [];
+
+  return activity.filter((item) => {
+    const text = [item.sourceType, item.source, item.title].filter(Boolean).join(" ").toLowerCase();
+
+    if (channel === "linkedin") {
+      return text.includes("linkedin");
+    }
+
+    if (channel === "github") {
+      return text.includes("github");
+    }
+
+    return /blog|article|news|press|webinar|podcast|publication|report|case[ _-]?study|whitepaper/.test(text);
+  });
+}
+
+function activityChannelsMarkup(profile) {
+  const channels = [
+    { key: "linkedin", label: "Activity on LinkedIn" },
+    { key: "blog", label: "Activity on Blog" },
+    { key: "github", label: "Activity on GitHub" },
+  ];
+
+  return channels
+    .map((channel) => {
+      const items = activityChannelItems(profile, channel.key);
+      const content =
+        items.length > 0
+          ? activityMarkup({ recentActivity: items })
+          : `<div class="activityItem">No ${channel.label.toLowerCase()} found.</div>`;
+
+      return `
+        <section class="activityChannel">
+          <h4>${escapeHtml(channel.label)}</h4>
+          <div class="activity">${content}</div>
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function caseStudyItems(profile) {
+  const activity = Array.isArray(profile.recentActivity) ? profile.recentActivity : [];
+
+  return activity.filter((item) =>
+    /case[ _-]?study|success story|customer story/i.test([item.sourceType, item.title].filter(Boolean).join(" "))
+  );
+}
+
+function editableEntryLink(entry, fallbackLabel) {
+  const url = entry?.link || entry?.url || entry?.source || "";
+
+  if (!url) {
+    return "";
+  }
+
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(fallbackLabel)}</a>`;
+}
+
+function editableEntriesMarkup(entries, fallbackItems = []) {
+  const structuredEntries = Array.isArray(entries) ? entries.filter(Boolean) : [];
+
+  if (structuredEntries.length > 0) {
+    return structuredEntries
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return `<article class="editableEntry"><h4>${escapeHtml(entry)}</h4></article>`;
+        }
+
+        const title = entry.title || entry.name || "Untitled";
+        const text = entry.shortText || entry.text || entry.summary || entry.description || "";
+
+        return `
+          <article class="editableEntry">
+            <h4>${escapeHtml(title)}</h4>
+            ${text ? `<p>${escapeHtml(text)}</p>` : ""}
+            ${editableEntryLink(entry, "Open link")}
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  if (fallbackItems.length > 0) {
+    return activityMarkup({ recentActivity: fallbackItems });
+  }
+
+  return "";
+}
+
+function successStoriesMarkup(profile) {
+  return editableEntriesMarkup(
+    profile.successStories,
+    caseStudyItems(profile)
+  );
+}
+
+function solutionsMarkup(profile) {
+  return editableEntriesMarkup(profile.solutions);
+}
+
+function qualityClass(score) {
+  const normalizedScore = Math.max(0, Math.min(100, Number.parseInt(score, 10) || 0));
+
+  if (normalizedScore >= 80) {
+    return "green";
+  }
+
+  if (normalizedScore >= 60) {
+    return "orange";
+  }
+
+  return "red";
+}
+
+function evidenceStatusMarkup(label, available, quality = "red") {
   return `
-    <div class="evidenceItem">
+    <div class="evidenceItem quality-${quality}">
       <span>${escapeHtml(label)}</span>
       <strong class="${available ? "available" : "missing"}">${available ? "Available" : "Missing"}</strong>
     </div>
@@ -477,12 +744,14 @@ function evidenceStatusMarkup(label, available) {
 }
 
 function evidenceSummaryMarkup(profile) {
+  const quality = qualityClass(profile.confidenceScore);
+
   return `
-    <div class="evidenceGrid">
-      ${evidenceStatusMarkup("Website content first", Boolean(profile.files?.sourceBundle || profile.description))}
-      ${evidenceStatusMarkup("Logo source", Boolean(profile.logoUrl || profile.files?.logo))}
-      ${evidenceStatusMarkup("Company enrichment", Boolean(profile.files?.enrichment))}
-      ${evidenceStatusMarkup("GitHub support only", Boolean(profile.githubUrl || profile.files?.github))}
+    <div class="evidenceGrid sourceQualityGrid">
+      ${evidenceStatusMarkup("Website content first", Boolean(profile.files?.sourceBundle || profile.description), quality)}
+      ${evidenceStatusMarkup("Logo source", Boolean(profile.logoUrl || profile.files?.logo), quality)}
+      ${evidenceStatusMarkup("Company enrichment", Boolean(profile.files?.enrichment), quality)}
+      ${evidenceStatusMarkup("GitHub support only", Boolean(profile.githubUrl || profile.files?.github), quality)}
     </div>
   `;
 }
@@ -497,18 +766,93 @@ function dataQualityMarkup(profile) {
   return notes.map((note) => `<div class="noteItem">${escapeHtml(note)}</div>`).join("");
 }
 
+function overviewPanelMarkup(profile, industries) {
+  const successStories = successStoriesMarkup(profile);
+  const solutions = solutionsMarkup(profile);
+
+  return `
+    <section data-detail-panel="overview" class="detailPanel ${state.activeDetailTab === "overview" ? "active" : ""}">
+      <section class="section firstSection">
+        <h3>Company Introduction</h3>
+        <p class="description">${escapeHtml(profile.description || "No company introduction available.")}</p>
+      </section>
+
+      ${
+        successStories
+          ? `<section class="section">
+              <h3>Success Stories</h3>
+              <div class="editableEntryList">${successStories}</div>
+            </section>`
+          : ""
+      }
+
+      ${
+        solutions
+          ? `<section class="section">
+              <h3>Solutions</h3>
+              <div class="editableEntryList">${solutions}</div>
+            </section>`
+          : ""
+      }
+    </section>
+  `;
+}
+
+function partnershipsPanelMarkup(profile) {
+  return `
+    <section data-detail-panel="partnerships" class="detailPanel ${state.activeDetailTab === "partnerships" ? "active" : ""}">
+      <h3>Partnerships</h3>
+      <div class="chips">${chipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor partnerships found", true)}</div>
+    </section>
+  `;
+}
+
+function qualityPanelMarkup(profile) {
+  const normalizedScore = Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0));
+  const quality = qualityClass(normalizedScore);
+
+  return `
+    <section data-detail-panel="quality" class="detailPanel ${state.activeDetailTab === "quality" ? "active" : ""}">
+      <h3>Data Quality</h3>
+      <div class="qualitySummary quality-${quality}">
+        <div>
+          <span>Scoring</span>
+          ${starRatingMarkup(normalizedScore)}
+        </div>
+        <strong>${normalizedScore}%</strong>
+      </div>
+
+      <section class="section">
+        <h3>Sources Checked</h3>
+        ${evidenceSummaryMarkup(profile)}
+      </section>
+
+      <section class="section">
+        <h3>Review Notes</h3>
+        <div class="notes">${dataQualityMarkup(profile)}</div>
+      </section>
+    </section>
+  `;
+}
+
 function renderDetail() {
   const profile = state.profiles.find((item) => item.domain === state.selectedDomain);
+  const industries = getIndustries(profile || {});
 
   if (!profile) {
     state.profileMode = false;
-    state.activeCategory = null;
     document.body.classList.remove("profileMode");
-    document.body.classList.remove("categoryMode");
     elements.detailContent.closest(".detail").hidden = true;
     elements.detailContent.className = "detailContent empty";
     elements.detailContent.textContent = "";
     return;
+  }
+
+  const adminVisible = isAdminVisitor();
+  const allowedTabs = visibleDetailTabs(adminVisible).map((tab) => tab.key);
+
+  if (!allowedTabs.includes(state.activeDetailTab)) {
+    state.activeDetailTab = "overview";
   }
 
   document.body.classList.add("profileMode");
@@ -519,104 +863,73 @@ function renderDetail() {
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M10 12h10" /></svg>
       Back to providers
     </button>
-    <div class="listingDetail">
-      <aside class="listingSidebar">
-        ${logoMarkup(profile, true)}
-        <h3>${escapeHtml(profile.companyName)}</h3>
-        <p>By ${escapeHtml(profile.domain)}</p>
-        <div class="sidebarRating">${starRatingMarkup(profile.confidenceScore)}</div>
-        <div class="priceBox">
-          <strong>Profile Evidence</strong>
-          <span>Generated from website, enrichment, GitHub support data, and logo sources.</span>
-        </div>
-        <a class="getItNow" href="${escapeHtml(profile.website || "#")}" target="_blank" rel="noreferrer">Visit Website</a>
-        ${profile.githubUrl ? `<a class="tryIt" href="${escapeHtml(profile.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-
-        <div class="sidebarBlock">
-          <h4>Business Need</h4>
-          <div class="chips">${chips([getProfileCategory(profile)])}</div>
-        </div>
-        <div class="sidebarBlock">
-          <h4>Services</h4>
-          <div class="chips">${chips(profile.services.slice(0, 4), "No services found")}</div>
-        </div>
-        <div class="sidebarBlock">
-          <h4>Compatible With</h4>
-          <div class="chips">${chips(profile.technologies.slice(0, 4), "No technologies found", true)}</div>
-        </div>
-      </aside>
-
+    <div class="listingDetail detailSingleColumn">
       <div class="listingMain">
-        <section class="listingHero">
-          <div>
-            <h2>${escapeHtml(profile.companyName)}</h2>
-            <p class="publisher">By ${escapeHtml(profile.domain)}</p>
-            <p class="platformLine">${escapeHtml(getProfileCategory(profile))} Provider</p>
-            <div class="detailLinks">
-              ${[linkMarkup(profile.website, "Website"), linkMarkup(profile.linkedinUrl, "LinkedIn"), linkMarkup(profile.githubUrl, "GitHub")]
-                .filter(Boolean)
-                .join(" · ")}
+        <section class="providerHeader providerHeaderFull" aria-label="Provider card header">
+          <div class="providerHeaderIdentity">
+            ${logoMarkup(profile, true)}
+            <div>
+              <div class="detailTitleRow">
+                <h2>${escapeHtml(profile.companyName)}</h2>
+                ${profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : ""}
+              </div>
+              <p class="publisher">By ${escapeHtml(profile.domain)}</p>
+              <p class="platformLine">${escapeHtml(getProfileCategory(profile))} Provider</p>
             </div>
           </div>
-          <p class="listingDescription">${escapeHtml(profile.description || "No description available.")}</p>
-        </section>
 
-        <section class="mediaStrip" aria-label="Profile preview">
-          <div class="mediaCard">
-            <div class="mediaPreview">${logoMarkup(profile, true)}</div>
-            <p>Logo and profile identity</p>
+          <div class="headerField">
+            <h3>Company Location</h3>
+            ${locationMarkup(profile)}
           </div>
-          <div class="mediaCard">
-            <div class="mediaPreview sourcePreview">
-              <strong>Source Checks</strong>
-              <span>Website content, logo source, enrichment data, and GitHub support coverage</span>
-            </div>
-            <p>Evidence coverage and review notes</p>
+
+          <div class="headerField">
+            <h3>Links</h3>
+            <div class="detailLinks linkSet">${profileLinkSetMarkup(profile)}</div>
+          </div>
+
+          <div class="headerField">
+            <h3>Services</h3>
+            <div class="chips">${chipButtons(profile.services, "service", "No services found")}</div>
+          </div>
+
+          <div class="headerField">
+            <h3>Technologies</h3>
+            <div class="chips">${chipButtons(profile.technologies, "technology", "No technologies found", true)}</div>
+          </div>
+
+          <div class="headerField">
+            <h3>Industries</h3>
+            <div class="chips">${chipButtons(industries, "industry", "No industries found", true)}</div>
+          </div>
+
+          <div class="headerField">
+            <h3>Vendor Programs</h3>
+            <div class="chips">${chipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor programs found", true)}</div>
           </div>
         </section>
 
         <nav class="detailTabs" aria-label="Profile sections">
-          <button type="button" data-detail-tab="overview" class="${state.activeDetailTab === "overview" ? "active" : ""}">Overview</button>
-          <button type="button" data-detail-tab="activity" class="${state.activeDetailTab === "activity" ? "active" : ""}">Recent Activity</button>
-          <button type="button" data-detail-tab="quality" class="${state.activeDetailTab === "quality" ? "active" : ""}">Data Quality</button>
-          <button type="button" data-detail-tab="evidence" class="${state.activeDetailTab === "evidence" ? "active" : ""}">Evidence Summary</button>
+          ${detailTabsMarkup(adminVisible)}
         </nav>
 
-        <section data-detail-panel="overview" class="detailPanel ${state.activeDetailTab === "overview" ? "active" : ""}">
-          <h3>Overview</h3>
-          <div class="highlightGrid">
-            <div class="highlightCard"><span>Country</span>${escapeHtml(profile.country || "Unknown")}</div>
-            <div class="highlightCard"><span>Location</span>${escapeHtml(profile.location || "Unknown")}</div>
-            <div class="highlightCard"><span>Domain</span>${escapeHtml(profile.domain)}</div>
-          </div>
-
-          <section class="section">
-            <h3>Technologies</h3>
-            <div class="chips">${chips(profile.technologies, "No technologies found", true)}</div>
-          </section>
-
-          <section class="section">
-            <h3>Vendor Partnerships</h3>
-            <div class="chips">${chips(profile.vendorPartnerships, "No explicit partnerships found", true)}</div>
-          </section>
-        </section>
-
-        <section data-detail-panel="activity" class="detailPanel ${state.activeDetailTab === "activity" ? "active" : ""}">
-          <h3>Recent Activity</h3>
-          <div class="activity">${activityMarkup(profile)}</div>
-        </section>
-
-        <section data-detail-panel="quality" class="detailPanel ${state.activeDetailTab === "quality" ? "active" : ""}">
-          <h3>Data Quality Notes</h3>
-          <div class="notes">
-            ${dataQualityMarkup(profile)}
-          </div>
-        </section>
-
-        <section data-detail-panel="evidence" class="detailPanel ${state.activeDetailTab === "evidence" ? "active" : ""}">
-          <h3>Evidence Summary</h3>
-          ${evidenceSummaryMarkup(profile)}
-        </section>
+        ${overviewPanelMarkup(profile, industries)}
+        ${partnershipsPanelMarkup(profile)}
+        ${
+          adminVisible
+            ? `
+              <section data-detail-panel="activity" class="detailPanel ${state.activeDetailTab === "activity" ? "active" : ""}">
+                <h3>Recent Activity</h3>
+                ${activityChannelsMarkup(profile)}
+              </section>
+              ${qualityPanelMarkup(profile)}
+              <section data-detail-panel="outreach" class="detailPanel ${state.activeDetailTab === "outreach" ? "active" : ""}">
+                <h3>Outreach Status</h3>
+                <div class="noteItem">TBD.</div>
+              </section>
+            `
+            : ""
+        }
       </div>
     </div>
   `;
@@ -628,11 +941,15 @@ function renderDetail() {
     });
   });
 
+  elements.detailContent.querySelectorAll("[data-tag-type]").forEach((button) => {
+    button.addEventListener("click", () => {
+      applyTagFilter(button.dataset.tagType, button.dataset.tagValue);
+    });
+  });
+
   elements.detailContent.querySelector(".backButton").addEventListener("click", () => {
     state.profileMode = false;
-    state.activeCategory = null;
     document.body.classList.remove("profileMode");
-    document.body.classList.remove("categoryMode");
     elements.detailContent.closest(".detail").hidden = true;
     elements.detailContent.innerHTML = "";
     state.selectedDomain = null;
@@ -641,22 +958,67 @@ function renderDetail() {
   });
 }
 
-function resetFilters() {
+function clearFilterInputs() {
   elements.searchInput.value = "";
   elements.filterSearchInput.value = "";
-  elements.countryFilter.value = "";
-  elements.serviceFilter.value = "";
-  elements.technologyFilter.value = "";
-  elements.partnerFilter.value = "";
-  elements.confidenceFilter.value = "0";
-  state.quickFilter = "all";
+  Object.keys(state.filters).forEach((key) => {
+    state.filters[key] = [];
+  });
+  Object.keys(state.filterSearches).forEach((key) => {
+    state.filterSearches[key] = "";
+  });
+  document.querySelectorAll("[data-filter-search]").forEach((input) => {
+    input.value = "";
+  });
+  populateFilters();
+}
+
+function exitProfileMode() {
   state.profileMode = false;
   state.selectedDomain = null;
-  state.activeCategory = null;
   document.body.classList.remove("profileMode");
-  document.body.classList.remove("categoryMode");
   elements.detailContent.closest(".detail").hidden = true;
   elements.detailContent.innerHTML = "";
+}
+
+function filterDefForKey(key) {
+  return FILTER_DEFS.find((filterDef) => filterDef.key === key);
+}
+
+function selectOnly(filterKey, value) {
+  state.filters[filterKey] = [value];
+  renderFilterOptions(filterDefForKey(filterKey));
+}
+
+function removeFilterValue(filterKey, value) {
+  state.filters[filterKey] = state.filters[filterKey].filter((item) => item !== value);
+  renderFilterOptions(filterDefForKey(filterKey));
+}
+
+function applyTagFilter(type, value) {
+  if (!value) {
+    return;
+  }
+
+  clearFilterInputs();
+  if (type === "service") {
+    selectOnly("service", value);
+  } else if (type === "technology") {
+    selectOnly("technology", value);
+  } else if (type === "vendor") {
+    selectOnly("partner", value);
+  } else if (type === "industry") {
+    selectOnly("industry", value);
+  }
+
+  exitProfileMode();
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetFilters() {
+  clearFilterInputs();
+  exitProfileMode();
   applyFilters();
 }
 
@@ -676,17 +1038,73 @@ function bindEvents() {
   [
     elements.searchInput,
     elements.filterSearchInput,
-    elements.countryFilter,
-    elements.serviceFilter,
-    elements.technologyFilter,
-    elements.partnerFilter,
-    elements.confidenceFilter,
   ].forEach((element) => {
     element.addEventListener("input", applyFilters);
     element.addEventListener("change", applyFilters);
   });
 
+  FILTER_DEFS.forEach((filterDef) => {
+    filterDef.container.addEventListener("change", (event) => {
+      const checkbox = event.target.closest("[data-filter-option]");
+
+      if (!checkbox) {
+        return;
+      }
+
+      if (checkbox.checked) {
+        state.filters[filterDef.key] = [...new Set([...state.filters[filterDef.key], checkbox.value])];
+      } else {
+        state.filters[filterDef.key] = state.filters[filterDef.key].filter((value) => value !== checkbox.value);
+      }
+
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll("[data-filter-search]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.filterSearch;
+      state.filterSearches[key] = input.value.trim();
+      renderFilterOptions(filterDefForKey(key));
+    });
+  });
+
+  document.querySelectorAll("[data-clear-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.clearFilter;
+      state.filters[key] = [];
+      renderFilterOptions(filterDefForKey(key));
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-filter-group]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const group = button.closest(".filterGroup");
+      const collapsed = !group.classList.toggle("isCollapsed");
+      button.setAttribute("aria-expanded", String(collapsed));
+    });
+  });
+
+  elements.activeFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-filter]");
+
+    if (!button) {
+      return;
+    }
+
+    removeFilterValue(button.dataset.removeFilter, button.dataset.filterValue);
+    applyFilters();
+  });
+
   elements.resetButton.addEventListener("click", resetFilters);
+
+  elements.filterDrawerButton.addEventListener("click", () => {
+    document.body.classList.add("filtersOpen");
+    elements.filterDrawerButton.setAttribute("aria-expanded", "true");
+  });
+
+  elements.filterDrawerClose.addEventListener("click", closeFilterDrawer);
 
   elements.navTabs.forEach((tab) => {
     tab.addEventListener("click", (event) => {
@@ -695,20 +1113,11 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll(".categoryTile").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.quickFilter = button.dataset.quickFilter || "all";
-      state.profileMode = false;
-      state.activeCategory = null;
-      state.selectedDomain = null;
-      document.body.classList.remove("profileMode");
-      document.body.classList.remove("categoryMode");
-      elements.detailContent.closest(".detail").hidden = true;
-      elements.detailContent.innerHTML = "";
-      renderQuickFilters();
-      applyFilters();
-    });
-  });
+}
+
+function closeFilterDrawer() {
+  document.body.classList.remove("filtersOpen");
+  elements.filterDrawerButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadProfiles() {
@@ -739,7 +1148,6 @@ async function loadProfiles() {
   elements.status.textContent = `${state.profiles.length} loaded`;
   populateFilters();
   bindEvents();
-  renderQuickFilters();
   applyFilters();
 
   const requestedProvider = new URLSearchParams(window.location.search).get("provider");

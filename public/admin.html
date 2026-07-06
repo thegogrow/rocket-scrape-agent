@@ -275,10 +275,29 @@
             Country
             <input id="profileEditCountry" type="text" />
           </label>
+          <label>
+            City
+            <input id="profileEditCity" type="text" />
+          </label>
+          <label class="adminCheckboxLabel">
+            <input id="profileEditClaimed" type="checkbox" />
+            <span>Claimed / Verified</span>
+          </label>
+          <label>
+            Subscription
+            <select id="profileEditSubscriptionTier">
+              <option value="free">Free</option>
+              <option value="premium">Premium</option>
+            </select>
+          </label>
         </div>
         <label>
           Services
           <textarea id="profileEditServices" rows="3" placeholder="One item per line"></textarea>
+        </label>
+        <label>
+          Industries
+          <textarea id="profileEditIndustries" rows="3" placeholder="One item per line"></textarea>
         </label>
         <label>
           Technologies
@@ -288,6 +307,22 @@
           Vendor Partnerships
           <textarea id="profileEditPartnerships" rows="3" placeholder="One item per line"></textarea>
         </label>
+        <section class="structuredEditGroup">
+          <div class="structuredEditHeader">
+            <h3>Success Stories</h3>
+            <button id="profileEditAddSuccessStory" class="secondaryAction compactAction" type="button">Add Story</button>
+          </div>
+          <div id="profileEditSuccessStories" class="structuredEntryList"></div>
+          <span class="fieldHelp">One success story is included. Multiple entries require premium subscription.</span>
+        </section>
+        <section class="structuredEditGroup">
+          <div class="structuredEditHeader">
+            <h3>Solutions</h3>
+            <button id="profileEditAddSolution" class="secondaryAction compactAction" type="button">Add Solution</button>
+          </div>
+          <div id="profileEditSolutions" class="structuredEntryList"></div>
+          <span class="fieldHelp">One solution is included. Multiple entries require premium subscription.</span>
+        </section>
         <label>
           Recent Activities
           <textarea id="profileEditActivities" rows="4" placeholder="One activity per line. Optional: 2026-06-30 | Activity title | Source"></textarea>

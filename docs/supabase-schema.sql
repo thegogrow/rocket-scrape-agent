@@ -9,12 +9,16 @@ create table if not exists public.providers (
   company_name text not null,
   website text,
   country text,
+  city text,
   location text,
   description text,
   services jsonb not null default '[]'::jsonb,
   focus_areas jsonb not null default '[]'::jsonb,
+  industries jsonb not null default '[]'::jsonb,
   technologies jsonb not null default '[]'::jsonb,
   vendor_partnerships jsonb not null default '[]'::jsonb,
+  success_stories jsonb not null default '[]'::jsonb,
+  solutions jsonb not null default '[]'::jsonb,
   recent_activity jsonb not null default '[]'::jsonb,
   review_notes jsonb not null default '[]'::jsonb,
   files jsonb not null default '{}'::jsonb,
@@ -22,6 +26,8 @@ create table if not exists public.providers (
   github_url text,
   linkedin_url text,
   logo_url text,
+  claimed boolean not null default false,
+  subscription_tier text not null default 'free' check (subscription_tier in ('free', 'premium')),
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
   source_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -42,6 +48,14 @@ create table if not exists public.scrape_jobs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.providers
+  add column if not exists city text,
+  add column if not exists claimed boolean not null default false,
+  add column if not exists subscription_tier text not null default 'free',
+  add column if not exists industries jsonb not null default '[]'::jsonb,
+  add column if not exists success_stories jsonb not null default '[]'::jsonb,
+  add column if not exists solutions jsonb not null default '[]'::jsonb;
 
 create or replace function public.set_updated_at()
 returns trigger as $$

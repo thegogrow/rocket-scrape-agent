@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const { normalizeProfile, normalizeProfiles } = require("./normalizeProfile");
 
 const DEFAULT_ADMIN_EMAILS = ["phil@thegogrow.ch", "nunezkathleenm@gmail.com"];
 
@@ -75,22 +76,28 @@ async function supabaseFetch(path, options = {}) {
 }
 
 function rowToProfile(row) {
-  return {
+  return normalizeProfile({
     id: row.id,
     domain: row.domain,
     country: row.country,
+    city: row.city,
     companyName: row.company_name,
     website: row.website,
     description: row.description,
     services: row.services || [],
     focusAreas: row.focus_areas || [],
+    industries: row.industries || [],
     technologies: row.technologies || [],
     vendorPartnerships: row.vendor_partnerships || [],
+    successStories: row.success_stories || [],
+    solutions: row.solutions || [],
     location: row.location,
     confidenceScore: row.confidence_score || 0,
     githubUrl: row.github_url,
     linkedinUrl: row.linkedin_url,
     logoUrl: row.logo_url,
+    claimed: row.claimed,
+    subscriptionTier: row.subscription_tier,
     recentActivity: row.recent_activity || [],
     reviewNotes: row.review_notes || [],
     files: row.files || {},
@@ -98,29 +105,37 @@ function rowToProfile(row) {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
+  });
 }
 
 function profileToRow(profile, status = "draft") {
+  const normalizedProfile = normalizeProfile(profile);
+
   return {
-    domain: profile.domain,
-    country: profile.country,
-    company_name: profile.companyName,
-    website: profile.website,
-    description: profile.description,
-    services: profile.services || [],
-    focus_areas: profile.focusAreas || [],
-    technologies: profile.technologies || [],
-    vendor_partnerships: profile.vendorPartnerships || [],
-    location: profile.location,
-    confidence_score: profile.confidenceScore || 0,
-    github_url: profile.githubUrl,
-    linkedin_url: profile.linkedinUrl,
-    logo_url: profile.logoUrl,
-    recent_activity: profile.recentActivity || [],
-    review_notes: profile.reviewNotes || [],
-    files: profile.files || {},
-    source_data: profile.sourceData || {},
+    domain: normalizedProfile.domain,
+    country: normalizedProfile.companyLocation.country,
+    city: normalizedProfile.companyLocation.city,
+    company_name: normalizedProfile.companyName,
+    website: normalizedProfile.website,
+    description: normalizedProfile.description,
+    services: normalizedProfile.services,
+    focus_areas: normalizedProfile.focusAreas,
+    industries: normalizedProfile.industries,
+    technologies: normalizedProfile.technologies,
+    vendor_partnerships: normalizedProfile.vendorPartnerships,
+    success_stories: normalizedProfile.successStories,
+    solutions: normalizedProfile.solutions,
+    location: normalizedProfile.location,
+    confidence_score: normalizedProfile.confidenceScore,
+    github_url: normalizedProfile.githubUrl,
+    linkedin_url: normalizedProfile.linkedinUrl,
+    logo_url: normalizedProfile.logoUrl,
+    claimed: normalizedProfile.claimed,
+    subscription_tier: normalizedProfile.subscriptionTier,
+    recent_activity: normalizedProfile.recentActivity,
+    review_notes: normalizedProfile.reviewNotes,
+    files: normalizedProfile.files,
+    source_data: normalizedProfile.sourceData,
     status,
   };
 }
@@ -142,7 +157,7 @@ async function loadBundledProfiles() {
 
   const profiles = await fs.readJson(profilesPath);
 
-  return Array.isArray(profiles) ? profiles : [];
+  return normalizeProfiles(profiles);
 }
 
 async function seedPublishedProvidersIfMissing(providers) {
@@ -388,9 +403,21 @@ async function updateProvider(id, profilePatch = {}, status) {
     ...(profilePatch.logoUrl !== undefined ? { logo_url: profilePatch.logoUrl } : {}),
     ...(profilePatch.website !== undefined ? { website: profilePatch.website } : {}),
     ...(profilePatch.country !== undefined ? { country: profilePatch.country } : {}),
+    ...(profilePatch.city !== undefined ? { city: profilePatch.city } : {}),
+    ...(profilePatch.companyLocation !== undefined
+      ? {
+          country: profilePatch.companyLocation?.country || null,
+          city: profilePatch.companyLocation?.city || null,
+        }
+      : {}),
+    ...(profilePatch.claimed !== undefined ? { claimed: Boolean(profilePatch.claimed) } : {}),
+    ...(profilePatch.subscriptionTier !== undefined ? { subscription_tier: profilePatch.subscriptionTier || "free" } : {}),
     ...(profilePatch.services !== undefined ? { services: profilePatch.services || [] } : {}),
+    ...(profilePatch.industries !== undefined ? { industries: profilePatch.industries || [] } : {}),
     ...(profilePatch.technologies !== undefined ? { technologies: profilePatch.technologies || [] } : {}),
     ...(profilePatch.vendorPartnerships !== undefined ? { vendor_partnerships: profilePatch.vendorPartnerships || [] } : {}),
+    ...(profilePatch.successStories !== undefined ? { success_stories: profilePatch.successStories || [] } : {}),
+    ...(profilePatch.solutions !== undefined ? { solutions: profilePatch.solutions || [] } : {}),
     ...(profilePatch.recentActivity !== undefined ? { recent_activity: profilePatch.recentActivity || [] } : {}),
     ...(profilePatch.reviewNotes !== undefined ? { review_notes: profilePatch.reviewNotes || [] } : {}),
     ...(status ? { status } : {}),

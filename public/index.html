@@ -37,79 +37,61 @@
     <section id="homePage" class="homePage" hidden></section>
 
     <main id="providersPage" class="marketplace">
-      <aside class="discoveryRail" aria-label="Explore and filters">
-        <div class="categoryGrid" aria-label="Browse categories">
-          <button class="categoryTile active" type="button" data-quick-filter="all">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 13.5 12 4l8 9.5-8 6.5-8-6.5Z" /></svg>
-            </span>
-            Business Needs
-          </button>
-          <button class="categoryTile" type="button" data-quick-filter="Cloud Native">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M7.2 18h10.2a4.1 4.1 0 0 0 .3-8.2 6.2 6.2 0 0 0-11.9 1.8A3.2 3.2 0 0 0 7.2 18Z" /></svg>
-            </span>
-            Cloud Native
-          </button>
-          <button class="categoryTile" type="button" data-quick-filter="Industries">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 20V8l5-3v15H4Zm7 0V4h9v16h-9Zm3-11h3V7h-3v2Zm0 4h3v-2h-3v2Zm0 4h3v-2h-3v2Z" /></svg>
-            </span>
-            Industries
-          </button>
-          <button class="categoryTile" type="button" data-quick-filter="Vendor Programs">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 3.5 20.5 8v8L12 20.5 3.5 16V8L12 3.5Zm0 3.2L6.5 9.6v4.8l5.5 2.9 5.5-2.9V9.6L12 6.7Z" /></svg>
-            </span>
-            Vendor Programs
-          </button>
-          <button class="categoryTile" type="button" data-quick-filter="Switzerland">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M11 4h2v6h6v2h-6v8h-2v-8H5v-2h6V4Z" /></svg>
-            </span>
-            Swiss Providers
-          </button>
-          <button class="categoryTile" type="button" data-quick-filter="Germany">
-            <span class="categoryIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 6h16v4H4V6Zm0 4h16v4H4v-4Zm0 4h16v4H4v-4Z" /></svg>
-            </span>
-            German Providers
-          </button>
-        </div>
+      <button id="filterDrawerButton" class="filterDrawerButton" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters</button>
 
+      <aside id="filterDrawer" class="discoveryRail" aria-label="Explore and filters">
+        <div class="filterDrawerHeader">
+          <strong>Filters</strong>
+          <button id="filterDrawerClose" type="button">Close</button>
+        </div>
         <div class="filterSearch">
           <span>Find</span>
           <input id="filterSearchInput" type="search" placeholder="Search filters..." />
         </div>
 
         <div class="filterGroup">
-          <h2>Country</h2>
-          <input id="countryFilter" class="filterInput" type="search" list="countryOptions" placeholder="All countries" />
-          <datalist id="countryOptions"></datalist>
+          <div class="filterGroupHeader">
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="true">Country</button></h2>
+            <button type="button" data-clear-filter="country">Clear</button>
+          </div>
+          <input class="filterOptionSearch" type="search" placeholder="Search countries" data-filter-search="country" />
+          <div id="countryFilter" class="filterOptionList" data-filter-key="country"></div>
         </div>
 
         <div class="filterGroup">
-          <h2>Service</h2>
-          <input id="serviceFilter" class="filterInput" type="search" list="serviceOptions" placeholder="All services" />
-          <datalist id="serviceOptions"></datalist>
+          <div class="filterGroupHeader">
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="true">Service</button></h2>
+            <button type="button" data-clear-filter="service">Clear</button>
+          </div>
+          <input class="filterOptionSearch" type="search" placeholder="Search services" data-filter-search="service" />
+          <div id="serviceFilter" class="filterOptionList" data-filter-key="service"></div>
         </div>
 
         <div class="filterGroup">
-          <h2>Technology</h2>
-          <input id="technologyFilter" class="filterInput" type="search" list="technologyOptions" placeholder="All technologies" />
-          <datalist id="technologyOptions"></datalist>
+          <div class="filterGroupHeader">
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="true">Technology</button></h2>
+            <button type="button" data-clear-filter="technology">Clear</button>
+          </div>
+          <input class="filterOptionSearch" type="search" placeholder="Search technologies" data-filter-search="technology" />
+          <div id="technologyFilter" class="filterOptionList" data-filter-key="technology"></div>
         </div>
 
         <div class="filterGroup">
-          <h2>Vendor Partner</h2>
-          <input id="partnerFilter" class="filterInput" type="search" list="partnerOptions" placeholder="All partners" />
-          <datalist id="partnerOptions"></datalist>
+          <div class="filterGroupHeader">
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="true">Vendor Partner</button></h2>
+            <button type="button" data-clear-filter="partner">Clear</button>
+          </div>
+          <input class="filterOptionSearch" type="search" placeholder="Search partners" data-filter-search="partner" />
+          <div id="partnerFilter" class="filterOptionList" data-filter-key="partner"></div>
         </div>
 
         <div class="filterGroup">
-          <h2>Minimum Confidence</h2>
-          <input id="confidenceFilter" type="range" min="0" max="100" value="0" />
-          <div class="rangeValue"><span id="confidenceValue">0</span>% and up</div>
+          <div class="filterGroupHeader">
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="true">Industries</button></h2>
+            <button type="button" data-clear-filter="industry">Clear</button>
+          </div>
+          <input class="filterOptionSearch" type="search" placeholder="Search industries" data-filter-search="industry" />
+          <div id="industryFilter" class="filterOptionList" data-filter-key="industry"></div>
         </div>
 
         <button id="resetButton" class="advancedButton" type="button">Show All Providers</button>
@@ -122,6 +104,7 @@
           </div>
         </section>
 
+        <div id="activeFilters" class="activeFilters" hidden></div>
         <div id="profileList" class="profileList"></div>
       </section>
     </main>
