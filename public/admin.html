@@ -183,6 +183,19 @@
                 <p>Draft profiles that should be checked before publishing.</p>
               </div>
             </div>
+            <div class="bulkActionBar">
+              <label class="bulkSelectControl">
+                <input id="reviewSelectPage" type="checkbox" />
+                Select page
+              </label>
+              <select id="reviewBulkAction">
+                <option value="">Bulk action</option>
+                <option value="recrawl">Queue recrawl</option>
+                <option value="publish">Publish</option>
+              </select>
+              <button id="reviewBulkApply" class="secondaryAction compactAction" type="button">Apply</button>
+              <span id="reviewBulkCount">0 selected</span>
+            </div>
             <div id="reviewProviderList" class="adminTable adminReviewTable"></div>
             <div class="paginationBar">
               <button id="reviewPrevButton" class="secondaryAction iconButtonText" type="button">
@@ -230,6 +243,19 @@
                 A-Z
               </button>
             </form>
+            <div class="bulkActionBar">
+              <label class="bulkSelectControl">
+                <input id="publishedSelectPage" type="checkbox" />
+                Select page
+              </label>
+              <select id="publishedBulkAction">
+                <option value="">Bulk action</option>
+                <option value="recrawl">Queue recrawl</option>
+                <option value="unpublish">Move to review</option>
+              </select>
+              <button id="publishedBulkApply" class="secondaryAction compactAction" type="button">Apply</button>
+              <span id="publishedBulkCount">0 selected</span>
+            </div>
             <div id="publishedProviderList" class="adminTable adminPublishedTable"></div>
             <div class="paginationBar">
               <button id="publishedPrevButton" class="secondaryAction iconButtonText" type="button">

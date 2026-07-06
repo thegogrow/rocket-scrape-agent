@@ -16,6 +16,9 @@ const state = {
   },
   publishedSortField: "name",
   publishedSortDirection: "asc",
+  selectedProviders: new Set(),
+  visibleReviewKeys: [],
+  visiblePublishedKeys: [],
 };
 
 const SVG_LOGO_DOMAINS = new Set([
@@ -67,6 +70,10 @@ const elements = {
   jobsPageInfo: document.querySelector("#jobsPageInfo"),
   jobsPageNumbers: document.querySelector("#jobsPageNumbers"),
   reviewProviderList: document.querySelector("#reviewProviderList"),
+  reviewSelectPage: document.querySelector("#reviewSelectPage"),
+  reviewBulkAction: document.querySelector("#reviewBulkAction"),
+  reviewBulkApply: document.querySelector("#reviewBulkApply"),
+  reviewBulkCount: document.querySelector("#reviewBulkCount"),
   reviewPrevButton: document.querySelector("#reviewPrevButton"),
   reviewNextButton: document.querySelector("#reviewNextButton"),
   reviewPageInfo: document.querySelector("#reviewPageInfo"),
@@ -75,6 +82,10 @@ const elements = {
   publishedNameFilter: document.querySelector("#publishedNameFilter"),
   publishedSortFilter: document.querySelector("#publishedSortFilter"),
   publishedFlipButton: document.querySelector("#publishedFlipButton"),
+  publishedSelectPage: document.querySelector("#publishedSelectPage"),
+  publishedBulkAction: document.querySelector("#publishedBulkAction"),
+  publishedBulkApply: document.querySelector("#publishedBulkApply"),
+  publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
   publishedPrevButton: document.querySelector("#publishedPrevButton"),
   publishedNextButton: document.querySelector("#publishedNextButton"),
@@ -323,6 +334,7 @@ function providerLogo(provider) {
 function actionButton(kind, label, attrs = "") {
   const icons = {
     process: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z" /></svg>`,
+    recrawl: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5" /><path d="M4 17v-5h5" /><path d="M18.4 9A7 7 0 0 0 6.2 6.8L4 9" /><path d="M5.6 15a7 7 0 0 0 12.2 2.2L20 15" /></svg>`,
     edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>`,
     unpublish: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5V5Z" /><path d="m8 8 8 8M16 8l-8 8" /></svg>`,
     delete: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12" /><path d="M9 7V5h6v2" /><path d="M8 10v9h8v-9" /></svg>`,
@@ -348,6 +360,7 @@ function providerActions(provider, options = {}) {
     includePublish = false,
     includeManage = false,
     includeProfile = true,
+    includeRecrawl = true,
   } = options;
   const actions = [
     includeProfile && provider.domain
@@ -355,6 +368,9 @@ function providerActions(provider, options = {}) {
       : "",
     includeEdit
       ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
+      : "",
+    includeRecrawl
+      ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includePublish && provider.id
       ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`)
@@ -364,6 +380,9 @@ function providerActions(provider, options = {}) {
       : "",
     includeManage
       ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
+      : "",
+    includeManage
+      ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includeManage
       ? actionButton("unpublish", "Unpublish", `data-unpublish-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
@@ -378,6 +397,8 @@ function providerActions(provider, options = {}) {
 
 function providerRow(provider, options = {}) {
   const { includeAction = false, compact = false } = options;
+  const key = providerKey(provider);
+  const checked = state.selectedProviders.has(key) ? " checked" : "";
   const action = providerActions(provider, {
     includeDelete: includeAction,
     includeEdit: includeAction,
@@ -388,6 +409,9 @@ function providerRow(provider, options = {}) {
 
   return `
     <article class="adminTableRow ${compact ? "adminPublishedRow" : "adminReviewRow"}">
+      <div class="adminCell adminSelectCell">
+        <input type="checkbox" data-select-provider="${escapeHtml(key)}"${checked} aria-label="Select ${escapeHtml(provider.companyName || provider.domain || "provider")}" />
+      </div>
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -733,6 +757,18 @@ function renderStats() {
 }
 
 function bindPublishButtons() {
+  document.querySelectorAll("[data-select-provider]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        state.selectedProviders.add(checkbox.dataset.selectProvider);
+      } else {
+        state.selectedProviders.delete(checkbox.dataset.selectProvider);
+      }
+
+      updateBulkControls();
+    });
+  });
+
   document.querySelectorAll("[data-publish-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
       await runAdminAction(button, "Publishing", "Provider published.", () => (
@@ -760,6 +796,14 @@ function bindPublishButtons() {
     button.addEventListener("click", async () => {
       await runAdminAction(button, "Deleting", "Provider deleted.", () => (
         deleteProvider(button.dataset.deleteProvider)
+      ));
+    });
+  });
+
+  document.querySelectorAll("[data-recrawl-provider]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(button, "Recrawling", "Recrawl complete. Draft profile is ready for review.", () => (
+        recrawlProvider(button.dataset.recrawlProvider, { runNow: true })
       ));
     });
   });
@@ -808,6 +852,8 @@ function renderLists() {
     publishedStart,
     publishedStart + state.publishedPageSize
   );
+  state.visibleReviewKeys = visibleReviewProviders.map(providerKey);
+  state.visiblePublishedKeys = visiblePublishedProviders.map(providerKey);
 
   elements.dashboardReviewList.innerHTML = reviewProviders.length
     ? `${tableHeader(["Company", "Status", "Confidence"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
@@ -822,11 +868,11 @@ function renderLists() {
     : emptyState("No scrape jobs yet.");
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
+    ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
     : emptyState("No draft profiles need review.");
 
   elements.publishedProviderList.innerHTML = filteredPublishedProviders.length
-    ? `${tableHeader(["Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
+    ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
     : emptyState("No published providers match the current filters.");
 
   renderPagination({
@@ -879,6 +925,7 @@ function renderLists() {
   });
 
   bindPublishButtons();
+  updateBulkControls();
 }
 
 async function loadPublicProfilesForDevelopment() {
@@ -917,6 +964,9 @@ async function refreshAdminState() {
     elements.setupNotice.hidden = true;
     state.jobs = payload.jobs || [];
     state.providers = payload.providers || [];
+    state.selectedProviders = new Set(
+      [...state.selectedProviders].filter((key) => state.providers.some((provider) => providerKey(provider) === key))
+    );
     state.jobsPage = 1;
     state.reviewPage = 1;
     state.publishedPage = 1;
@@ -1043,6 +1093,83 @@ async function runScrapeJob(id, options = {}) {
   }
 }
 
+function providerRecrawlUrl(provider = {}) {
+  const rawUrl = String(provider.website || "").trim();
+
+  if (/^https?:\/\//i.test(rawUrl)) {
+    return rawUrl;
+  }
+
+  if (rawUrl) {
+    return `https://${rawUrl}`;
+  }
+
+  if (provider.domain) {
+    return `https://${provider.domain}`;
+  }
+
+  return "";
+}
+
+async function queueRecrawlJob(provider) {
+  const url = providerRecrawlUrl(provider);
+
+  if (!url) {
+    throw new Error(`Missing website for ${provider.companyName || provider.domain || "provider"}.`);
+  }
+
+  if (DEV_ADMIN_ACCESS) {
+    const job = {
+      id: `dev-recrawl-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      url,
+      domain: new URL(url).hostname.replace(/^www\./, ""),
+      company_name: provider.companyName || null,
+      requested_by: adminEmail(),
+      status: "queued",
+      created_at: new Date().toISOString(),
+    };
+    state.jobs.unshift(job);
+    renderStats();
+    renderLists();
+    return job;
+  }
+
+  const response = await fetch("/api/admin-scrape", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      url,
+      companyName: provider.companyName || provider.domain || "",
+    }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to queue recrawl job.");
+  }
+
+  return payload;
+}
+
+async function recrawlProvider(key, options = {}) {
+  const provider = findProvider(key);
+
+  if (!provider) {
+    throw new Error("Provider not found.");
+  }
+
+  const job = await queueRecrawlJob(provider);
+
+  if (options.runNow && job?.id && !DEV_ADMIN_ACCESS) {
+    await runScrapeJob(job.id);
+    return true;
+  }
+
+  await refreshAdminState();
+  setSection("scrape");
+  return true;
+}
+
 async function publishProvider(id) {
   if (!id) {
     return false;
@@ -1067,6 +1194,89 @@ async function publishProvider(id) {
   }
 
   await refreshAdminState();
+  return true;
+}
+
+function selectedKeysForScope(scope) {
+  const visibleKeys = scope === "review" ? state.visibleReviewKeys : state.visiblePublishedKeys;
+
+  return visibleKeys.filter((key) => state.selectedProviders.has(key));
+}
+
+function updateBulkControls() {
+  const reviewSelected = selectedKeysForScope("review");
+  const publishedSelected = selectedKeysForScope("published");
+  const reviewAllSelected = state.visibleReviewKeys.length > 0 && state.visibleReviewKeys.every((key) => state.selectedProviders.has(key));
+  const publishedAllSelected = state.visiblePublishedKeys.length > 0 && state.visiblePublishedKeys.every((key) => state.selectedProviders.has(key));
+
+  if (elements.reviewSelectPage) {
+    elements.reviewSelectPage.checked = reviewAllSelected;
+    elements.reviewSelectPage.indeterminate = !reviewAllSelected && reviewSelected.length > 0;
+    elements.reviewBulkCount.textContent = `${reviewSelected.length} selected`;
+    elements.reviewBulkApply.disabled = reviewSelected.length === 0 || !elements.reviewBulkAction.value;
+  }
+
+  if (elements.publishedSelectPage) {
+    elements.publishedSelectPage.checked = publishedAllSelected;
+    elements.publishedSelectPage.indeterminate = !publishedAllSelected && publishedSelected.length > 0;
+    elements.publishedBulkCount.textContent = `${publishedSelected.length} selected`;
+    elements.publishedBulkApply.disabled = publishedSelected.length === 0 || !elements.publishedBulkAction.value;
+  }
+}
+
+function togglePageSelection(scope, checked) {
+  const visibleKeys = scope === "review" ? state.visibleReviewKeys : state.visiblePublishedKeys;
+
+  visibleKeys.forEach((key) => {
+    if (checked) {
+      state.selectedProviders.add(key);
+    } else {
+      state.selectedProviders.delete(key);
+    }
+  });
+  renderLists();
+}
+
+async function applyBulkAction(scope) {
+  const actionSelect = scope === "review" ? elements.reviewBulkAction : elements.publishedBulkAction;
+  const action = actionSelect.value;
+  const selectedKeys = selectedKeysForScope(scope);
+
+  if (!action || selectedKeys.length === 0) {
+    return false;
+  }
+
+  if (action === "recrawl") {
+    for (const key of selectedKeys) {
+      const provider = findProvider(key);
+
+      if (provider) {
+        await queueRecrawlJob(provider);
+      }
+    }
+
+    selectedKeys.forEach((key) => state.selectedProviders.delete(key));
+    actionSelect.value = "";
+    await refreshAdminState();
+    setSection("scrape");
+    return true;
+  }
+
+  if (action === "publish") {
+    for (const key of selectedKeys) {
+      await publishProvider(key);
+    }
+  }
+
+  if (action === "unpublish") {
+    for (const key of selectedKeys) {
+      await updateProviderStatus(key, "draft");
+    }
+  }
+
+  selectedKeys.forEach((key) => state.selectedProviders.delete(key));
+  actionSelect.value = "";
+  renderLists();
   return true;
 }
 
@@ -1277,6 +1487,21 @@ function bindEvents() {
     applyPublishedFilters();
   });
   elements.publishedFlipButton.addEventListener("click", flipPublishedList);
+  elements.reviewSelectPage.addEventListener("change", () => {
+    togglePageSelection("review", elements.reviewSelectPage.checked);
+  });
+  elements.publishedSelectPage.addEventListener("change", () => {
+    togglePageSelection("published", elements.publishedSelectPage.checked);
+  });
+  [elements.reviewBulkAction, elements.publishedBulkAction].forEach((select) => {
+    select.addEventListener("change", updateBulkControls);
+  });
+  elements.reviewBulkApply.addEventListener("click", () => {
+    runAdminAction(elements.reviewBulkApply, "Applying", "Bulk action complete.", () => applyBulkAction("review"));
+  });
+  elements.publishedBulkApply.addEventListener("click", () => {
+    runAdminAction(elements.publishedBulkApply, "Applying", "Bulk action complete.", () => applyBulkAction("published"));
+  });
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));

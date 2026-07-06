@@ -810,7 +810,7 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.34fr) minmax(0, 0.45fr) minmax(88px, 0.32fr) minmax(82px, 0.28fr) minmax(340px, 1fr);
+  grid-template-columns: 58px minmax(0, 1.22fr) minmax(0, 0.42fr) minmax(88px, 0.3fr) minmax(82px, 0.26fr) minmax(410px, 1fr);
 }
 
 .adminPublishedTable .adminTableHeader span:last-child {
@@ -824,7 +824,7 @@ a:hover {
 
 .adminReviewTable .adminTableHeader,
 .adminReviewTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.48fr) minmax(92px, 0.34fr) minmax(84px, 0.3fr) minmax(300px, 0.86fr);
+  grid-template-columns: 58px minmax(0, 1.12fr) minmax(0, 0.45fr) minmax(92px, 0.32fr) minmax(84px, 0.28fr) minmax(360px, 0.9fr);
 }
 
 .adminReviewTable .adminTableHeader span:last-child {
@@ -1118,6 +1118,17 @@ a:hover {
   min-width: 0;
 }
 
+.adminSelectCell {
+  justify-content: center;
+}
+
+.adminSelectCell input,
+.bulkSelectControl input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--blue);
+}
+
 .adminReviewTable .adminCellAction {
   flex-wrap: nowrap;
 }
@@ -1149,6 +1160,44 @@ a:hover {
 
 .compactAction:hover {
   text-decoration: none;
+}
+
+.bulkActionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.bulkSelectControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bulkActionBar select {
+  min-height: 34px;
+  min-width: 150px;
+  padding: 0 10px;
+  border: 1px solid #9faab5;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.bulkActionBar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 button.isLoading,
@@ -1764,6 +1813,20 @@ button.isLoading::after,
   gap: 7px;
 }
 
+.chipDisclosure {
+  display: grid;
+  gap: 8px;
+}
+
+.chipDisclosureList {
+  overflow: hidden;
+  max-height: var(--chip-collapsed-height, none);
+}
+
+.chipDisclosure.isExpanded .chipDisclosureList {
+  max-height: none;
+}
+
 .cardActions {
   display: flex;
   flex-wrap: wrap;
@@ -1805,6 +1868,25 @@ button.isLoading::after,
 .chipButton:focus-visible {
   border-color: var(--blue);
   text-decoration: none;
+}
+
+.chipMoreButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid #cfe0f6;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chipMoreButton:hover,
+.chipMoreButton:focus-visible {
+  border-color: var(--blue);
+  background: #edf4ff;
 }
 
 .chip.warn {
@@ -1998,6 +2080,11 @@ button.isLoading::after,
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.headerField h3 span {
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .locationObject {

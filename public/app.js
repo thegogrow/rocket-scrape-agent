@@ -221,6 +221,34 @@ function chipButtons(values, type, emptyLabel = "None found", warn = false) {
     .join("");
 }
 
+function limitedChipButtons(values, type, emptyLabel = "None found", warn = false) {
+  const list = Array.isArray(values) ? values.filter(Boolean) : [];
+
+  if (list.length === 0) {
+    return `<div class="chips">${chips([], emptyLabel, warn)}</div>`;
+  }
+
+  return `
+    <div class="chipDisclosure" data-chip-disclosure>
+      <div class="chips chipDisclosureList" data-chip-list>
+        ${list
+          .map(
+            (value) =>
+              `<button class="chip chipButton" type="button" data-tag-type="${escapeHtml(type)}" data-tag-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`
+          )
+          .join("")}
+      </div>
+      <button class="chipMoreButton" type="button" data-chip-toggle aria-expanded="false" hidden>Show more</button>
+    </div>
+  `;
+}
+
+function fieldTitle(label, values) {
+  const count = Array.isArray(values) ? values.filter(Boolean).length : 0;
+
+  return `${escapeHtml(label)}${count > 0 ? ` <span>${count}</span>` : ""}`;
+}
+
 function getIndustries(profile) {
   const industries = Array.isArray(profile.industries) ? profile.industries.filter(Boolean) : [];
 
@@ -889,23 +917,23 @@ function renderDetail() {
           </div>
 
           <div class="headerField">
-            <h3>Services</h3>
-            <div class="chips">${chipButtons(profile.services, "service", "No services found")}</div>
+            <h3>${fieldTitle("Services", profile.services)}</h3>
+            ${limitedChipButtons(profile.services, "service", "No services found")}
           </div>
 
           <div class="headerField">
-            <h3>Technologies</h3>
-            <div class="chips">${chipButtons(profile.technologies, "technology", "No technologies found", true)}</div>
+            <h3>${fieldTitle("Technologies", profile.technologies)}</h3>
+            ${limitedChipButtons(profile.technologies, "technology", "No technologies found", true)}
           </div>
 
           <div class="headerField">
-            <h3>Industries</h3>
-            <div class="chips">${chipButtons(industries, "industry", "No industries found", true)}</div>
+            <h3>${fieldTitle("Industries", industries)}</h3>
+            ${limitedChipButtons(industries, "industry", "No industries found", true)}
           </div>
 
           <div class="headerField">
-            <h3>Vendor Programs</h3>
-            <div class="chips">${chipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor programs found", true)}</div>
+            <h3>${fieldTitle("Vendor Programs", profile.vendorPartnerships)}</h3>
+            ${limitedChipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor programs found", true)}
           </div>
         </section>
 
@@ -947,6 +975,8 @@ function renderDetail() {
     });
   });
 
+  initializeChipDisclosures();
+
   elements.detailContent.querySelector(".backButton").addEventListener("click", () => {
     state.profileMode = false;
     document.body.classList.remove("profileMode");
@@ -955,6 +985,53 @@ function renderDetail() {
     state.selectedDomain = null;
     renderList();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+function initializeChipDisclosures() {
+  elements.detailContent.querySelectorAll("[data-chip-disclosure]").forEach((disclosure) => {
+    const list = disclosure.querySelector("[data-chip-list]");
+    const button = disclosure.querySelector("[data-chip-toggle]");
+    const chipRows = [...list.querySelectorAll(".chipButton")].reduce((rows, chip) => {
+      const row = Math.round(chip.offsetTop - list.offsetTop);
+
+      if (!rows.includes(row)) {
+        rows.push(row);
+      }
+
+      return rows;
+    }, []);
+    const allowedRows = chipRows.slice(0, 3);
+    const hiddenCount = [...list.querySelectorAll(".chipButton")].filter(
+      (chip) => !allowedRows.includes(Math.round(chip.offsetTop - list.offsetTop))
+    ).length;
+
+    if (hiddenCount === 0) {
+      button.hidden = true;
+      list.style.removeProperty("--chip-collapsed-height");
+      return;
+    }
+
+    const lastVisibleRow = allowedRows[allowedRows.length - 1] || 0;
+    const lastVisibleChip = [...list.querySelectorAll(".chipButton")]
+      .filter((chip) => Math.round(chip.offsetTop - list.offsetTop) === lastVisibleRow)
+      .at(-1);
+    const collapsedHeight = lastVisibleChip
+      ? (lastVisibleChip.offsetTop - list.offsetTop) + lastVisibleChip.offsetHeight
+      : 0;
+
+    list.style.setProperty("--chip-collapsed-height", `${collapsedHeight}px`);
+    button.hidden = false;
+    button.dataset.moreLabel = `+${hiddenCount} more`;
+    button.dataset.lessLabel = "Show less";
+    button.textContent = button.dataset.moreLabel;
+
+    button.addEventListener("click", () => {
+      const expanded = disclosure.classList.toggle("isExpanded");
+
+      button.textContent = expanded ? button.dataset.lessLabel : button.dataset.moreLabel;
+      button.setAttribute("aria-expanded", String(expanded));
+    });
   });
 }
 
