@@ -237,8 +237,8 @@ function limitedChipButtons(values, type, emptyLabel = "None found", warn = fals
               `<button class="chip chipButton" type="button" data-tag-type="${escapeHtml(type)}" data-tag-value="${escapeHtml(value)}">${escapeHtml(value)}</button>`
           )
           .join("")}
+        <button class="chip chipMoreButton" type="button" data-chip-toggle aria-expanded="false" hidden>Show more</button>
       </div>
-      <button class="chipMoreButton" type="button" data-chip-toggle aria-expanded="false" hidden>Show more</button>
     </div>
   `;
 }
@@ -559,13 +559,65 @@ function cardMarkup(profile) {
 function bindProfileCards() {
   elements.profileList.querySelectorAll(".profileCard").forEach((button) => {
     button.addEventListener("click", () => {
-      state.selectedDomain = button.dataset.domain;
-      state.activeDetailTab = "overview";
-      state.profileMode = true;
-      renderDetail();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      openProviderDetail(button.dataset.domain);
     });
   });
+}
+
+function providerDetailUrl(domain) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("provider", domain);
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function providerListUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("provider");
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function openProviderDetail(domain, options = {}) {
+  const { pushHistory = true, scroll = true } = options;
+
+  if (!domain || !state.profiles.some((profile) => profile.domain === domain)) {
+    return;
+  }
+
+  state.selectedDomain = domain;
+  state.activeDetailTab = "overview";
+  state.profileMode = true;
+
+  if (pushHistory) {
+    window.history.pushState({ provider: domain }, "", providerDetailUrl(domain));
+  }
+
+  renderDetail();
+
+  if (scroll) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function closeProviderDetail(options = {}) {
+  const { pushHistory = false, scroll = true } = options;
+
+  state.profileMode = false;
+  document.body.classList.remove("profileMode");
+  elements.detailContent.closest(".detail").hidden = true;
+  elements.detailContent.innerHTML = "";
+  state.selectedDomain = null;
+
+  if (pushHistory) {
+    window.history.pushState({ provider: null }, "", providerListUrl());
+  }
+
+  renderList();
+
+  if (scroll) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function linkMarkup(url, label) {
@@ -978,13 +1030,12 @@ function renderDetail() {
   initializeChipDisclosures();
 
   elements.detailContent.querySelector(".backButton").addEventListener("click", () => {
-    state.profileMode = false;
-    document.body.classList.remove("profileMode");
-    elements.detailContent.closest(".detail").hidden = true;
-    elements.detailContent.innerHTML = "";
-    state.selectedDomain = null;
-    renderList();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (new URLSearchParams(window.location.search).has("provider")) {
+      window.history.back();
+      return;
+    }
+
+    closeProviderDetail();
   });
 }
 
@@ -992,39 +1043,36 @@ function initializeChipDisclosures() {
   elements.detailContent.querySelectorAll("[data-chip-disclosure]").forEach((disclosure) => {
     const list = disclosure.querySelector("[data-chip-list]");
     const button = disclosure.querySelector("[data-chip-toggle]");
-    const chipRows = [...list.querySelectorAll(".chipButton")].reduce((rows, chip) => {
-      const row = Math.round(chip.offsetTop - list.offsetTop);
+    const chips = [...list.querySelectorAll(".chipButton")];
+    const rowFor = (chip) => Math.round(chip.offsetTop - list.offsetTop);
+    const rows = [...new Set(chips.map(rowFor))];
 
-      if (!rows.includes(row)) {
-        rows.push(row);
-      }
-
-      return rows;
-    }, []);
-    const allowedRows = chipRows.slice(0, 3);
-    const hiddenCount = [...list.querySelectorAll(".chipButton")].filter(
-      (chip) => !allowedRows.includes(Math.round(chip.offsetTop - list.offsetTop))
-    ).length;
-
-    if (hiddenCount === 0) {
+    if (rows.length <= 3) {
       button.hidden = true;
-      list.style.removeProperty("--chip-collapsed-height");
       return;
     }
 
-    const lastVisibleRow = allowedRows[allowedRows.length - 1] || 0;
-    const lastVisibleChip = [...list.querySelectorAll(".chipButton")]
-      .filter((chip) => Math.round(chip.offsetTop - list.offsetTop) === lastVisibleRow)
-      .at(-1);
-    const collapsedHeight = lastVisibleChip
-      ? (lastVisibleChip.offsetTop - list.offsetTop) + lastVisibleChip.offsetHeight
-      : 0;
+    const visibleRows = new Set(rows.slice(0, 3));
+    chips.forEach((chip) => {
+      chip.classList.toggle("overflowChip", !visibleRows.has(rowFor(chip)));
+    });
 
-    list.style.setProperty("--chip-collapsed-height", `${collapsedHeight}px`);
     button.hidden = false;
-    button.dataset.moreLabel = `+${hiddenCount} more`;
+    button.dataset.moreLabel = `+${list.querySelectorAll(".overflowChip").length} more`;
     button.dataset.lessLabel = "Show less";
     button.textContent = button.dataset.moreLabel;
+
+    while (rowFor(button) > rows[2]) {
+      const lastVisibleChip = chips.filter((chip) => !chip.classList.contains("overflowChip")).at(-1);
+
+      if (!lastVisibleChip) {
+        break;
+      }
+
+      lastVisibleChip.classList.add("overflowChip");
+      button.dataset.moreLabel = `+${list.querySelectorAll(".overflowChip").length} more`;
+      button.textContent = button.dataset.moreLabel;
+    }
 
     button.addEventListener("click", () => {
       const expanded = disclosure.classList.toggle("isExpanded");
@@ -1051,11 +1099,7 @@ function clearFilterInputs() {
 }
 
 function exitProfileMode() {
-  state.profileMode = false;
-  state.selectedDomain = null;
-  document.body.classList.remove("profileMode");
-  elements.detailContent.closest(".detail").hidden = true;
-  elements.detailContent.innerHTML = "";
+  closeProviderDetail({ scroll: false });
 }
 
 function filterDefForKey(key) {
@@ -1090,6 +1134,7 @@ function applyTagFilter(type, value) {
 
   exitProfileMode();
   applyFilters();
+  window.history.pushState({ provider: null }, "", providerListUrl());
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1147,7 +1192,8 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-clear-filter]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       const key = button.dataset.clearFilter;
       state.filters[key] = [];
       renderFilterOptions(filterDefForKey(key));
@@ -1155,11 +1201,9 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll("[data-toggle-filter-group]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const group = button.closest(".filterGroup");
-      const collapsed = !group.classList.toggle("isCollapsed");
-      button.setAttribute("aria-expanded", String(collapsed));
+  document.querySelectorAll("[data-filter-group-header]").forEach((header) => {
+    header.addEventListener("click", () => {
+      toggleFilterGroup(header.closest(".filterGroup"));
     });
   });
 
@@ -1190,11 +1234,44 @@ function bindEvents() {
     });
   });
 
+  window.addEventListener("popstate", () => {
+    syncProviderRouteFromLocation({ scroll: true });
+  });
+}
+
+function toggleFilterGroup(group) {
+  const toggle = group.querySelector("[data-toggle-filter-group]");
+  const expanded = group.classList.toggle("isCollapsed") === false;
+
+  toggle.setAttribute("aria-expanded", String(expanded));
 }
 
 function closeFilterDrawer() {
   document.body.classList.remove("filtersOpen");
   elements.filterDrawerButton.setAttribute("aria-expanded", "false");
+}
+
+function syncProviderRouteFromLocation(options = {}) {
+  const { replaceHistory = false, scroll = false } = options;
+  const requestedProvider = new URLSearchParams(window.location.search).get("provider");
+  const providerExists = requestedProvider && state.profiles.some((profile) => profile.domain === requestedProvider);
+
+  if (replaceHistory) {
+    window.history.replaceState(
+      { provider: providerExists ? requestedProvider : null },
+      "",
+      providerExists ? providerDetailUrl(requestedProvider) : providerListUrl()
+    );
+  }
+
+  if (providerExists) {
+    openProviderDetail(requestedProvider, { pushHistory: false, scroll });
+    return;
+  }
+
+  if (state.profileMode) {
+    closeProviderDetail({ pushHistory: false, scroll });
+  }
 }
 
 async function loadProfiles() {
@@ -1226,15 +1303,7 @@ async function loadProfiles() {
   populateFilters();
   bindEvents();
   applyFilters();
-
-  const requestedProvider = new URLSearchParams(window.location.search).get("provider");
-
-  if (requestedProvider && state.profiles.some((profile) => profile.domain === requestedProvider)) {
-    state.selectedDomain = requestedProvider;
-    state.activeDetailTab = "overview";
-    state.profileMode = true;
-    renderDetail();
-  }
+  syncProviderRouteFromLocation({ replaceHistory: true });
 }
 
 loadProfiles().catch((error) => {

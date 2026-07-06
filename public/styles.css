@@ -1422,6 +1422,7 @@ button.isLoading::after,
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+  cursor: pointer;
 }
 
 .filterGroupHeader button {
@@ -1430,10 +1431,13 @@ button.isLoading::after,
   color: var(--blue);
   font-size: 12px;
   font-weight: 900;
+  cursor: pointer;
 }
 
 .filterGroupToggle {
   position: relative;
+  display: block;
+  width: 100%;
   padding: 0 18px 0 0;
   color: var(--ink) !important;
   font-size: 14px !important;
@@ -1814,17 +1818,15 @@ button.isLoading::after,
 }
 
 .chipDisclosure {
-  display: grid;
-  gap: 8px;
+  display: block;
 }
 
 .chipDisclosureList {
-  overflow: hidden;
-  max-height: var(--chip-collapsed-height, none);
+  overflow: visible;
 }
 
-.chipDisclosure.isExpanded .chipDisclosureList {
-  max-height: none;
+.chipDisclosure:not(.isExpanded) .overflowChip {
+  display: none;
 }
 
 .cardActions {
@@ -1881,6 +1883,10 @@ button.isLoading::after,
   color: var(--blue);
   font-size: 12px;
   font-weight: 900;
+}
+
+.chipMoreButton[hidden] {
+  display: none;
 }
 
 .chipMoreButton:hover,
