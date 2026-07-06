@@ -182,18 +182,25 @@
                 <h2>Provider Review</h2>
                 <p>Draft profiles that should be checked before publishing.</p>
               </div>
+              <button id="reviewSelectModeButton" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M5 12h14" /><path d="M5 17h14" /><path d="m4 7 1 1 2-2" /></svg>
+                Select
+              </button>
             </div>
-            <div class="bulkActionBar">
+            <div id="reviewBulkActionBar" class="bulkActionBar" hidden>
               <label class="bulkSelectControl">
                 <input id="reviewSelectPage" type="checkbox" />
-                Select page
+                Select all
               </label>
               <select id="reviewBulkAction">
                 <option value="">Bulk action</option>
                 <option value="recrawl">Queue recrawl</option>
                 <option value="publish">Publish</option>
               </select>
-              <button id="reviewBulkApply" class="secondaryAction compactAction" type="button">Apply</button>
+              <button id="reviewBulkApply" class="secondaryAction compactAction iconButtonText" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
+                Apply
+              </button>
               <span id="reviewBulkCount">0 selected</span>
             </div>
             <div id="reviewProviderList" class="adminTable adminReviewTable"></div>
@@ -242,18 +249,25 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v14" /><path d="m3 14 4 4 4-4" /><path d="M17 20V6" /><path d="m13 10 4-4 4 4" /></svg>
                 A-Z
               </button>
+              <button id="publishedSelectModeButton" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M5 12h14" /><path d="M5 17h14" /><path d="m4 7 1 1 2-2" /></svg>
+                Select
+              </button>
             </form>
-            <div class="bulkActionBar">
+            <div id="publishedBulkActionBar" class="bulkActionBar" hidden>
               <label class="bulkSelectControl">
                 <input id="publishedSelectPage" type="checkbox" />
-                Select page
+                Select all
               </label>
               <select id="publishedBulkAction">
                 <option value="">Bulk action</option>
                 <option value="recrawl">Queue recrawl</option>
                 <option value="unpublish">Move to review</option>
               </select>
-              <button id="publishedBulkApply" class="secondaryAction compactAction" type="button">Apply</button>
+              <button id="publishedBulkApply" class="secondaryAction compactAction iconButtonText" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
+                Apply
+              </button>
               <span id="publishedBulkCount">0 selected</span>
             </div>
             <div id="publishedProviderList" class="adminTable adminPublishedTable"></div>

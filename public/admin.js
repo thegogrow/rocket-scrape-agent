@@ -19,6 +19,10 @@ const state = {
   selectedProviders: new Set(),
   visibleReviewKeys: [],
   visiblePublishedKeys: [],
+  selectionMode: {
+    review: false,
+    published: false,
+  },
 };
 
 const SVG_LOGO_DOMAINS = new Set([
@@ -70,6 +74,8 @@ const elements = {
   jobsPageInfo: document.querySelector("#jobsPageInfo"),
   jobsPageNumbers: document.querySelector("#jobsPageNumbers"),
   reviewProviderList: document.querySelector("#reviewProviderList"),
+  reviewSelectModeButton: document.querySelector("#reviewSelectModeButton"),
+  reviewBulkActionBar: document.querySelector("#reviewBulkActionBar"),
   reviewSelectPage: document.querySelector("#reviewSelectPage"),
   reviewBulkAction: document.querySelector("#reviewBulkAction"),
   reviewBulkApply: document.querySelector("#reviewBulkApply"),
@@ -82,6 +88,8 @@ const elements = {
   publishedNameFilter: document.querySelector("#publishedNameFilter"),
   publishedSortFilter: document.querySelector("#publishedSortFilter"),
   publishedFlipButton: document.querySelector("#publishedFlipButton"),
+  publishedSelectModeButton: document.querySelector("#publishedSelectModeButton"),
+  publishedBulkActionBar: document.querySelector("#publishedBulkActionBar"),
   publishedSelectPage: document.querySelector("#publishedSelectPage"),
   publishedBulkAction: document.querySelector("#publishedBulkAction"),
   publishedBulkApply: document.querySelector("#publishedBulkApply"),
@@ -369,7 +377,7 @@ function providerActions(provider, options = {}) {
     includeEdit
       ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
-    includeRecrawl
+    includeRecrawl && !includeManage
       ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
     includePublish && provider.id
@@ -854,6 +862,8 @@ function renderLists() {
   );
   state.visibleReviewKeys = visibleReviewProviders.map(providerKey);
   state.visiblePublishedKeys = visiblePublishedProviders.map(providerKey);
+  elements.reviewProviderList.classList.toggle("adminSelectionMode", state.selectionMode.review);
+  elements.publishedProviderList.classList.toggle("adminSelectionMode", state.selectionMode.published);
 
   elements.dashboardReviewList.innerHTML = reviewProviders.length
     ? `${tableHeader(["Company", "Status", "Confidence"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
@@ -1210,6 +1220,9 @@ function updateBulkControls() {
   const publishedAllSelected = state.visiblePublishedKeys.length > 0 && state.visiblePublishedKeys.every((key) => state.selectedProviders.has(key));
 
   if (elements.reviewSelectPage) {
+    elements.reviewBulkActionBar.hidden = !state.selectionMode.review;
+    elements.reviewSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.review));
+    elements.reviewSelectModeButton.lastChild.textContent = state.selectionMode.review ? " Done" : " Select";
     elements.reviewSelectPage.checked = reviewAllSelected;
     elements.reviewSelectPage.indeterminate = !reviewAllSelected && reviewSelected.length > 0;
     elements.reviewBulkCount.textContent = `${reviewSelected.length} selected`;
@@ -1217,11 +1230,26 @@ function updateBulkControls() {
   }
 
   if (elements.publishedSelectPage) {
+    elements.publishedBulkActionBar.hidden = !state.selectionMode.published;
+    elements.publishedSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.published));
+    elements.publishedSelectModeButton.lastChild.textContent = state.selectionMode.published ? " Done" : " Select";
     elements.publishedSelectPage.checked = publishedAllSelected;
     elements.publishedSelectPage.indeterminate = !publishedAllSelected && publishedSelected.length > 0;
     elements.publishedBulkCount.textContent = `${publishedSelected.length} selected`;
     elements.publishedBulkApply.disabled = publishedSelected.length === 0 || !elements.publishedBulkAction.value;
   }
+}
+
+function toggleSelectionMode(scope) {
+  state.selectionMode[scope] = !state.selectionMode[scope];
+
+  if (!state.selectionMode[scope]) {
+    selectedKeysForScope(scope).forEach((key) => state.selectedProviders.delete(key));
+    const actionSelect = scope === "review" ? elements.reviewBulkAction : elements.publishedBulkAction;
+    actionSelect.value = "";
+  }
+
+  renderLists();
 }
 
 function togglePageSelection(scope, checked) {
@@ -1487,6 +1515,8 @@ function bindEvents() {
     applyPublishedFilters();
   });
   elements.publishedFlipButton.addEventListener("click", flipPublishedList);
+  elements.reviewSelectModeButton.addEventListener("click", () => toggleSelectionMode("review"));
+  elements.publishedSelectModeButton.addEventListener("click", () => toggleSelectionMode("published"));
   elements.reviewSelectPage.addEventListener("change", () => {
     togglePageSelection("review", elements.reviewSelectPage.checked);
   });

@@ -663,12 +663,18 @@ a:hover {
 
 .adminApp.sidebarCollapsed .cloudLogo {
   width: 44px;
+  height: 44px;
   font-size: 0;
 }
 
 .adminApp.sidebarCollapsed .cloudLogo::before {
   content: "RE";
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
   font-size: 13px;
+  line-height: 1;
 }
 
 .adminApp.sidebarCollapsed .adminBrandText,
@@ -810,6 +816,11 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.34fr) minmax(0, 0.45fr) minmax(88px, 0.32fr) minmax(82px, 0.28fr) minmax(410px, 1fr);
+}
+
+.adminPublishedTable.adminSelectionMode .adminTableHeader,
+.adminPublishedTable.adminSelectionMode .adminTableRow {
   grid-template-columns: 58px minmax(0, 1.22fr) minmax(0, 0.42fr) minmax(88px, 0.3fr) minmax(82px, 0.26fr) minmax(410px, 1fr);
 }
 
@@ -824,6 +835,11 @@ a:hover {
 
 .adminReviewTable .adminTableHeader,
 .adminReviewTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.48fr) minmax(92px, 0.34fr) minmax(84px, 0.3fr) minmax(360px, 0.9fr);
+}
+
+.adminReviewTable.adminSelectionMode .adminTableHeader,
+.adminReviewTable.adminSelectionMode .adminTableRow {
   grid-template-columns: 58px minmax(0, 1.12fr) minmax(0, 0.45fr) minmax(92px, 0.32fr) minmax(84px, 0.28fr) minmax(360px, 0.9fr);
 }
 
@@ -928,7 +944,7 @@ a:hover {
 
 .adminFilterBar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.6fr) auto;
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.6fr) auto auto;
   gap: 10px;
   align-items: end;
   min-width: 0;
@@ -1122,6 +1138,11 @@ a:hover {
   justify-content: center;
 }
 
+.adminTable:not(.adminSelectionMode) .adminSelectCell,
+.adminTable:not(.adminSelectionMode) .adminTableHeader span:first-child {
+  display: none;
+}
+
 .adminSelectCell input,
 .bulkSelectControl input {
   width: 17px;
@@ -1172,6 +1193,10 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fbfcfe;
+}
+
+.bulkActionBar[hidden] {
+  display: none;
 }
 
 .bulkSelectControl {
