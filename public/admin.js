@@ -949,12 +949,29 @@ function jobRow(job) {
   `;
 }
 
+function providerForJob(job = {}) {
+  const resultProviderId = String(job.result_provider_id || job.resultProviderId || "").trim();
+  const jobDomain = String(job.domain || "").trim().toLowerCase();
+
+  return state.providers.find((provider) => (
+    resultProviderId && String(provider.id || "").trim() === resultProviderId
+  )) || state.providers.find((provider) => (
+    jobDomain && String(provider.domain || "").trim().toLowerCase() === jobDomain
+  )) || null;
+}
+
 function compactJobRow(job) {
+  const provider = providerForJob(job);
+  const logoProvider = provider || {
+    companyName: job.company_name || job.domain || job.url,
+    domain: job.domain || "",
+  };
+
   return `
     <article class="adminTableRow adminJobRow adminCompactRow adminDashboardJobRow">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity adminDashboardJobIdentity">
-          <span class="adminProviderLogo" aria-hidden="true">J</span>
+          ${providerLogo(logoProvider)}
           <span>
             <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
             <span>${escapeHtml(job.domain || "")}</span>
