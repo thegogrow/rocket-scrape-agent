@@ -3,6 +3,30 @@ const path = require("path");
 const { env } = require("../config/env");
 const { asArray, normalizeProfile, normalizeProfiles } = require("./normalizeProfile");
 
+const PUBLIC_PROFILE_STATUSES = new Set([
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+]);
+
+function normalizeLifecycleStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+
+  if (!value || value === "published") return "approved";
+  if (value === "draft" || value === "needs_review") return "scraped";
+  if (value === "archived") return "removed";
+
+  return value;
+}
+
+function isPublicProfile(profile = {}) {
+  const status = normalizeLifecycleStatus(profile.status);
+
+  return PUBLIC_PROFILE_STATUSES.has(status);
+}
+
 function safeDomain(value) {
   const decoded = decodeURIComponent(String(value || ""));
 
@@ -151,6 +175,7 @@ async function loadProfile(domain) {
     claimed: profile?.claimed,
     recentActivity: summarizeActivity(profile?.recentActivity, github),
     reviewNotes: buildReviewNotes(profile, sourceBundle, files),
+    scraperQualityLog: profile?.scraperQualityLog || {},
     files,
     json: {
       profile,
@@ -173,10 +198,20 @@ async function listProfiles() {
     .sort();
   const profiles = await Promise.all(domains.map(loadProfile));
 
-  return profiles.filter((profile) => profile.json.profile);
+  return profiles.filter((profile) => profile.json.profile && isPublicProfile(profile));
 }
 
 async function listStaticProfiles() {
+  const staticPath = path.join(env.paths.rootDir, "public", "profiles.json");
+
+  if (!(await fs.pathExists(staticPath))) {
+    return [];
+  }
+
+  return (await listAllStaticProfiles()).filter(isPublicProfile);
+}
+
+async function listAllStaticProfiles() {
   const staticPath = path.join(env.paths.rootDir, "public", "profiles.json");
 
   if (!(await fs.pathExists(staticPath))) {
@@ -187,6 +222,8 @@ async function listStaticProfiles() {
 }
 
 module.exports = {
+  isPublicProfile,
+  listAllStaticProfiles,
   listStaticProfiles,
   listProfiles,
   loadProfile,

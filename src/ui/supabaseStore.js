@@ -3,6 +3,34 @@ const path = require("path");
 const { normalizeProfile, normalizeProfiles } = require("./normalizeProfile");
 
 const DEFAULT_ADMIN_EMAILS = ["phil@thegogrow.ch", "nunezkathleenm@gmail.com"];
+const LIFECYCLE_STATUSES = new Set([
+  "scraped",
+  "in_review",
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+  "removal_requested",
+  "removed",
+]);
+const PUBLIC_PROVIDER_STATUSES = [
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+];
+
+function normalizeLifecycleStatus(status, fallback = "scraped") {
+  const value = String(status || "").trim().toLowerCase();
+
+  if (value === "published") return "approved";
+  if (value === "draft" || value === "needs_review") return "scraped";
+  if (value === "archived") return "removed";
+
+  return LIFECYCLE_STATUSES.has(value) ? value : fallback;
+}
 
 function supabaseConfig() {
   return {
@@ -100,6 +128,7 @@ function rowToProfile(row) {
     subscriptionTier: row.subscription_tier,
     recentActivity: row.recent_activity || [],
     reviewNotes: row.review_notes || [],
+    scraperQualityLog: row.scraper_quality_log || {},
     files: row.files || {},
     sourceData: row.source_data || {},
     status: row.status,
@@ -108,8 +137,9 @@ function rowToProfile(row) {
   });
 }
 
-function profileToRow(profile, status = "draft") {
+function profileToRow(profile, status = "scraped") {
   const normalizedProfile = normalizeProfile(profile);
+  const normalizedStatus = normalizedProfile.claimed ? "claimed" : normalizeLifecycleStatus(status);
 
   return {
     domain: normalizedProfile.domain,
@@ -134,9 +164,10 @@ function profileToRow(profile, status = "draft") {
     subscription_tier: normalizedProfile.subscriptionTier,
     recent_activity: normalizedProfile.recentActivity,
     review_notes: normalizedProfile.reviewNotes,
+    scraper_quality_log: normalizedProfile.scraperQualityLog,
     files: normalizedProfile.files,
     source_data: normalizedProfile.sourceData,
-    status,
+    status: normalizedStatus,
   };
 }
 
@@ -161,7 +192,7 @@ async function loadBundledProfiles() {
 }
 
 async function seedPublishedProvidersIfMissing(providers) {
-  const hasPublishedProviders = providers.some((provider) => provider.status === "published");
+  const hasPublishedProviders = providers.some((provider) => PUBLIC_PROVIDER_STATUSES.includes(normalizeLifecycleStatus(provider.status)));
 
   if (hasPublishedProviders) {
     return providers;
@@ -181,7 +212,7 @@ async function seedPublishedProvidersIfMissing(providers) {
   const rows = bundledProfiles
     .filter((profile) => !existingDomains.has(profile?.domain))
     .filter((profile) => profile?.domain && (profile.companyName || profile.domain))
-    .map((profile) => profileToRow(profile, "published"));
+    .map((profile) => profileToRow(profile, "approved"));
 
   if (rows.length === 0) {
     return providers;
@@ -280,8 +311,9 @@ async function verifyAdminToken(authHeader) {
 }
 
 async function listPublishedProviders() {
+  const statusList = PUBLIC_PROVIDER_STATUSES.join(",");
   const rows = await supabaseFetch(
-    "/rest/v1/providers?select=*&status=eq.published&order=company_name.asc"
+    `/rest/v1/providers?select=*&status=in.(${statusList})&order=company_name.asc`
   );
 
   return rows.map(rowToProfile);
@@ -347,7 +379,7 @@ async function updateScrapeJob(id, patch) {
   return rows[0] || null;
 }
 
-async function upsertProvider(profile, status = "draft") {
+async function upsertProvider(profile, status = "scraped") {
   const rows = await supabaseFetch("/rest/v1/providers?on_conflict=domain", {
     method: "POST",
     headers: {
@@ -385,19 +417,21 @@ async function uploadProviderLogo({ domain, filename, contentType, body }) {
   return `${normalizeSupabaseUrl(config.url)}/storage/v1/object/public/provider-logos/${objectPath}`;
 }
 
-async function publishProvider(id, status = "published") {
+async function publishProvider(id, status = "approved") {
+  const normalizedStatus = normalizeLifecycleStatus(status, "approved");
   const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status: normalizedStatus }),
   });
 
   return rowToProfile(rows[0]);
 }
 
 async function updateProvider(id, profilePatch = {}, status) {
+  const normalizedStatus = status ? normalizeLifecycleStatus(status) : null;
   const rowPatch = {
     ...(profilePatch.companyName !== undefined ? { company_name: profilePatch.companyName } : {}),
     ...(profilePatch.logoUrl !== undefined ? { logo_url: profilePatch.logoUrl } : {}),
@@ -420,7 +454,8 @@ async function updateProvider(id, profilePatch = {}, status) {
     ...(profilePatch.solutions !== undefined ? { solutions: profilePatch.solutions || [] } : {}),
     ...(profilePatch.recentActivity !== undefined ? { recent_activity: profilePatch.recentActivity || [] } : {}),
     ...(profilePatch.reviewNotes !== undefined ? { review_notes: profilePatch.reviewNotes || [] } : {}),
-    ...(status ? { status } : {}),
+    ...(profilePatch.scraperQualityLog !== undefined ? { scraper_quality_log: profilePatch.scraperQualityLog || {} } : {}),
+    ...(normalizedStatus ? { status: normalizedStatus } : {}),
   };
 
   const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
@@ -459,6 +494,7 @@ module.exports = {
   isSupabaseConfigured,
   listAdminState,
   listPublishedProviders,
+  normalizeLifecycleStatus,
   profileToRow,
   publishProvider,
   signInWithPassword,

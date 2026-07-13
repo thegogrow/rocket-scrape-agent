@@ -21,6 +21,7 @@ create table if not exists public.providers (
   solutions jsonb not null default '[]'::jsonb,
   recent_activity jsonb not null default '[]'::jsonb,
   review_notes jsonb not null default '[]'::jsonb,
+  scraper_quality_log jsonb not null default '{}'::jsonb,
   files jsonb not null default '{}'::jsonb,
   confidence_score integer not null default 0,
   github_url text,
@@ -28,7 +29,19 @@ create table if not exists public.providers (
   logo_url text,
   claimed boolean not null default false,
   subscription_tier text not null default 'free' check (subscription_tier in ('free', 'premium')),
-  status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
+  status text not null default 'scraped' check (
+    status in (
+      'scraped',
+      'in_review',
+      'approved',
+      'outreach_pending',
+      'outreach_active',
+      'claimed',
+      'unclaimed',
+      'removal_requested',
+      'removed'
+    )
+  ),
   source_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -55,7 +68,37 @@ alter table public.providers
   add column if not exists subscription_tier text not null default 'free',
   add column if not exists industries jsonb not null default '[]'::jsonb,
   add column if not exists success_stories jsonb not null default '[]'::jsonb,
-  add column if not exists solutions jsonb not null default '[]'::jsonb;
+  add column if not exists solutions jsonb not null default '[]'::jsonb,
+  add column if not exists scraper_quality_log jsonb not null default '{}'::jsonb;
+
+alter table public.providers
+  drop constraint if exists providers_status_check;
+
+update public.providers
+set status = case status
+  when 'published' then 'approved'
+  when 'draft' then 'scraped'
+  when 'needs_review' then 'in_review'
+  when 'archived' then 'removed'
+  else status
+end
+where status in ('published', 'draft', 'needs_review', 'archived');
+
+alter table public.providers
+  alter column status set default 'scraped',
+  add constraint providers_status_check check (
+    status in (
+      'scraped',
+      'in_review',
+      'approved',
+      'outreach_pending',
+      'outreach_active',
+      'claimed',
+      'unclaimed',
+      'removal_requested',
+      'removed'
+    )
+  );
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -81,7 +124,7 @@ alter table public.scrape_jobs enable row level security;
 drop policy if exists "Published providers are public" on public.providers;
 create policy "Published providers are public"
 on public.providers for select
-using (status = 'published');
+using (status in ('approved', 'outreach_pending', 'outreach_active', 'claimed', 'unclaimed'));
 
 -- Admin reads/writes use SUPABASE_SERVICE_ROLE_KEY from Vercel API routes.
 -- Do not expose SUPABASE_SERVICE_ROLE_KEY in browser code.

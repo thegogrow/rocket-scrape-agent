@@ -49,9 +49,17 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z" /></svg>
             <span>Provider Review</span>
           </button>
-          <button type="button" data-admin-section="published" title="Published Providers">
+          <button type="button" data-admin-section="data-quality" title="Missing Data">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" /></svg>
+            <span>Missing Data</span>
+          </button>
+          <button type="button" data-admin-section="filter-options" title="Filter Options">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            <span>Filter Options</span>
+          </button>
+          <button type="button" data-admin-section="published" title="Live Providers">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
-            <span>Published Providers</span>
+            <span>Live Providers</span>
           </button>
         </nav>
         <div class="adminSidebarFooter">
@@ -99,7 +107,7 @@
             </article>
             <article>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
-              <span>Published</span>
+              <span>Live</span>
               <strong id="publishedCount">0</strong>
             </article>
             <article>
@@ -113,7 +121,7 @@
               <div class="panelHeader">
                 <div>
                   <h2>Profiles Needing Review</h2>
-                  <p>Draft provider profiles waiting for approval.</p>
+                  <p>Profiles waiting for human review or admin action.</p>
                 </div>
               </div>
               <div id="dashboardReviewList" class="adminTable adminCompactProviderTable"></div>
@@ -180,7 +188,7 @@
             <div class="panelHeader">
               <div>
                 <h2>Provider Review</h2>
-                <p>Draft profiles that should be checked before publishing.</p>
+                <p>Profiles that should be checked before they are live or before the next workflow step.</p>
               </div>
               <button id="reviewSelectModeButton" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M5 12h14" /><path d="M5 17h14" /><path d="m4 7 1 1 2-2" /></svg>
@@ -195,7 +203,7 @@
               <select id="reviewBulkAction">
                 <option value="">Bulk action</option>
                 <option value="recrawl">Queue recrawl</option>
-                <option value="publish">Publish</option>
+                <option value="publish">Approve / make live</option>
               </select>
               <button id="reviewBulkApply" class="secondaryAction compactAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
@@ -219,11 +227,35 @@
           </section>
         </section>
 
+        <section class="adminSection" data-admin-panel="data-quality">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Missing Data</h2>
+                <p>Profiles with missing or low-confidence fields that admins should edit or recrawl.</p>
+              </div>
+            </div>
+            <div id="missingDataList" class="adminTable adminMissingDataTable"></div>
+          </section>
+        </section>
+
+        <section class="adminSection" data-admin-panel="filter-options">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Filter Options</h2>
+                <p>Current public filter values after default normalization. Edit a profile to merge or correct values.</p>
+              </div>
+            </div>
+            <div id="filterOptionsReview" class="filterReviewGrid"></div>
+          </section>
+        </section>
+
         <section class="adminSection" data-admin-panel="published">
           <section class="adminPanel">
             <div class="panelHeader">
               <div>
-                <h2>Published Providers</h2>
+                <h2>Live Providers</h2>
                 <p>Profiles currently visible on the public provider site.</p>
               </div>
             </div>
@@ -238,10 +270,22 @@
                 </span>
               </label>
               <label>
+                Status
+                <select id="publishedStatusFilter">
+                  <option value="">Any live status</option>
+                  <option value="approved">Approved</option>
+                  <option value="outreach_pending">Outreach Pending</option>
+                  <option value="outreach_active">Outreach Active</option>
+                  <option value="claimed">Claimed</option>
+                  <option value="unclaimed">Unclaimed</option>
+                </select>
+              </label>
+              <label>
                 Filter By
                 <select id="publishedSortFilter">
                   <option value="name">Name</option>
                   <option value="country">Country</option>
+                  <option value="status">Status</option>
                   <option value="confidence">Confidence</option>
                 </select>
               </label>
@@ -319,6 +363,20 @@
             City
             <input id="profileEditCity" type="text" />
           </label>
+          <label>
+            Lifecycle Status
+            <select id="profileEditStatus">
+              <option value="scraped">Scraped</option>
+              <option value="in_review">In Review</option>
+              <option value="approved">Approved</option>
+              <option value="outreach_pending">Outreach Pending</option>
+              <option value="outreach_active">Outreach Active</option>
+              <option value="claimed">Claimed</option>
+              <option value="unclaimed">Unclaimed</option>
+              <option value="removal_requested">Removal Requested</option>
+              <option value="removed">Removed</option>
+            </select>
+          </label>
           <label class="adminCheckboxLabel">
             <input id="profileEditClaimed" type="checkbox" />
             <span>Claimed / Verified</span>
@@ -371,6 +429,28 @@
           Review Notes
           <textarea id="profileEditNotes" rows="3" placeholder="One note per line"></textarea>
         </label>
+        <section class="structuredEditGroup">
+          <div class="structuredEditHeader">
+            <h3>Scraper Quality Log</h3>
+          </div>
+          <span class="fieldHelp">Capture what the scraper missed or got wrong. These notes feed future scraper improvements.</span>
+          <label>
+            Missing From Scrape
+            <textarea id="profileEditQualityMissing" rows="3" placeholder="One item per line"></textarea>
+          </label>
+          <label>
+            Incorrect And Changed
+            <textarea id="profileEditQualityIncorrect" rows="3" placeholder="One item per line"></textarea>
+          </label>
+          <label>
+            Added Manually
+            <textarea id="profileEditQualityAdded" rows="3" placeholder="One item per line"></textarea>
+          </label>
+          <label>
+            Quality Notes
+            <textarea id="profileEditQualityNotes" rows="3" placeholder="Patterns, observations, or scraper improvement notes"></textarea>
+          </label>
+        </section>
         <div id="profileEditMessage" class="authMessage" role="status"></div>
         <div class="adminDialogActions">
           <button class="primaryAction iconButtonText" type="submit">

@@ -9,7 +9,7 @@ module.exports = async function handler(request, response) {
 
   try {
     await verifyAdminToken(request.headers.authorization);
-    const { id, status = "published" } = await readJsonBody(request);
+    const { id, status = "approved" } = await readJsonBody(request);
 
     if (!id) {
       response.status(400).json({ error: "Missing provider id." });

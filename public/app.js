@@ -48,7 +48,7 @@ const FILTER_DEFS = [
     label: "Country",
     container: elements.countryFilter,
     values(profile) {
-      return [profile.companyLocation?.country || profile.country].filter(Boolean);
+      return profile.filterBuckets?.countries || [normalizeCountryName(profile.companyLocation?.country || profile.country)].filter(Boolean);
     },
   },
   {
@@ -56,7 +56,7 @@ const FILTER_DEFS = [
     label: "Service",
     container: elements.serviceFilter,
     values(profile) {
-      return Array.isArray(profile.services) ? profile.services : [];
+      return profile.filterBuckets?.services || normalizeServices(profile.services);
     },
   },
   {
@@ -64,15 +64,15 @@ const FILTER_DEFS = [
     label: "Technology",
     container: elements.technologyFilter,
     values(profile) {
-      return Array.isArray(profile.technologies) ? profile.technologies : [];
+      return profile.filterBuckets?.technologies || normalizeTechnologies(profile.technologies);
     },
   },
   {
     key: "partner",
-    label: "Vendor Partner",
+    label: "Partnerships",
     container: elements.partnerFilter,
     values(profile) {
-      return Array.isArray(profile.vendorPartnerships) ? profile.vendorPartnerships : [];
+      return profile.filterBuckets?.partnerships || normalizePartnerships(profile.vendorPartnerships);
     },
   },
   {
@@ -80,7 +80,7 @@ const FILTER_DEFS = [
     label: "Industries",
     container: elements.industryFilter,
     values(profile) {
-      return getIndustries(profile);
+      return profile.filterBuckets?.industries || getIndustries(profile);
     },
   },
 ];
@@ -93,6 +93,203 @@ const CATEGORY_RULES = [
   { name: "Data & AI", match: ["data", "ai", "analytics", "machine learning", "intelligence"] },
   { name: "Managed Services", match: ["managed services", "service management", "operations", "appops"] },
   { name: "Software Engineering", match: ["software engineering", "application", "development", "engineering"] },
+];
+
+const INDUSTRY_RULES = [
+  { name: "Banking & Financial Services", match: ["bank", "finance", "financial", "fintech", "insurance", "wealth", "payment", "finanz", "versicherung", "wertpapier", "zahlungsverkehr"] },
+  { name: "Healthcare & Life Sciences", match: ["health", "healthcare", "hospital", "medical", "medtech", "pharma", "life science"] },
+  { name: "Public Sector & Government", match: ["public sector", "government", "municipal", "administration", "education", "university"] },
+  { name: "Retail & E-commerce", match: ["retail", "commerce", "ecommerce", "e-commerce", "shop", "consumer goods"] },
+  { name: "Manufacturing & Industrial", match: ["manufacturing", "industrial", "industrie", "industry 4.0", "factory", "machinery", "automotive"] },
+  { name: "Telecommunications & Media", match: ["telecom", "telecommunication", "media", "broadcast", "publisher", "entertainment"] },
+  { name: "Energy & Utilities", match: ["energy", "utility", "utilities", "renewable", "power", "electricity"] },
+  { name: "Transportation & Logistics", match: ["transport", "logistics", "mobility", "rail", "aviation", "luftfahrt", "shipping"] },
+  { name: "Software & Technology", match: ["software", "technology", "tech", "saas", "platform", "cloud provider", "it"] },
+];
+
+const PUBLIC_PROFILE_STATUSES = new Set([
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+]);
+
+const GENERIC_INDUSTRIES = new Set([
+  "cloud",
+  "cloud computing",
+  "consulting",
+  "devops",
+  "digital transformation",
+  "information technology",
+  "it",
+  "it services",
+  "managed services",
+  "software development",
+  "technology",
+]);
+
+const GENERIC_INDUSTRY_KEYWORDS = [
+  "agile",
+  "ai",
+  "application",
+  "automation",
+  "aws",
+  "cloud",
+  "code",
+  "compliance",
+  "container",
+  "cyber",
+  "data",
+  "devops",
+  "engineering",
+  "hosting",
+  "infrastructure",
+  "integration",
+  "kubernetes",
+  "legacy",
+  "linux",
+  "management",
+  "modernisation",
+  "modernization",
+  "mlops",
+  "open source",
+  "platform",
+  "product",
+  "security",
+  "serverless",
+  "sovereign",
+  "strategy",
+  "transformation",
+  "web",
+];
+
+const SERVICE_BUCKET_RULES = [
+  { name: "Cloud Migration & Modernization", match: ["cloud migration", "migration", "modernization", "modernisation", "modernize", "legacy modernization", "it modernization"] },
+  { name: "Cloud Services", match: ["amazon", "aws", "azure", "microsoft cloud", "google cloud", "gcp", "cloud services", "cloud solutions", "cloud platform"] },
+  { name: "Managed Services", match: ["managed services", "managed service", "application management", "service management", "operations", "managed kubernetes"] },
+  { name: "Software Engineering", match: ["software engineering", "software development", "custom software", "application development", "web development", "app development"] },
+  { name: "Platform Engineering", match: ["platform engineering", "internal developer platform", "developer platform", "platform"] },
+  { name: "DevOps & Automation", match: ["devops", "devsecops", "automation", "infrastructure automation", "infrastructure as code", "ci/cd", "cicd", "gitops"] },
+  { name: "Cybersecurity", match: ["cybersecurity", "cyber security", "security", "it security", "cloud security", "zero trust"] },
+  { name: "Data & AI", match: ["data", "analytics", "artificial intelligence", "ai", "machine learning", "ml", "genai", "generative ai"] },
+  { name: "Business Applications", match: ["sap", "salesforce", "servicenow", "microsoft 365", "dynamics 365", "power bi", "workday"] },
+  { name: "Observability & Reliability", match: ["observability", "monitoring", "sre", "site reliability", "datadog", "new relic", "prometheus", "grafana"] },
+  { name: "Testing & QA", match: ["test automation", "testing", "qa", "quality assurance"] },
+  { name: "IoT & Edge", match: ["iot", "internet of things", "edge"] },
+  { name: "UX/UI & Product Design", match: ["ux", "ui", "ux/ui", "product design", "customer experience"] },
+  { name: "Mobile Development", match: ["mobile development", "mobile app", "ios", "android"] },
+  { name: "Cost Optimization", match: ["cost optimization", "cost optimisation", "finops"] },
+  { name: "Digital Sovereignty", match: ["digital sovereignty", "sovereign cloud", "sovereignty"] },
+  { name: "Project Management", match: ["project management", "program management", "delivery management"] },
+  { name: "Support & Operations", match: ["support", "operations support", "managed support"] },
+  { name: "Process Automation", match: ["process automation", "workflow automation"] },
+  { name: "Sustainability", match: ["sustainability", "green it", "carbon"] },
+  { name: "IT Consulting", match: ["consulting", "it consulting", "business consulting", "strategy", "advisory"] },
+  { name: "Application Modernization", match: ["application modernization", "application modernisation", "app modernization", "app modernisation"] },
+  { name: "System Integration", match: ["system integration", "systems integration", "integration"] },
+  { name: "Training & Enablement", match: ["training", "enablement", "workshop", "coaching"] },
+  { name: "Digital Transformation", match: ["digital transformation", "digital workplace", "transformation"] },
+];
+
+const TECHNOLOGY_BUCKET_RULES = [
+  { name: "AWS", match: ["amazon", "aws", "amazon web services", "amazon eks", "eks", "lambda", "cloudformation"] },
+  { name: "Microsoft Azure", match: ["azure", "microsoft azure", "aks", "azure kubernetes", "microsoft fabric"] },
+  { name: "Google Cloud", match: ["google cloud", "gcp", "google cloud platform", "gke"] },
+  { name: "Kubernetes", match: ["kubernetes", "k8s", "openshift", "open shift", "helm", "cilium", "service mesh"] },
+  { name: "Artificial Intelligence", match: ["artificial intelligence", "ai", "genai", "generative ai", "machine learning", "ml", "mlops", "llm"] },
+  { name: "DevOps & CI/CD", match: ["devops", "ci/cd", "cicd", "gitops", "jenkins", "gitlab ci", "github actions"] },
+  { name: "Terraform", match: ["terraform", "hashicorp terraform"] },
+  { name: "Docker", match: ["docker", "containers", "containerization", "containerisation"] },
+  { name: "Linux", match: ["linux", "ubuntu", "debian", "red hat enterprise linux", "rhel"] },
+  { name: "SAP", match: ["sap", "s/4hana", "s4hana"] },
+  { name: "Salesforce", match: ["salesforce"] },
+  { name: "ServiceNow", match: ["servicenow"] },
+  { name: "Databricks", match: ["databricks"] },
+  { name: "Snowflake", match: ["snowflake"] },
+  { name: "PostgreSQL", match: ["postgresql", "postgres"] },
+  { name: "Power BI", match: ["power bi", "powerbi"] },
+  { name: "Microsoft 365", match: ["microsoft 365", "office 365", "m365"] },
+  { name: "OpenStack", match: ["openstack", "open stack"] },
+  { name: "Java", match: ["java"] },
+  { name: "Python", match: ["python"] },
+  { name: "Go", match: ["go", "golang"] },
+  { name: "Scala", match: ["scala"] },
+  { name: "TypeScript", match: ["typescript", "type script"] },
+  { name: "JavaScript", match: ["javascript", "node.js", "nodejs", "node"] },
+  { name: "React", match: ["react", "react.js", "reactjs"] },
+  { name: "Angular", match: ["angular"] },
+  { name: "Prometheus", match: ["prometheus"] },
+  { name: "Security", match: ["security", "cybersecurity", "zero trust", "iam"] },
+  { name: "IoT", match: ["iot", "internet of things"] },
+  { name: "Ansible", match: ["ansible", "red hat ansible"] },
+  { name: "GitLab", match: ["gitlab", "gitlab ci"] },
+  { name: "GitHub", match: ["github", "github actions"] },
+  { name: "OpenAI", match: ["openai", "chatgpt"] },
+  { name: "Anthropic", match: ["anthropic", "claude", "claude code"] },
+  { name: "Observability", match: ["grafana", "datadog", "new relic", "observability"] },
+  { name: "Apache Kafka", match: ["apache kafka", "kafka"] },
+  { name: "MySQL", match: ["mysql"] },
+  { name: "Oracle", match: ["oracle"] },
+  { name: "Cloudflare", match: ["cloudflare"] },
+  { name: "VMware", match: ["vmware"] },
+  { name: ".NET", match: [".net", "dotnet"] },
+  { name: "PHP", match: ["php"] },
+  { name: "Rust", match: ["rust"] },
+  { name: "Argo CD", match: ["argocd", "argo cd"] },
+  { name: "Puppet", match: ["puppet"] },
+  { name: "Keycloak", match: ["keycloak"] },
+  { name: "Ceph", match: ["ceph"] },
+  { name: "KubeVirt", match: ["kubevirt"] },
+  { name: "Open Source", match: ["open source", "oss"] },
+  { name: "Microservices", match: ["microservices"] },
+  { name: "Secrets Management", match: ["openbao", "vault", "secrets management"] },
+];
+
+const PARTNERSHIP_BUCKET_RULES = [
+  { name: "AWS", match: ["amazon", "aws", "amazon web services"] },
+  { name: "Microsoft", match: ["microsoft", "azure"] },
+  { name: "Google Cloud", match: ["google cloud", "google cloud platform", "gcp"] },
+  { name: "Kubernetes / CNCF", match: ["kubernetes", "cncf", "cloud native computing foundation"] },
+  { name: "Salesforce", match: ["salesforce"] },
+  { name: "SAP", match: ["sap"] },
+  { name: "Red Hat", match: ["red hat", "redhat"] },
+  { name: "Databricks", match: ["databricks"] },
+  { name: "Snowflake", match: ["snowflake"] },
+  { name: "ServiceNow", match: ["servicenow"] },
+  { name: "Atlassian", match: ["atlassian"] },
+  { name: "GitHub", match: ["github"] },
+  { name: "NVIDIA", match: ["nvidia"] },
+  { name: "Adobe", match: ["adobe"] },
+  { name: "Oracle", match: ["oracle"] },
+  { name: "Anthropic", match: ["anthropic", "claude"] },
+  { name: "dbt", match: ["dbt"] },
+  { name: "HashiCorp", match: ["hashicorp"] },
+  { name: "OpenAI", match: ["openai"] },
+  { name: "Cisco", match: ["cisco"] },
+  { name: "Dell Technologies", match: ["dell"] },
+  { name: "HP", match: ["hp", "hewlett packard"] },
+  { name: "Lenovo", match: ["lenovo"] },
+  { name: "SUSE", match: ["suse", "rancher"] },
+  { name: "Linux Foundation", match: ["linux foundation", "lpi"] },
+  { name: "Palo Alto Networks", match: ["palo alto"] },
+  { name: "NetApp", match: ["netapp"] },
+  { name: "CrowdStrike", match: ["crowdstrike"] },
+  { name: "New Relic", match: ["new relic"] },
+  { name: "Nutanix", match: ["nutanix"] },
+  { name: "Rubrik", match: ["rubrik"] },
+  { name: "Workday", match: ["workday"] },
+  { name: "Harness", match: ["harness"] },
+  { name: "Monday.com", match: ["monday.com", "monday"] },
+  { name: "IONOS", match: ["ionos"] },
+];
+
+const COUNTRY_BUCKET_RULES = [
+  { name: "United States", match: ["united states", "usa", "u.s.", "us"] },
+  { name: "United Kingdom", match: ["united kingdom", "uk", "u.k.", "great britain", "england"] },
+  { name: "Switzerland", match: ["switzerland", "swiss", "schweiz", "suisse"] },
+  { name: "Germany", match: ["germany", "deutschland"] },
+  { name: "Netherlands", match: ["netherlands", "the netherlands", "holland"] },
 ];
 
 const SVG_LOGO_DOMAINS = new Set([
@@ -153,19 +350,7 @@ function initials(profile) {
 }
 
 function logoUrlForProfile(profile) {
-  const logoUrl = profile.logoUrl;
-
-  if (
-    logoUrl &&
-    profile.domain &&
-    SVG_LOGO_DOMAINS.has(profile.domain) &&
-    String(logoUrl).startsWith(`/logos/${profile.domain}/`) &&
-    String(logoUrl).endsWith("/logo.png")
-  ) {
-    return `/logos/${profile.domain}/logo.svg`;
-  }
-
-  return logoUrl;
+  return profile.logoUrl;
 }
 
 function logoMarkup(profile, large = false) {
@@ -249,14 +434,155 @@ function fieldTitle(label, values) {
   return `${escapeHtml(label)}${count > 0 ? ` <span>${count}</span>` : ""}`;
 }
 
-function getIndustries(profile) {
-  const industries = Array.isArray(profile.industries) ? profile.industries.filter(Boolean) : [];
+function uniqueList(values) {
+  const seen = new Set();
 
-  if (industries.length > 0) {
-    return industries;
+  return (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function bucketMatch(text, keyword) {
+  const normalizedText = String(text || "").toLowerCase();
+  const normalizedKeyword = String(keyword || "").toLowerCase();
+  const compactText = normalizedText.replace(/[^a-z0-9]+/g, "");
+  const compactKeyword = normalizedKeyword.replace(/[^a-z0-9]+/g, "");
+
+  if (!normalizedText || !normalizedKeyword) {
+    return false;
   }
 
-  return Array.isArray(profile.focusAreas) ? profile.focusAreas.filter(Boolean) : [];
+  if (compactText === compactKeyword) {
+    return true;
+  }
+
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedKeyword)}([^a-z0-9]|$)`, "i").test(normalizedText);
+}
+
+function normalizeBucketName(value, rules) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const rule = rules.find((item) => item.match.some((keyword) => bucketMatch(text, keyword)));
+
+  return rule?.name || text;
+}
+
+function normalizeBucketList(values, rules, maxItems = 8, fallbackName = null) {
+  return uniqueList(values)
+    .map((value) => {
+      const text = String(value || "").trim();
+      const rule = rules.find((item) => item.match.some((keyword) => bucketMatch(text, keyword)));
+      const normalized = rule?.name || text;
+
+      return !rule && fallbackName ? fallbackName : normalized;
+    })
+    .filter(Boolean)
+    .reduce((items, value) => {
+      if (!items.some((item) => item.toLowerCase() === value.toLowerCase())) {
+        items.push(value);
+      }
+
+      return items;
+    }, [])
+    .slice(0, maxItems);
+}
+
+function normalizeServices(values) {
+  return normalizeBucketList(values, SERVICE_BUCKET_RULES, 100, "Other Services");
+}
+
+function normalizeTechnologies(values) {
+  return normalizeBucketList(values, TECHNOLOGY_BUCKET_RULES, 100, "Other Technologies");
+}
+
+function normalizePartnerships(values) {
+  return normalizeBucketList(values, PARTNERSHIP_BUCKET_RULES, 100, "Other Partnerships");
+}
+
+function normalizeCountryName(value) {
+  return normalizeBucketName(value, COUNTRY_BUCKET_RULES);
+}
+
+function normalizeIndustryName(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const lowerText = text.toLowerCase();
+  const rule = INDUSTRY_RULES.find((item) =>
+    item.match.some((keyword) => lowerText.includes(keyword))
+  );
+
+  if (rule) {
+    return rule.name;
+  }
+
+  if (GENERIC_INDUSTRIES.has(lowerText)) {
+    return "Software & Technology";
+  }
+
+  if (GENERIC_INDUSTRY_KEYWORDS.some((keyword) => lowerText.includes(keyword))) {
+    return "Software & Technology";
+  }
+
+  return "Software & Technology";
+}
+
+function normalizeIndustryList(values, fallbackValues = []) {
+  const normalized = uniqueList(values)
+    .map(normalizeIndustryName)
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return uniqueList(fallbackValues)
+      .map(normalizeIndustryName)
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  return uniqueList(normalized).slice(0, 5);
+}
+
+function normalizeLifecycleStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+
+  if (!value || value === "published") return "approved";
+  if (value === "draft" || value === "needs_review") return "scraped";
+  if (value === "archived") return "removed";
+
+  return value;
+}
+
+function isPublicProfile(profile = {}) {
+  return PUBLIC_PROFILE_STATUSES.has(normalizeLifecycleStatus(profile.status));
+}
+
+function publicProfilesFromPayload(payload) {
+  return Array.isArray(payload) ? payload.filter(isPublicProfile) : [];
+}
+
+function getIndustries(profile) {
+  return normalizeIndustryList(profile.industries, profile.focusAreas);
 }
 
 function locationParts(profile) {
@@ -285,10 +611,16 @@ function locationParts(profile) {
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
+  const inferredCountry = country || (parts.length > 1 ? parts[parts.length - 1] : null);
+  const city = parts.length > 1
+    ? parts.slice(0, -1).join(", ")
+    : parts[0] && parts[0].toLowerCase() !== String(inferredCountry || "").toLowerCase()
+      ? parts[0]
+      : null;
 
   return {
-    city: parts.length > 1 ? parts.slice(0, -1).join(", ") : parts[0],
-    country: country || (parts.length > 1 ? parts[parts.length - 1] : null),
+    city,
+    country: inferredCountry,
   };
 }
 
@@ -363,6 +695,12 @@ function listMatchesSelected(values, selected) {
   return Array.isArray(values) && values.some((value) => selected.includes(String(value || "")));
 }
 
+function valuesForFilterKey(profile, key) {
+  const filterDef = filterDefForKey(key);
+
+  return filterDef ? filterDef.values(profile) : [];
+}
+
 function valueMatchesSelected(value, selected) {
   if (selected.length === 0) {
     return true;
@@ -405,10 +743,10 @@ function applyFilters() {
 
   state.filtered = state.profiles.filter((profile) => {
       if (query && !profileSearchText(profile).includes(query)) return false;
-      if (!valueMatchesSelected(profile.companyLocation?.country || profile.country, countries)) return false;
-      if (!listMatchesSelected(profile.services, services)) return false;
-      if (!listMatchesSelected(profile.technologies, technologies)) return false;
-      if (!listMatchesSelected(profile.vendorPartnerships, partners)) return false;
+      if (!listMatchesSelected(valuesForFilterKey(profile, "country"), countries)) return false;
+      if (!listMatchesSelected(valuesForFilterKey(profile, "service"), services)) return false;
+      if (!listMatchesSelected(valuesForFilterKey(profile, "technology"), technologies)) return false;
+      if (!listMatchesSelected(valuesForFilterKey(profile, "partner"), partners)) return false;
       if (!listMatchesSelected(getIndustries(profile), industries)) return false;
       return true;
     });
@@ -527,7 +865,6 @@ function cardMarkup(profile) {
   const location = locationParts(profile);
   const services = profile.services.slice(0, 3);
   const industries = getIndustries(profile).slice(0, 2);
-  const vendorCount = Array.isArray(profile.vendorPartnerships) ? profile.vendorPartnerships.length : 0;
   const tags = [...services.slice(0, 2), ...industries.slice(0, 2)];
   const description = profile.description || services.join(", ") || "Profile details available.";
   const verifiedBadge = profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : "";
@@ -543,15 +880,7 @@ function cardMarkup(profile) {
         </span>
       </span>
       <span class="cardText">${escapeHtml(description).slice(0, 155)}</span>
-      <span class="cardFacts">
-        <span>${escapeHtml(profile.domain)}</span>
-        <span>${vendorCount} vendor partner${vendorCount === 1 ? "" : "s"}</span>
-      </span>
       <span class="cardTags">${chips(tags, "No tags found")}</span>
-      <span class="cardActions">
-        <span>View profile</span>
-        ${profile.website ? "<span>Website available</span>" : ""}
-      </span>
     </button>
   `;
 }
@@ -953,7 +1282,6 @@ function renderDetail() {
                 <h2>${escapeHtml(profile.companyName)}</h2>
                 ${profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : ""}
               </div>
-              <p class="publisher">By ${escapeHtml(profile.domain)}</p>
               <p class="platformLine">${escapeHtml(getProfileCategory(profile))} Provider</p>
             </div>
           </div>
@@ -981,11 +1309,6 @@ function renderDetail() {
           <div class="headerField">
             <h3>${fieldTitle("Industries", industries)}</h3>
             ${limitedChipButtons(industries, "industry", "No industries found", true)}
-          </div>
-
-          <div class="headerField">
-            <h3>${fieldTitle("Vendor Programs", profile.vendorPartnerships)}</h3>
-            ${limitedChipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor programs found", true)}
           </div>
         </section>
 
@@ -1123,11 +1446,11 @@ function applyTagFilter(type, value) {
 
   clearFilterInputs();
   if (type === "service") {
-    selectOnly("service", value);
+    selectOnly("service", normalizeBucketName(value, SERVICE_BUCKET_RULES) || value);
   } else if (type === "technology") {
-    selectOnly("technology", value);
+    selectOnly("technology", normalizeBucketName(value, TECHNOLOGY_BUCKET_RULES) || value);
   } else if (type === "vendor") {
-    selectOnly("partner", value);
+    selectOnly("partner", normalizeBucketName(value, PARTNERSHIP_BUCKET_RULES) || value);
   } else if (type === "industry") {
     selectOnly("industry", value);
   }
@@ -1285,7 +1608,7 @@ async function loadProfiles() {
     throw new Error(`Failed to load profiles: ${response.status}`);
   }
 
-  state.profiles = await response.json();
+  state.profiles = publicProfilesFromPayload(await response.json());
 
   if (!Array.isArray(state.profiles) || state.profiles.length === 0) {
     response = await fetch("/profiles.json");
@@ -1294,7 +1617,7 @@ async function loadProfiles() {
       throw new Error(`Failed to load static profiles: ${response.status}`);
     }
 
-    state.profiles = await response.json();
+    state.profiles = publicProfilesFromPayload(await response.json());
   }
 
   state.filtered = state.profiles;

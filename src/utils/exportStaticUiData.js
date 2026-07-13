@@ -20,6 +20,7 @@ function compactProfile(profile) {
     industries: profile.industries,
     technologies: profile.technologies,
     vendorPartnerships: profile.vendorPartnerships,
+    filterBuckets: profile.filterBuckets,
     successStories: profile.successStories,
     solutions: profile.solutions,
     location: profile.location,
@@ -32,12 +33,20 @@ function compactProfile(profile) {
     isPremium: profile.isPremium,
     recentActivity: profile.recentActivity,
     reviewNotes: profile.reviewNotes,
+    scraperQualityLog: profile.scraperQualityLog,
     files: profile.files,
   };
 }
 
 async function exportStaticUiData() {
-  const profiles = await listProfiles();
+  const exportDomainsPath = process.env.EXPORT_DOMAINS_FILE
+    ? path.resolve(process.cwd(), process.env.EXPORT_DOMAINS_FILE)
+    : null;
+  const exportDomains = exportDomainsPath && await fs.pathExists(exportDomainsPath)
+    ? new Set(await fs.readJson(exportDomainsPath))
+    : null;
+  const profiles = (await listProfiles())
+    .filter((profile) => !exportDomains || exportDomains.has(profile.domain));
   const compactProfiles = profiles.map(compactProfile);
 
   await fs.ensureDir(PUBLIC_LOGOS_DIR);

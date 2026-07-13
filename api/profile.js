@@ -1,4 +1,4 @@
-const { listStaticProfiles, loadProfile, safeDomain } = require("../src/ui/profileData");
+const { isPublicProfile, listAllStaticProfiles, loadProfile, safeDomain } = require("../src/ui/profileData");
 const { isSupabaseConfigured, listPublishedProviders } = require("../src/ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
@@ -26,7 +26,16 @@ module.exports = async function handler(request, response) {
       }
     }
 
-    const staticProfiles = await listStaticProfiles();
+    const allStaticProfiles = await listAllStaticProfiles();
+    const staticProfileForDomain = allStaticProfiles.find((profile) => profile.domain === domain);
+
+    if (staticProfileForDomain && !isPublicProfile(staticProfileForDomain)) {
+      response.setHeader("Cache-Control", "no-store");
+      response.status(404).json({ error: "Profile is not public." });
+      return;
+    }
+
+    const staticProfiles = allStaticProfiles.filter(isPublicProfile);
     const staticProfile = staticProfiles.find((profile) => profile.domain === domain);
 
     response.setHeader("Cache-Control", "no-store");

@@ -13,6 +13,7 @@ const state = {
   publishedPageSize: 20,
   publishedFilters: {
     name: "",
+    status: "",
   },
   publishedSortField: "name",
   publishedSortDirection: "asc",
@@ -43,6 +44,91 @@ const SVG_LOGO_DOMAINS = new Set([
   "terreactive.ch",
   "viadee.de",
 ]);
+
+const INDUSTRY_RULES = [
+  { name: "Banking & Financial Services", match: ["bank", "finance", "financial", "fintech", "insurance", "wealth", "payment", "finanz", "versicherung", "wertpapier", "zahlungsverkehr"] },
+  { name: "Healthcare & Life Sciences", match: ["health", "healthcare", "hospital", "medical", "medtech", "pharma", "life science"] },
+  { name: "Public Sector & Government", match: ["public sector", "government", "municipal", "administration", "education", "university"] },
+  { name: "Retail & E-commerce", match: ["retail", "commerce", "ecommerce", "e-commerce", "shop", "consumer goods"] },
+  { name: "Manufacturing & Industrial", match: ["manufacturing", "industrial", "industrie", "industry 4.0", "factory", "machinery", "automotive"] },
+  { name: "Telecommunications & Media", match: ["telecom", "telecommunication", "media", "broadcast", "publisher", "entertainment"] },
+  { name: "Energy & Utilities", match: ["energy", "utility", "utilities", "renewable", "power", "electricity"] },
+  { name: "Transportation & Logistics", match: ["transport", "logistics", "mobility", "rail", "aviation", "luftfahrt", "shipping"] },
+  { name: "Software & Technology", match: ["software", "technology", "tech", "saas", "platform", "cloud provider", "it"] },
+];
+
+const DEFAULT_INDUSTRY_FILTERS = new Set(INDUSTRY_RULES.map((rule) => rule.name));
+const LIFECYCLE_STATUSES = new Set([
+  "scraped",
+  "in_review",
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+  "removal_requested",
+  "removed",
+]);
+const LIVE_PROFILE_STATUSES = new Set([
+  "approved",
+  "outreach_pending",
+  "outreach_active",
+  "claimed",
+  "unclaimed",
+]);
+const REVIEW_PROFILE_STATUSES = new Set([
+  "scraped",
+  "in_review",
+  "removal_requested",
+]);
+const GENERIC_INDUSTRIES = new Set([
+  "cloud",
+  "cloud computing",
+  "consulting",
+  "devops",
+  "digital transformation",
+  "information technology",
+  "it",
+  "it services",
+  "managed services",
+  "software development",
+  "technology",
+]);
+
+const GENERIC_INDUSTRY_KEYWORDS = [
+  "agile",
+  "ai",
+  "application",
+  "automation",
+  "aws",
+  "cloud",
+  "code",
+  "compliance",
+  "container",
+  "cyber",
+  "data",
+  "devops",
+  "engineering",
+  "hosting",
+  "infrastructure",
+  "integration",
+  "kubernetes",
+  "legacy",
+  "linux",
+  "management",
+  "modernisation",
+  "modernization",
+  "mlops",
+  "open source",
+  "platform",
+  "product",
+  "security",
+  "serverless",
+  "sovereign",
+  "strategy",
+  "transformation",
+  "web",
+];
 
 const elements = {
   loginScreen: document.querySelector("#adminLoginScreen"),
@@ -86,6 +172,7 @@ const elements = {
   reviewPageNumbers: document.querySelector("#reviewPageNumbers"),
   publishedFilters: document.querySelector("#publishedFilters"),
   publishedNameFilter: document.querySelector("#publishedNameFilter"),
+  publishedStatusFilter: document.querySelector("#publishedStatusFilter"),
   publishedSortFilter: document.querySelector("#publishedSortFilter"),
   publishedFlipButton: document.querySelector("#publishedFlipButton"),
   publishedSelectModeButton: document.querySelector("#publishedSelectModeButton"),
@@ -95,6 +182,8 @@ const elements = {
   publishedBulkApply: document.querySelector("#publishedBulkApply"),
   publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
+  missingDataList: document.querySelector("#missingDataList"),
+  filterOptionsReview: document.querySelector("#filterOptionsReview"),
   publishedPrevButton: document.querySelector("#publishedPrevButton"),
   publishedNextButton: document.querySelector("#publishedNextButton"),
   publishedPageInfo: document.querySelector("#publishedPageInfo"),
@@ -108,6 +197,7 @@ const elements = {
   profileEditWebsite: document.querySelector("#profileEditWebsite"),
   profileEditCountry: document.querySelector("#profileEditCountry"),
   profileEditCity: document.querySelector("#profileEditCity"),
+  profileEditStatus: document.querySelector("#profileEditStatus"),
   profileEditClaimed: document.querySelector("#profileEditClaimed"),
   profileEditSubscriptionTier: document.querySelector("#profileEditSubscriptionTier"),
   profileEditServices: document.querySelector("#profileEditServices"),
@@ -120,6 +210,10 @@ const elements = {
   profileEditAddSolution: document.querySelector("#profileEditAddSolution"),
   profileEditActivities: document.querySelector("#profileEditActivities"),
   profileEditNotes: document.querySelector("#profileEditNotes"),
+  profileEditQualityMissing: document.querySelector("#profileEditQualityMissing"),
+  profileEditQualityIncorrect: document.querySelector("#profileEditQualityIncorrect"),
+  profileEditQualityAdded: document.querySelector("#profileEditQualityAdded"),
+  profileEditQualityNotes: document.querySelector("#profileEditQualityNotes"),
   profileEditMessage: document.querySelector("#profileEditMessage"),
   toastRegion: document.querySelector("#adminToastRegion"),
 };
@@ -212,11 +306,44 @@ function setSection(section) {
 }
 
 function statusPill(status) {
-  const label = String(status || "draft")
+  const normalizedStatus = normalizeLifecycleStatus(status);
+  const label = String(normalizedStatus)
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-  return `<span class="statusPill statusPill-${escapeHtml(status || "draft")}">${escapeHtml(label)}</span>`;
+  return `<span class="statusPill statusPill-${escapeHtml(normalizedStatus)}">${escapeHtml(label)}</span>`;
+}
+
+function normalizeLifecycleStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+
+  if (value === "published") return "approved";
+  if (value === "draft" || value === "needs_review") return "scraped";
+  if (value === "archived") return "removed";
+
+  return LIFECYCLE_STATUSES.has(value) ? value : "approved";
+}
+
+function lifecycleStatusForProvider(provider = {}) {
+  const explicitStatus = normalizeLifecycleStatus(provider.status);
+
+  if (explicitStatus === "removed" || explicitStatus === "removal_requested") {
+    return explicitStatus;
+  }
+
+  if (provider.claimed) {
+    return "claimed";
+  }
+
+  return explicitStatus;
+}
+
+function isLiveProvider(provider = {}) {
+  return LIVE_PROFILE_STATUSES.has(lifecycleStatusForProvider(provider));
+}
+
+function isReviewProvider(provider = {}) {
+  return REVIEW_PROFILE_STATUSES.has(lifecycleStatusForProvider(provider));
 }
 
 function emptyState(label) {
@@ -308,19 +435,7 @@ function initials(profile) {
 }
 
 function logoUrlForProvider(provider) {
-  const logoUrl = provider.logoUrl;
-
-  if (
-    logoUrl &&
-    provider.domain &&
-    SVG_LOGO_DOMAINS.has(provider.domain) &&
-    String(logoUrl).startsWith(`/logos/${provider.domain}/`) &&
-    String(logoUrl).endsWith("/logo.png")
-  ) {
-    return `/logos/${provider.domain}/logo.svg`;
-  }
-
-  return logoUrl;
+  return provider.logoUrl;
 }
 
 function providerLogo(provider) {
@@ -430,7 +545,7 @@ function providerRow(provider, options = {}) {
         </span>
       </div>
       <div class="adminCell"><span>${escapeHtml([provider.companyLocation?.city || provider.city, provider.companyLocation?.country || provider.country].filter(Boolean).join(", ") || provider.location || "Unknown")}</span></div>
-      <div class="adminCell">${statusPill(provider.status || "published")}</div>
+      <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
       <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
       <div class="adminCell adminCellAction">${action}</div>
     </article>
@@ -449,7 +564,7 @@ function compactProviderRow(provider) {
           </span>
         </span>
       </div>
-      <div class="adminCell">${statusPill(provider.status || "draft")}</div>
+      <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
       <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
     </article>
   `;
@@ -464,6 +579,7 @@ function providerAddedDate(provider) {
 
 function filterPublishedProviders(providers) {
   const nameFilter = state.publishedFilters.name.trim().toLowerCase();
+  const statusFilter = normalizeLifecycleStatus(state.publishedFilters.status);
 
   const filteredProviders = providers.filter((provider) => {
     if (nameFilter) {
@@ -471,6 +587,10 @@ function filterPublishedProviders(providers) {
       if (!nameText.includes(nameFilter)) {
         return false;
       }
+    }
+
+    if (state.publishedFilters.status && lifecycleStatusForProvider(provider) !== statusFilter) {
+      return false;
     }
 
     return true;
@@ -491,6 +611,10 @@ function filterPublishedProviders(providers) {
       const rightCountry = String(right.country || right.location || "");
 
       return leftCountry.localeCompare(rightCountry, undefined, { sensitivity: "base" }) * direction;
+    }
+
+    if (state.publishedSortField === "status") {
+      return lifecycleStatusForProvider(left).localeCompare(lifecycleStatusForProvider(right), undefined, { sensitivity: "base" }) * direction;
     }
 
     const leftName = String(left.companyName || left.domain || "");
@@ -543,6 +667,66 @@ function textToList(value) {
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function uniqueList(values) {
+  const seen = new Set();
+
+  return (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeIndustryName(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const lowerText = text.toLowerCase();
+  const rule = INDUSTRY_RULES.find((item) =>
+    item.match.some((keyword) => lowerText.includes(keyword))
+  );
+
+  if (rule) {
+    return rule.name;
+  }
+
+  if (GENERIC_INDUSTRIES.has(lowerText)) {
+    return "Software & Technology";
+  }
+
+  if (GENERIC_INDUSTRY_KEYWORDS.some((keyword) => lowerText.includes(keyword))) {
+    return "Software & Technology";
+  }
+
+  return "Software & Technology";
+}
+
+function normalizeIndustryList(values, fallbackValues = []) {
+  const normalized = uniqueList(values)
+    .map(normalizeIndustryName)
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return uniqueList(fallbackValues)
+      .map(normalizeIndustryName)
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  return uniqueList(normalized).slice(0, 5);
 }
 
 function textToRecentActivities(value) {
@@ -632,6 +816,17 @@ function subscriptionTierForProfile(profile = {}) {
   return hasPremiumProfileAccess(profile) ? "premium" : "free";
 }
 
+function scraperQualityLogForProfile(profile = {}) {
+  const log = profile.scraperQualityLog || {};
+
+  return {
+    missing: Array.isArray(log.missing) ? log.missing : [],
+    incorrect: Array.isArray(log.incorrect) ? log.incorrect : [],
+    added: Array.isArray(log.added) ? log.added : [],
+    notes: typeof log.notes === "string" ? log.notes : "",
+  };
+}
+
 function openEditProfile(key) {
   const provider = findProvider(key);
 
@@ -645,16 +840,22 @@ function openEditProfile(key) {
   elements.profileEditWebsite.value = provider.website || "";
   elements.profileEditCountry.value = provider.companyLocation?.country || provider.country || "";
   elements.profileEditCity.value = provider.companyLocation?.city || provider.city || "";
+  elements.profileEditStatus.value = lifecycleStatusForProvider(provider);
   elements.profileEditClaimed.checked = Boolean(provider.claimed);
   elements.profileEditSubscriptionTier.value = subscriptionTierForProfile(provider);
   elements.profileEditServices.value = listToText(provider.services);
-  elements.profileEditIndustries.value = listToText(provider.industries);
+  elements.profileEditIndustries.value = listToText(normalizeIndustryList(provider.industries, provider.focusAreas));
   elements.profileEditTechnologies.value = listToText(provider.technologies);
   elements.profileEditPartnerships.value = listToText(provider.vendorPartnerships);
   renderEditableEntries(elements.profileEditSuccessStories, provider.successStories);
   renderEditableEntries(elements.profileEditSolutions, provider.solutions);
   elements.profileEditActivities.value = recentActivitiesToText(provider.recentActivity);
   elements.profileEditNotes.value = listToText(provider.reviewNotes);
+  const qualityLog = scraperQualityLogForProfile(provider);
+  elements.profileEditQualityMissing.value = listToText(qualityLog.missing);
+  elements.profileEditQualityIncorrect.value = listToText(qualityLog.incorrect);
+  elements.profileEditQualityAdded.value = listToText(qualityLog.added);
+  elements.profileEditQualityNotes.value = qualityLog.notes;
   elements.profileEditMessage.textContent = "";
   elements.profileEditMessage.classList.remove("error");
   elements.profileEditDialog.showModal();
@@ -752,11 +953,152 @@ function compactJobRow(job) {
   `;
 }
 
+function providerMissingIssues(provider = {}) {
+  const issues = [];
+  const location = [provider.companyLocation?.city || provider.city, provider.companyLocation?.country || provider.country].filter(Boolean);
+
+  if (!provider.companyName) issues.push("Company name");
+  if (!provider.website) issues.push("Website");
+  if (!provider.logoUrl) issues.push("Logo");
+  if (location.length < 2) issues.push("City/country");
+  if (!provider.description) issues.push("Introduction");
+  if (!Array.isArray(provider.services) || provider.services.length === 0) issues.push("Services");
+  if (normalizeIndustryList(provider.industries, provider.focusAreas).length === 0) issues.push("Industries");
+  if (!Array.isArray(provider.technologies) || provider.technologies.length === 0) issues.push("Technologies");
+  if ((Number.parseInt(provider.confidenceScore, 10) || 0) < 60) issues.push("Low confidence");
+
+  return issues;
+}
+
+function scraperQualityLogCount(provider = {}) {
+  const log = scraperQualityLogForProfile(provider);
+
+  return log.missing.length + log.incorrect.length + log.added.length + (log.notes ? 1 : 0);
+}
+
+function issueChips(issues) {
+  return issues.map((issue) => `<span class="adminIssueChip">${escapeHtml(issue)}</span>`).join("");
+}
+
+function missingDataRow(provider) {
+  const key = providerKey(provider);
+  const issues = providerMissingIssues(provider);
+
+  return `
+    <article class="adminTableRow adminMissingDataRow">
+      <div class="adminCell adminCellPrimary">
+        <span class="adminProviderIdentity">
+          ${providerLogo(provider)}
+          <span>
+            <strong>${escapeHtml(provider.companyName || provider.domain || "Unnamed provider")}</strong>
+            <span>${escapeHtml([provider.companyLocation?.city || provider.city, provider.companyLocation?.country || provider.country].filter(Boolean).join(", ") || "Location missing")}</span>
+          </span>
+        </span>
+      </div>
+      <div class="adminCell adminIssueCell">${issueChips(issues)}</div>
+      <div class="adminCell"><span>${escapeHtml(scraperQualityLogCount(provider))}</span></div>
+      <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
+      <div class="adminCell adminCellAction">${key ? providerActions(provider, { includeEdit: true, includeRecrawl: true, includeProfile: true }) : ""}</div>
+    </article>
+  `;
+}
+
+function addOptionCount(counts, value, provider) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return;
+  }
+
+  if (!counts.has(text)) {
+    counts.set(text, { count: 0, providers: [] });
+  }
+
+  const item = counts.get(text);
+  item.count += 1;
+  item.providers.push(provider.companyName || provider.domain || "Provider");
+}
+
+function filterOptionGroups(providers) {
+  const groups = [
+    { key: "country", label: "Countries", values: (provider) => provider.filterBuckets?.countries || [provider.companyLocation?.country || provider.country] },
+    { key: "service", label: "Services", values: (provider) => provider.filterBuckets?.services || provider.services || [] },
+    { key: "technology", label: "Technologies", values: (provider) => provider.filterBuckets?.technologies || provider.technologies || [] },
+    { key: "partner", label: "Partnerships", values: (provider) => provider.filterBuckets?.partnerships || provider.vendorPartnerships || [] },
+    { key: "industry", label: "Industries", values: (provider) => provider.filterBuckets?.industries || normalizeIndustryList(provider.industries, provider.focusAreas) },
+  ];
+
+  return groups.map((group) => {
+    const counts = new Map();
+
+    providers.forEach((provider) => {
+      group.values(provider).forEach((value) => addOptionCount(counts, value, provider));
+    });
+
+    return {
+      ...group,
+      options: [...counts.entries()]
+        .map(([value, details]) => ({ value, ...details }))
+        .sort((left, right) => left.value.localeCompare(right.value)),
+    };
+  });
+}
+
+function renderMissingDataReview() {
+  if (!elements.missingDataList) {
+    return;
+  }
+
+  const providersWithIssues = state.providers
+    .map((provider) => ({ provider, issues: providerMissingIssues(provider) }))
+    .filter((item) => item.issues.length > 0);
+
+  elements.missingDataList.innerHTML = providersWithIssues.length
+    ? `${tableHeader(["Company", "Missing / Needs Review", "Quality Log", "Confidence", "Actions"])}${providersWithIssues.map((item) => missingDataRow(item.provider)).join("")}`
+    : emptyState("No missing data issues found.");
+}
+
+function renderFilterOptionReview() {
+  if (!elements.filterOptionsReview) {
+    return;
+  }
+
+  const groups = filterOptionGroups(state.providers);
+
+  elements.filterOptionsReview.innerHTML = groups
+    .map((group) => `
+      <section class="filterReviewGroup">
+        <h3>${escapeHtml(group.label)}</h3>
+        <div class="filterReviewList">
+          ${
+            group.options.length
+              ? group.options.map((option) => {
+                  const isDefaultIndustry = group.key === "industry" && DEFAULT_INDUSTRY_FILTERS.has(option.value);
+                  const status = group.key === "industry"
+                    ? (isDefaultIndustry ? "Default filter" : "Admin review")
+                    : "Available";
+
+                  return `
+                    <div class="filterReviewOption">
+                      <span>${escapeHtml(option.value)}</span>
+                      <strong>${option.count}</strong>
+                      <em>${escapeHtml(status)}</em>
+                    </div>
+                  `;
+                }).join("")
+              : `<div class="filterReviewEmpty">No options found.</div>`
+          }
+        </div>
+      </section>
+    `)
+    .join("");
+}
+
 function renderStats() {
   const queued = state.jobs.filter((job) => job.status === "queued" || job.status === "running").length;
   const failed = state.jobs.filter((job) => job.status === "failed").length;
-  const review = state.providers.filter((provider) => provider.status && provider.status !== "published").length;
-  const published = state.providers.filter((provider) => !provider.status || provider.status === "published").length;
+  const review = state.providers.filter(isReviewProvider).length;
+  const published = state.providers.filter(isLiveProvider).length;
 
   elements.queuedCount.textContent = queued;
   elements.reviewCount.textContent = review;
@@ -779,7 +1121,7 @@ function bindPublishButtons() {
 
   document.querySelectorAll("[data-publish-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await runAdminAction(button, "Publishing", "Provider published.", () => (
+      await runAdminAction(button, "Approving", "Provider approved and live.", () => (
         publishProvider(button.dataset.publishProvider)
       ));
     });
@@ -795,7 +1137,7 @@ function bindPublishButtons() {
   document.querySelectorAll("[data-unpublish-provider]").forEach((button) => {
     button.addEventListener("click", async () => {
       await runAdminAction(button, "Unpublishing", "Provider moved to review.", () => (
-        updateProviderStatus(button.dataset.unpublishProvider, "draft")
+        updateProviderStatus(button.dataset.unpublishProvider, "in_review")
       ));
     });
   });
@@ -834,8 +1176,8 @@ function bindPublishButtons() {
 }
 
 function renderLists() {
-  const reviewProviders = state.providers.filter((provider) => provider.status && provider.status !== "published");
-  const publishedProviders = state.providers.filter((provider) => !provider.status || provider.status === "published");
+  const reviewProviders = state.providers.filter(isReviewProvider);
+  const publishedProviders = state.providers.filter(isLiveProvider);
   const filteredPublishedProviders = filterPublishedProviders(publishedProviders);
   const totalJobsPages = Math.max(1, Math.ceil(state.jobs.length / state.jobsPageSize));
   const totalReviewPages = Math.max(1, Math.ceil(reviewProviders.length / state.reviewPageSize));
@@ -879,11 +1221,14 @@ function renderLists() {
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
     ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
-    : emptyState("No draft profiles need review.");
+    : emptyState("No profiles need review.");
 
   elements.publishedProviderList.innerHTML = filteredPublishedProviders.length
     ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
     : emptyState("No published providers match the current filters.");
+
+  renderMissingDataReview();
+  renderFilterOptionReview();
 
   renderPagination({
     currentPage: state.jobsPage,
@@ -944,7 +1289,7 @@ async function loadPublicProfilesForDevelopment() {
   const profiles = fallback.ok ? await fallback.json() : [];
 
   state.providers = Array.isArray(profiles)
-    ? profiles.map((profile) => ({ ...profile, status: "published" }))
+    ? profiles.map((profile) => ({ ...profile, status: lifecycleStatusForProvider(profile) }))
     : [];
   state.jobs = [];
 }
@@ -1186,7 +1531,7 @@ async function publishProvider(id) {
   }
 
   if (DEV_ADMIN_ACCESS) {
-    patchProviderInState(id, { status: "published" });
+    patchProviderInState(id, { status: "approved" });
     renderStats();
     renderLists();
     return true;
@@ -1195,7 +1540,7 @@ async function publishProvider(id) {
   const response = await fetch("/api/admin-publish", {
     method: "POST",
     headers: adminHeaders(),
-    body: JSON.stringify({ id, status: "published" }),
+    body: JSON.stringify({ id, status: "approved" }),
   });
 
   if (!response.ok) {
@@ -1298,7 +1643,7 @@ async function applyBulkAction(scope) {
 
   if (action === "unpublish") {
     for (const key of selectedKeys) {
-      await updateProviderStatus(key, "draft");
+    await updateProviderStatus(key, "in_review");
     }
   }
 
@@ -1317,7 +1662,7 @@ async function updateProviderStatus(key, status) {
     patchProviderInState(key, { status });
     renderStats();
     renderLists();
-    if (status !== "published") {
+    if (!LIVE_PROFILE_STATUSES.has(normalizeLifecycleStatus(status))) {
       setSection("review");
     }
     return true;
@@ -1335,7 +1680,7 @@ async function updateProviderStatus(key, status) {
   }
 
   await refreshAdminState();
-  if (status !== "published") {
+  if (!LIVE_PROFILE_STATUSES.has(normalizeLifecycleStatus(status))) {
     setSection("review");
   }
   return true;
@@ -1412,26 +1757,36 @@ async function saveProfileEdit(event) {
     return;
   }
 
+  const selectedStatus = normalizeLifecycleStatus(elements.profileEditStatus.value);
+  const removalStatus = selectedStatus === "removed" || selectedStatus === "removal_requested";
+  const claimed = !removalStatus && (elements.profileEditClaimed.checked || selectedStatus === "claimed");
+  const status = removalStatus ? selectedStatus : (claimed ? "claimed" : selectedStatus);
   const patch = {
     companyName: elements.profileEditName.value.trim(),
     logoUrl: elements.profileEditLogo.value.trim() || null,
     website: elements.profileEditWebsite.value.trim(),
     country: elements.profileEditCountry.value.trim(),
     city: elements.profileEditCity.value.trim(),
-    claimed: elements.profileEditClaimed.checked,
+    claimed,
     subscriptionTier,
     companyLocation: {
       country: elements.profileEditCountry.value.trim(),
       city: elements.profileEditCity.value.trim(),
     },
     services: textToList(elements.profileEditServices.value),
-    industries: textToList(elements.profileEditIndustries.value),
+    industries: normalizeIndustryList(textToList(elements.profileEditIndustries.value)),
     technologies: textToList(elements.profileEditTechnologies.value),
     vendorPartnerships: textToList(elements.profileEditPartnerships.value),
     successStories,
     solutions,
     recentActivity: textToRecentActivities(elements.profileEditActivities.value),
     reviewNotes: textToList(elements.profileEditNotes.value),
+    scraperQualityLog: {
+      missing: textToList(elements.profileEditQualityMissing.value),
+      incorrect: textToList(elements.profileEditQualityIncorrect.value),
+      added: textToList(elements.profileEditQualityAdded.value),
+      notes: elements.profileEditQualityNotes.value.trim(),
+    },
   };
 
   elements.profileEditMessage.textContent = "Saving profile...";
@@ -1440,7 +1795,7 @@ async function saveProfileEdit(event) {
 
   try {
     if (DEV_ADMIN_ACCESS) {
-      patchProviderInState(key, patch);
+      patchProviderInState(key, { ...patch, status });
       elements.profileEditDialog.close();
       renderStats();
       renderLists();
@@ -1451,7 +1806,7 @@ async function saveProfileEdit(event) {
     const response = await fetch("/api/admin-provider", {
       method: "PATCH",
       headers: adminHeaders(),
-      body: JSON.stringify({ id: key, profile: patch }),
+      body: JSON.stringify({ id: key, profile: patch, status }),
     });
     const payload = await response.json();
 
@@ -1475,6 +1830,7 @@ function applyPublishedFilters(event) {
   event?.preventDefault();
   state.publishedFilters = {
     name: elements.publishedNameFilter.value,
+    status: elements.publishedStatusFilter.value,
   };
   state.publishedSortField = elements.publishedSortFilter.value;
   state.publishedPage = 1;
@@ -1509,6 +1865,7 @@ function bindEvents() {
   elements.scrapeForm.addEventListener("submit", handleScrapeSubmit);
   elements.publishedFilters.addEventListener("submit", applyPublishedFilters);
   elements.publishedNameFilter.addEventListener("input", applyPublishedFilters);
+  elements.publishedStatusFilter.addEventListener("change", applyPublishedFilters);
   elements.publishedSortFilter.addEventListener("change", () => {
     state.publishedSortField = elements.publishedSortFilter.value;
     updatePublishedSortButton();
