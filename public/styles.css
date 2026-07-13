@@ -1176,8 +1176,10 @@ a:hover {
   justify-content: center;
 }
 
-.adminTable:not(.adminSelectionMode) .adminSelectCell,
-.adminTable:not(.adminSelectionMode) .adminTableHeader span:first-child {
+.adminReviewTable:not(.adminSelectionMode) .adminSelectCell,
+.adminPublishedTable:not(.adminSelectionMode) .adminSelectCell,
+.adminReviewTable:not(.adminSelectionMode) .adminTableHeader span:first-child,
+.adminPublishedTable:not(.adminSelectionMode) .adminTableHeader span:first-child {
   display: none;
 }
 
@@ -1194,6 +1196,18 @@ a:hover {
 
 .adminPublishedTable .adminCellAction {
   flex-wrap: nowrap;
+}
+
+.adminPublishedTable .compactAction {
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.adminPublishedTable .compactAction svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
 }
 
 .compactAction {
