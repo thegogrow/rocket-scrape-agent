@@ -953,8 +953,13 @@ function compactJobRow(job) {
   return `
     <article class="adminTableRow adminJobRow adminCompactRow adminDashboardJobRow">
       <div class="adminCell adminCellPrimary">
-        <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
-        <span>${escapeHtml(job.domain || "")}</span>
+        <span class="adminProviderIdentity adminDashboardJobIdentity">
+          <span class="adminProviderLogo" aria-hidden="true">J</span>
+          <span>
+            <strong>${escapeHtml(job.company_name || job.domain || job.url)}</strong>
+            <span>${escapeHtml(job.domain || "")}</span>
+          </span>
+        </span>
       </div>
       <div class="adminCell">${statusPill(job.status)}</div>
       <div class="adminCell"><span>${escapeHtml(job.created_at ? new Date(job.created_at).toLocaleDateString() : "No date")}</span></div>

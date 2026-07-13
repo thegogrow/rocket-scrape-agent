@@ -498,6 +498,7 @@ module.exports = {
   profileToRow,
   publishProvider,
   signInWithPassword,
+  supabaseFetch,
   supabaseConfig,
   updateScrapeJob,
   updateProvider,
