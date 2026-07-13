@@ -816,12 +816,12 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.34fr) minmax(0, 0.45fr) minmax(88px, 0.32fr) minmax(82px, 0.28fr) minmax(410px, 1fr);
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.4fr) minmax(88px, 0.3fr) minmax(82px, 0.26fr) minmax(500px, 1.1fr);
 }
 
 .adminPublishedTable.adminSelectionMode .adminTableHeader,
 .adminPublishedTable.adminSelectionMode .adminTableRow {
-  grid-template-columns: 58px minmax(0, 1.22fr) minmax(0, 0.42fr) minmax(88px, 0.3fr) minmax(82px, 0.26fr) minmax(410px, 1fr);
+  grid-template-columns: 58px minmax(0, 1.14fr) minmax(0, 0.38fr) minmax(88px, 0.28fr) minmax(82px, 0.24fr) minmax(500px, 1.1fr);
 }
 
 .adminPublishedTable .adminTableHeader span:last-child {
@@ -1196,12 +1196,16 @@ a:hover {
 
 .adminPublishedTable .adminCellAction {
   flex-wrap: nowrap;
+  gap: 10px;
 }
 
 .adminPublishedTable .compactAction {
-  min-height: 38px;
-  padding: 0 12px;
+  min-height: 40px;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 6px;
   font-size: 13px;
+  line-height: 1;
 }
 
 .adminPublishedTable .compactAction svg {
