@@ -1004,7 +1004,6 @@ function issueChips(issues) {
 function missingDataRow(provider) {
   const key = providerKey(provider);
   const issues = providerMissingIssues(provider);
-  const qualityLogCount = scraperQualityLogCount(provider);
 
   return `
     <article class="adminTableRow adminMissingDataRow">
@@ -1018,7 +1017,6 @@ function missingDataRow(provider) {
         </span>
       </div>
       <div class="adminCell adminIssueCell">${issueChips(issues)}</div>
-      <div class="adminCell"><span>${escapeHtml(qualityLogCount || "-")}</span></div>
       <div class="adminCell"><span>${escapeHtml(confidenceLabel(provider))}</span></div>
       <div class="adminCell adminCellAction">${key ? providerActions(provider, { includeEdit: true, includeRecrawl: true, includeProfile: true }) : ""}</div>
     </article>
@@ -1035,7 +1033,7 @@ function renderMissingDataReview() {
     .filter((item) => item.issues.length > 0);
 
   elements.missingDataList.innerHTML = providersWithIssues.length
-    ? `${tableHeader(["Company", "Missing / Needs Review", "Quality Log", "Confidence", "Actions"])}${providersWithIssues.map((item) => missingDataRow(item.provider)).join("")}`
+    ? `${tableHeader(["Company", "Missing / Needs Review", "Confidence", "Actions"])}${providersWithIssues.map((item) => missingDataRow(item.provider)).join("")}`
     : emptyState("No missing data issues found.");
 }
 
