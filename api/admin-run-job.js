@@ -115,7 +115,7 @@ module.exports = async function handler(request, response) {
         files: logoUrl ? { logo: logoUrl } : {},
         sourceData,
       },
-      "draft"
+      "scraped"
     );
 
     await updateScrapeJob(job.id, {

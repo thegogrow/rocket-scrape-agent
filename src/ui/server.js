@@ -2,7 +2,7 @@ const fs = require("fs-extra");
 const http = require("http");
 const net = require("net");
 const path = require("path");
-const { listProfiles, loadProfile, logoPathForDomain, safeDomain } = require("./profileData");
+const { listProfiles, listStaticProfiles, loadProfile, logoPathForDomain, safeDomain } = require("./profileData");
 const { isSupabaseConfigured, listPublishedProviders } = require("./supabaseStore");
 
 const START_PORT = Number.parseInt(process.env.PROFILE_UI_PORT || "3001", 10);
@@ -139,6 +139,10 @@ async function handleRequest(request, response) {
 
       if (isSupabaseConfigured()) {
         profiles = await listPublishedProviders();
+      }
+
+      if (profiles.length === 0) {
+        profiles = await listStaticProfiles();
       }
 
       if (profiles.length === 0) {

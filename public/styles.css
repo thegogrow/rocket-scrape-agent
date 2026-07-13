@@ -843,6 +843,11 @@ a:hover {
   grid-template-columns: 58px minmax(0, 1.12fr) minmax(0, 0.45fr) minmax(92px, 0.32fr) minmax(84px, 0.28fr) minmax(360px, 0.9fr);
 }
 
+.adminMissingDataTable .adminTableHeader,
+.adminMissingDataTable .adminTableRow {
+  grid-template-columns: minmax(0, 1.05fr) minmax(260px, 1.25fr) minmax(84px, 0.28fr) minmax(280px, 0.9fr);
+}
+
 .adminReviewTable .adminTableHeader span:last-child {
   text-align: right;
 }
@@ -899,6 +904,24 @@ a:hover {
   justify-content: end;
 }
 
+.adminIssueCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adminIssueChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff4e5;
+  color: #7d4b00;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .adminCellLabel {
   color: var(--muted);
   font-size: 11px;
@@ -940,6 +963,73 @@ a:hover {
 
 .adminPanel {
   min-width: 0;
+}
+
+.filterReviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.filterReviewGroup {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.filterReviewGroup h3 {
+  margin: 0;
+  color: var(--blue-dark);
+  font-size: 16px;
+}
+
+.filterReviewList {
+  display: grid;
+  gap: 7px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.filterReviewOption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d8e5f5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.filterReviewOption span,
+.filterReviewOption strong,
+.filterReviewOption em {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filterReviewOption span {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.filterReviewOption strong {
+  color: var(--blue);
+}
+
+.filterReviewOption em {
+  color: var(--muted);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.filterReviewEmpty {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .adminFilterBar {
@@ -1821,20 +1911,6 @@ button.isLoading::after,
   line-height: 1.45;
 }
 
-.cardFacts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.cardFacts span {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
 .cardTags,
 .chips {
   display: flex;
@@ -1852,26 +1928,6 @@ button.isLoading::after,
 
 .chipDisclosure:not(.isExpanded) .overflowChip {
   display: none;
-}
-
-.cardActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: auto;
-}
-
-.cardActions span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 5px 10px;
-  border: 1px solid #cfe0f6;
-  border-radius: 4px;
-  background: #fff;
-  color: var(--blue-dark);
-  font-size: 12px;
-  font-weight: 900;
 }
 
 .chip {
@@ -2668,8 +2724,13 @@ button.isLoading::after,
   .adminPublishedTable .adminTableRow,
   .adminJobsTable .adminTableRow,
   .adminReviewTable .adminTableRow,
+  .adminMissingDataTable .adminTableRow,
   .adminCompactProviderTable .adminTableRow,
   .adminCompactJobsTable .adminTableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .filterReviewGrid {
     grid-template-columns: 1fr;
   }
 
