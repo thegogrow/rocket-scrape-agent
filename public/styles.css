@@ -992,6 +992,15 @@ a:hover {
   background: #fbfcfe;
 }
 
+#publishedFilters {
+  grid-template-columns: minmax(180px, 0.72fr) minmax(128px, 0.36fr) minmax(128px, 0.36fr) auto auto;
+}
+
+#publishedFilters > button {
+  min-width: 92px;
+  justify-content: center;
+}
+
 .adminFilterBar label,
 .adminDialogCard label {
   display: grid;
