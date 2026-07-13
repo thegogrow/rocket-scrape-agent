@@ -53,10 +53,6 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" /></svg>
             <span>Missing Data</span>
           </button>
-          <button type="button" data-admin-section="filter-options" title="Filter Options">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-            <span>Filter Options</span>
-          </button>
           <button type="button" data-admin-section="published" title="Live Providers">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
             <span>Live Providers</span>
@@ -149,7 +145,7 @@
             <form id="scrapeForm" class="adminForm">
               <label>
                 Company Website
-                <input id="scrapeUrl" type="url" placeholder="https://company.com" required />
+                <input id="scrapeUrl" type="text" inputmode="url" placeholder="company.com or https://company.com" required />
               </label>
               <label>
                 Company Name
@@ -236,18 +232,6 @@
               </div>
             </div>
             <div id="missingDataList" class="adminTable adminMissingDataTable"></div>
-          </section>
-        </section>
-
-        <section class="adminSection" data-admin-panel="filter-options">
-          <section class="adminPanel">
-            <div class="panelHeader">
-              <div>
-                <h2>Filter Options</h2>
-                <p>Current public filter values after default normalization. Edit a profile to merge or correct values.</p>
-              </div>
-            </div>
-            <div id="filterOptionsReview" class="filterReviewGrid"></div>
           </section>
         </section>
 

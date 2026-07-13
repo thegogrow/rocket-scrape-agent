@@ -183,7 +183,6 @@ const elements = {
   publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
   missingDataList: document.querySelector("#missingDataList"),
-  filterOptionsReview: document.querySelector("#filterOptionsReview"),
   publishedPrevButton: document.querySelector("#publishedPrevButton"),
   publishedNextButton: document.querySelector("#publishedNextButton"),
   publishedPageInfo: document.querySelector("#publishedPageInfo"),
@@ -268,6 +267,16 @@ function adminHeaders() {
     Authorization: `Bearer ${adminToken()}`,
     "Content-Type": "application/json",
   };
+}
+
+function normalizeWebsiteInput(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return "";
+  }
+
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
 function showShell() {
@@ -976,6 +985,18 @@ function scraperQualityLogCount(provider = {}) {
   return log.missing.length + log.incorrect.length + log.added.length + (log.notes ? 1 : 0);
 }
 
+function confidenceLabel(provider = {}) {
+  const score = provider.confidenceScore ?? provider.confidence_score;
+
+  if (score === null || score === undefined || score === "") {
+    return "N/A";
+  }
+
+  const parsedScore = Number.parseInt(score, 10);
+
+  return Number.isFinite(parsedScore) ? `${parsedScore}%` : "N/A";
+}
+
 function issueChips(issues) {
   return issues.map((issue) => `<span class="adminIssueChip">${escapeHtml(issue)}</span>`).join("");
 }
@@ -997,51 +1018,10 @@ function missingDataRow(provider) {
       </div>
       <div class="adminCell adminIssueCell">${issueChips(issues)}</div>
       <div class="adminCell"><span>${escapeHtml(scraperQualityLogCount(provider))}</span></div>
-      <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
+      <div class="adminCell"><span>${escapeHtml(confidenceLabel(provider))}</span></div>
       <div class="adminCell adminCellAction">${key ? providerActions(provider, { includeEdit: true, includeRecrawl: true, includeProfile: true }) : ""}</div>
     </article>
   `;
-}
-
-function addOptionCount(counts, value, provider) {
-  const text = String(value || "").trim();
-
-  if (!text) {
-    return;
-  }
-
-  if (!counts.has(text)) {
-    counts.set(text, { count: 0, providers: [] });
-  }
-
-  const item = counts.get(text);
-  item.count += 1;
-  item.providers.push(provider.companyName || provider.domain || "Provider");
-}
-
-function filterOptionGroups(providers) {
-  const groups = [
-    { key: "country", label: "Countries", values: (provider) => provider.filterBuckets?.countries || [provider.companyLocation?.country || provider.country] },
-    { key: "service", label: "Services", values: (provider) => provider.filterBuckets?.services || provider.services || [] },
-    { key: "technology", label: "Technologies", values: (provider) => provider.filterBuckets?.technologies || provider.technologies || [] },
-    { key: "partner", label: "Partnerships", values: (provider) => provider.filterBuckets?.partnerships || provider.vendorPartnerships || [] },
-    { key: "industry", label: "Industries", values: (provider) => provider.filterBuckets?.industries || normalizeIndustryList(provider.industries, provider.focusAreas) },
-  ];
-
-  return groups.map((group) => {
-    const counts = new Map();
-
-    providers.forEach((provider) => {
-      group.values(provider).forEach((value) => addOptionCount(counts, value, provider));
-    });
-
-    return {
-      ...group,
-      options: [...counts.entries()]
-        .map(([value, details]) => ({ value, ...details }))
-        .sort((left, right) => left.value.localeCompare(right.value)),
-    };
-  });
 }
 
 function renderMissingDataReview() {
@@ -1056,42 +1036,6 @@ function renderMissingDataReview() {
   elements.missingDataList.innerHTML = providersWithIssues.length
     ? `${tableHeader(["Company", "Missing / Needs Review", "Quality Log", "Confidence", "Actions"])}${providersWithIssues.map((item) => missingDataRow(item.provider)).join("")}`
     : emptyState("No missing data issues found.");
-}
-
-function renderFilterOptionReview() {
-  if (!elements.filterOptionsReview) {
-    return;
-  }
-
-  const groups = filterOptionGroups(state.providers);
-
-  elements.filterOptionsReview.innerHTML = groups
-    .map((group) => `
-      <section class="filterReviewGroup">
-        <h3>${escapeHtml(group.label)}</h3>
-        <div class="filterReviewList">
-          ${
-            group.options.length
-              ? group.options.map((option) => {
-                  const isDefaultIndustry = group.key === "industry" && DEFAULT_INDUSTRY_FILTERS.has(option.value);
-                  const status = group.key === "industry"
-                    ? (isDefaultIndustry ? "Default filter" : "Admin review")
-                    : "Available";
-
-                  return `
-                    <div class="filterReviewOption">
-                      <span>${escapeHtml(option.value)}</span>
-                      <strong>${option.count}</strong>
-                      <em>${escapeHtml(status)}</em>
-                    </div>
-                  `;
-                }).join("")
-              : `<div class="filterReviewEmpty">No options found.</div>`
-          }
-        </div>
-      </section>
-    `)
-    .join("");
 }
 
 function renderStats() {
@@ -1228,7 +1172,6 @@ function renderLists() {
     : emptyState("No published providers match the current filters.");
 
   renderMissingDataReview();
-  renderFilterOptionReview();
 
   renderPagination({
     currentPage: state.jobsPage,
@@ -1373,11 +1316,12 @@ async function handleScrapeSubmit(event) {
   elements.scrapeMessage.textContent = "Queueing scrape job...";
   elements.scrapeMessage.classList.remove("error");
   setBusy(submitButton, true, "Queueing");
+  const normalizedUrl = normalizeWebsiteInput(elements.scrapeUrl.value);
 
   if (DEV_ADMIN_ACCESS) {
     state.jobs.unshift({
-      url: elements.scrapeUrl.value,
-      domain: new URL(elements.scrapeUrl.value).hostname.replace(/^www\./, ""),
+      url: normalizedUrl,
+      domain: new URL(normalizedUrl).hostname.replace(/^www\./, ""),
       company_name: elements.scrapeCompanyName.value || null,
       requested_by: adminEmail(),
       status: "queued",
@@ -1398,7 +1342,7 @@ async function handleScrapeSubmit(event) {
       method: "POST",
       headers: adminHeaders(),
       body: JSON.stringify({
-        url: elements.scrapeUrl.value,
+        url: normalizedUrl,
         companyName: elements.scrapeCompanyName.value,
       }),
     });

@@ -845,7 +845,22 @@ a:hover {
 
 .adminMissingDataTable .adminTableHeader,
 .adminMissingDataTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.05fr) minmax(260px, 1.25fr) minmax(84px, 0.28fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(220px, 1.05fr) minmax(260px, 1.2fr) minmax(84px, 0.26fr) minmax(96px, 0.28fr) minmax(300px, 0.9fr);
+}
+
+.adminMissingDataTable .adminTableHeader span:nth-child(3),
+.adminMissingDataTable .adminTableHeader span:nth-child(4),
+.adminMissingDataTable .adminMissingDataRow .adminCell:nth-child(3),
+.adminMissingDataTable .adminMissingDataRow .adminCell:nth-child(4) {
+  justify-items: center;
+  text-align: center;
+}
+
+.adminMissingDataTable .adminCellAction {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .adminReviewTable .adminTableHeader span:last-child {
@@ -963,73 +978,6 @@ a:hover {
 
 .adminPanel {
   min-width: 0;
-}
-
-.filterReviewGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.filterReviewGroup {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcfe;
-}
-
-.filterReviewGroup h3 {
-  margin: 0;
-  color: var(--blue-dark);
-  font-size: 16px;
-}
-
-.filterReviewList {
-  display: grid;
-  gap: 7px;
-  max-height: 280px;
-  overflow: auto;
-}
-
-.filterReviewOption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid #d8e5f5;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.filterReviewOption span,
-.filterReviewOption strong,
-.filterReviewOption em {
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.filterReviewOption span {
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.filterReviewOption strong {
-  color: var(--blue);
-}
-
-.filterReviewOption em {
-  color: var(--muted);
-  font-style: normal;
-  white-space: nowrap;
-}
-
-.filterReviewEmpty {
-  color: var(--muted);
-  font-weight: 700;
 }
 
 .adminFilterBar {
@@ -2727,10 +2675,6 @@ button.isLoading::after,
   .adminMissingDataTable .adminTableRow,
   .adminCompactProviderTable .adminTableRow,
   .adminCompactJobsTable .adminTableRow {
-    grid-template-columns: 1fr;
-  }
-
-  .filterReviewGrid {
     grid-template-columns: 1fr;
   }
 
