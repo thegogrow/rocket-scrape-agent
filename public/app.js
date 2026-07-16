@@ -1303,6 +1303,115 @@ function qualityPanelMarkup(profile) {
   `;
 }
 
+function providerLocationText(profile) {
+  const location = locationParts(profile);
+  return [location.city, location.country].filter(Boolean).join(", ") || "Location not published";
+}
+
+function providerFocusCodes(profile) {
+  const text = [
+    profile.services,
+    profile.technologies,
+    profile.focusAreas,
+    profile.description,
+  ].flat(2).filter(Boolean).join(" ").toLowerCase();
+  const codes = [];
+
+  if (/cloud|aws|azure|gcp|kubernetes|k8s|platform/.test(text)) codes.push(["CLD", "Cloud"]);
+  if (/platform|developer|devops|gitops|ci\/cd|sre/.test(text)) codes.push(["PLT", "Platform Engineering"]);
+  if (/security|zero trust|compliance|cyber/.test(text)) codes.push(["SEC", "Security"]);
+  if (/\bai\b|data|machine learning|analytics|mlops/.test(text)) codes.push(["AI", "AI & Data"]);
+
+  return codes.length ? codes.slice(0, 3) : [["ENG", "Engineering"]];
+}
+
+function providerActionMarkup(profile) {
+  const website = profile.website || (profile.domain ? `https://${profile.domain}` : "");
+  const contactHref = `mailto:hello@rocketengineers.co?subject=${encodeURIComponent(`Introduction to ${profile.companyName || profile.domain}`)}`;
+
+  return `
+    <div class="providerActions">
+      <a class="providerPrimaryAction" href="${escapeHtml(contactHref)}">Contact provider</a>
+      ${website ? `<a class="providerSecondaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
+    </div>
+  `;
+}
+
+function providerFactsMarkup(profile, industries) {
+  const location = locationParts(profile);
+  const website = profile.website || (profile.domain ? `https://${profile.domain}` : "");
+  const score = Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0));
+  const rows = [
+    ["Headquarters", [location.city, location.country].filter(Boolean).join(", ") || "Not published"],
+    ["Website", profile.domain || "Not published", website],
+    ["Category", getProfileCategory(profile)],
+    ["Industries", industries.slice(0, 2).join(", ") || "Software & Technology"],
+    ["Evidence", `${score}%`],
+    ["Verified", profile.claimed ? "by Rocket Engineers" : "Not yet verified"],
+  ];
+
+  if (profile.linkedinUrl) rows.splice(3, 0, ["LinkedIn", "Company profile", profile.linkedinUrl]);
+  if (profile.githubUrl) rows.splice(4, 0, ["GitHub", "Repository profile", profile.githubUrl]);
+
+  return rows.map(([label, value, url]) => `
+    <div class="providerFactRow">
+      <span>${escapeHtml(label)}</span>
+      ${
+        url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(value)} -></a>`
+          : `<strong>${escapeHtml(value)}</strong>`
+      }
+    </div>
+  `).join("");
+}
+
+function providerStoriesListMarkup(profile) {
+  const structuredStories = Array.isArray(profile.successStories) ? profile.successStories.filter(Boolean) : [];
+  const fallbackStories = caseStudyItems(profile);
+  const stories = structuredStories.length
+    ? structuredStories.slice(0, 2).map((story) => ({
+        title: typeof story === "string" ? story : story.title || story.name || "Customer story",
+        meta: typeof story === "string" ? "Customer proof" : story.shortText || story.summary || story.description || "Customer proof",
+      }))
+    : fallbackStories.slice(0, 2).map((story) => ({
+        title: story.title || "Customer story",
+        meta: [story.sourceType, story.date].filter(Boolean).join(" · ") || "Customer proof",
+      }));
+
+  if (stories.length === 0) {
+    stories.push(
+      { title: `${profile.companyName || "Provider"} implementation proof`, meta: "Static proof slot" },
+      { title: "Platform team enablement and delivery story", meta: "Static proof slot" }
+    );
+  }
+
+  return stories.map((story) => `
+    <article class="providerStoryRow">
+      <div class="providerStoryThumb">photo</div>
+      <div>
+        <h4>${escapeHtml(story.title)}</h4>
+        <p>${escapeHtml(story.meta)}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function providerUpcomingEventMarkup(profile) {
+  return `
+    <article class="providerEventCard">
+      <div class="providerEventDate">
+        <strong>22</strong>
+        <span>JUL</span>
+      </div>
+      <div>
+        <h4>${escapeHtml(getProfileCategory(profile))} briefing</h4>
+        <p>${escapeHtml(providerLocationText(profile))} · 17:30-21:00</p>
+        <span>Provider event</span>
+      </div>
+    </article>
+  `;
+}
+
 function renderDetail() {
   const profile = state.profiles.find((item) => item.domain === state.selectedDomain);
   const industries = getIndustries(profile || {});
@@ -1326,69 +1435,80 @@ function renderDetail() {
   document.body.classList.add("profileMode");
   elements.detailContent.closest(".detail").hidden = false;
   elements.detailContent.className = "detailContent";
+  const focusCodes = providerFocusCodes(profile);
   elements.detailContent.innerHTML = `
-    <button class="backButton" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M10 12h10" /></svg>
-      Back to providers
-    </button>
+    <div class="profileBackBar">
+      <button class="backButton" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M10 12h10" /></svg>
+        All providers
+      </button>
+    </div>
     <div class="listingDetail detailSingleColumn">
       <div class="listingMain">
-        <section class="providerHeader providerHeaderFull" aria-label="Provider card header">
+        <section class="providerProfileHero" aria-label="Provider profile header">
           <div class="providerHeaderIdentity">
             ${logoMarkup(profile, true)}
             <div>
               <div class="detailTitleRow">
-                <h2>${escapeHtml(profile.companyName)}</h2>
+                <h1>${escapeHtml(profile.companyName)}</h1>
                 ${profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">Verified</span>` : ""}
               </div>
-              <p class="platformLine">${escapeHtml(getProfileCategory(profile))} provider for cloud, platform, and engineering teams.</p>
+              <p class="platformLine">${escapeHtml(providerLocationText(profile))}${profile.domain ? ` - ${escapeHtml(profile.domain)}` : ""}</p>
+              <div class="providerFocusStrip">
+                ${focusCodes.map(([code]) => `<span>${escapeHtml(code)}</span>`).join("")}
+                <small>${escapeHtml(focusCodes.map(([, label]) => label).join(" · "))}</small>
+              </div>
             </div>
           </div>
-
-          <div class="headerField">
-            <h3>Location</h3>
-            ${locationMarkup(profile)}
-          </div>
-
-          <div class="headerField">
-            <h3>Links</h3>
-            <div class="detailLinks linkSet">${profileLinkSetMarkup(profile)}</div>
-          </div>
-
-          <div class="headerField">
-            <h3>${fieldTitle("Services", profile.services)}</h3>
-            ${limitedChipButtons(profile.services, "service", "No services found")}
-          </div>
-
-          <div class="headerField">
-            <h3>${fieldTitle("Technologies", profile.technologies)}</h3>
-            ${limitedChipButtons(profile.technologies, "technology", "No technologies found", true)}
-          </div>
-
-          <div class="headerField">
-            <h3>${fieldTitle("Industries", industries)}</h3>
-            ${limitedChipButtons(industries, "industry", "No industries found", true)}
-          </div>
+          ${providerActionMarkup(profile)}
         </section>
 
-        <section class="profileMasthead">
-          <div>
-            <span class="eyebrow">Company introduction</span>
-            <p>${escapeHtml(profile.description || "No company introduction available.")}</p>
+        <section class="providerProfileGrid">
+          <div class="providerProfileMain">
+            <section class="providerProfileBlock">
+              <span class="eyebrow">About</span>
+              <p>${escapeHtml(profile.description || "No company introduction available.")}</p>
+            </section>
+            <section class="providerProfileBlock">
+              <span class="eyebrow">Services</span>
+              <div class="chips">${chipButtons(profile.services, "service", "No services found")}</div>
+              <span class="eyebrow providerSubEyebrow">Technologies</span>
+              <div class="chips">${chipButtons(profile.technologies, "technology", "No technologies found", true)}</div>
+              <span class="eyebrow providerSubEyebrow">Industries</span>
+              <div class="chips">${chipButtons(industries, "industry", "No industries found", true)}</div>
+            </section>
+            <section class="providerProfileBlock">
+              <div class="providerBlockHeader">
+                <span class="eyebrow">Success stories</span>
+                <a href="#stories" data-profile-page="stories">All stories -></a>
+              </div>
+              ${providerStoriesListMarkup(profile)}
+            </section>
           </div>
-          <aside>
-            <span>Evidence score</span>
-            <strong>${Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0))}%</strong>
-            <small>Based on scraped profile evidence and enrichment sources.</small>
+          <aside class="providerProfileAside">
+            <section>
+              <span class="eyebrow">Facts</span>
+              <div class="providerFacts">${providerFactsMarkup(profile, industries)}</div>
+            </section>
+            <section>
+              <span class="eyebrow">Upcoming event</span>
+              ${providerUpcomingEventMarkup(profile)}
+              <a class="providerInlineLink" href="#events" data-profile-page="events">Register -></a>
+            </section>
           </aside>
         </section>
 
-        <nav class="detailTabs" aria-label="Profile sections">
-          ${detailTabsMarkup(adminVisible)}
-        </nav>
-
-        ${overviewPanelMarkup(profile, industries)}
-        ${partnershipsPanelMarkup(profile)}
+        ${
+          adminVisible
+            ? `
+              <nav class="detailTabs" aria-label="Profile sections">
+                ${detailTabsMarkup(adminVisible)}
+              </nav>
+              ${overviewPanelMarkup(profile, industries)}
+              ${partnershipsPanelMarkup(profile)}
+            `
+            : ""
+        }
         ${
           adminVisible
             ? `
@@ -1404,6 +1524,10 @@ function renderDetail() {
             `
             : ""
         }
+        <section class="providerIntroFooter">
+          <span>Interested but not sure? Rocket Engineers can broker the introduction.</span>
+          <a href="mailto:hello@rocketengineers.co?subject=${encodeURIComponent(`Introduction to ${profile.companyName || profile.domain}`)}">Request an introduction -></a>
+        </section>
       </div>
     </div>
   `;
@@ -1430,6 +1554,16 @@ function renderDetail() {
     }
 
     closeProviderDetail();
+  });
+
+  elements.detailContent.querySelectorAll("[data-profile-page]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      closeProviderDetail({ pushHistory: false, scroll: false });
+      setActivePage(link.dataset.profilePage);
+      window.history.pushState({ page: link.dataset.profilePage }, "", `#${link.dataset.profilePage}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   });
 }
 
