@@ -1,5 +1,3 @@
-const DEV_ADMIN_ACCESS = false;
-
 const state = {
   activeSection: "dashboard",
   jobs: [],
@@ -246,18 +244,10 @@ function escapeHtml(value) {
 }
 
 function adminToken() {
-  if (DEV_ADMIN_ACCESS) {
-    return "dev-admin";
-  }
-
   return window.localStorage.getItem("rocketEngineersAdminToken");
 }
 
 function adminEmail() {
-  if (DEV_ADMIN_ACCESS) {
-    return "dev-admin@rocketengineers.local";
-  }
-
   return window.localStorage.getItem("rocketEngineersAdminEmail");
 }
 
@@ -267,10 +257,6 @@ function setAdminSession(session) {
 }
 
 function clearAdminSession() {
-  if (DEV_ADMIN_ACCESS) {
-    return;
-  }
-
   window.localStorage.removeItem("rocketEngineersAdminToken");
   window.localStorage.removeItem("rocketEngineersAdminEmail");
 }
@@ -825,34 +811,6 @@ function tagValuesForCategory(provider = {}, category) {
   return Array.isArray(provider?.[category]) ? provider[category] : [];
 }
 
-function tagRowsFromProviders(providers = []) {
-  const rows = [];
-  const seen = new Set();
-
-  providers.forEach((provider) => {
-    ["services", "industries", "technologies", "vendor_partnerships"].forEach((category) => {
-      tagValuesForCategory(provider, category).forEach((value) => {
-        const name = normalizeTagName(value);
-        const key = `${category}:${normalizeTagKey(name)}`;
-
-        if (!name || seen.has(key)) {
-          return;
-        }
-
-        seen.add(key);
-        rows.push({
-          id: key,
-          category,
-          name,
-          status: "approved",
-        });
-      });
-    });
-  });
-
-  return rows;
-}
-
 function normalizeIndustryName(value) {
   const text = String(value || "").trim();
 
@@ -1123,12 +1081,6 @@ function openEditProfile(key) {
   elements.profileEditMessage.textContent = "";
   elements.profileEditMessage.classList.remove("error");
   elements.profileEditDialog.showModal();
-}
-
-function patchProviderInState(key, patch) {
-  state.providers = state.providers.map((provider) => (
-    providerKey(provider) === key ? { ...provider, ...patch } : provider
-  ));
 }
 
 function visiblePageNumbers(currentPage, totalPages) {
@@ -1729,30 +1681,7 @@ function renderLists() {
   updateBulkControls();
 }
 
-async function loadPublicProfilesForDevelopment() {
-  const response = await fetch("/api/profiles").catch(() => null);
-  const fallback = !response || !response.ok ? await fetch("/profiles.json") : response;
-  const profiles = fallback.ok ? await fallback.json() : [];
-
-  state.providers = Array.isArray(profiles)
-    ? profiles.map((profile) => ({ ...profile, status: lifecycleStatusForProvider(profile) }))
-    : [];
-  state.tags = tagRowsFromProviders(state.providers);
-  state.jobs = [];
-}
-
 async function refreshAdminState() {
-  if (DEV_ADMIN_ACCESS) {
-    elements.setupNotice.hidden = true;
-    await loadPublicProfilesForDevelopment();
-    state.jobsPage = 1;
-    state.reviewPage = 1;
-    state.publishedPage = 1;
-    renderStats();
-    renderLists();
-    return;
-  }
-
   const response = await fetch("/api/admin-state", { headers: adminHeaders() });
   const payload = await response.json();
 
@@ -1845,25 +1774,6 @@ async function handleScrapeSubmit(event) {
     return;
   }
 
-  if (DEV_ADMIN_ACCESS) {
-    state.jobs.unshift({
-      url: normalizedUrl,
-      domain: new URL(normalizedUrl).hostname.replace(/^www\./, ""),
-      company_name: elements.scrapeCompanyName.value || null,
-      requested_by: adminEmail(),
-      status: "queued",
-      created_at: new Date().toISOString(),
-    });
-    elements.scrapeMessage.textContent = "Development job queued locally.";
-    elements.scrapeUrl.value = "";
-    elements.scrapeCompanyName.value = "";
-    renderStats();
-    renderLists();
-    showToast("Development job queued.");
-    setBusy(submitButton, false);
-    return;
-  }
-
   try {
     const response = await fetch("/api/admin-scrape", {
       method: "POST",
@@ -1944,22 +1854,6 @@ async function queueRecrawlJob(provider) {
     throw new Error(`Missing website for ${provider.companyName || provider.domain || "provider"}.`);
   }
 
-  if (DEV_ADMIN_ACCESS) {
-    const job = {
-      id: `dev-recrawl-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      url,
-      domain: new URL(url).hostname.replace(/^www\./, ""),
-      company_name: provider.companyName || null,
-      requested_by: adminEmail(),
-      status: "queued",
-      created_at: new Date().toISOString(),
-    };
-    state.jobs.unshift(job);
-    renderStats();
-    renderLists();
-    return job;
-  }
-
   const response = await fetch("/api/admin-scrape", {
     method: "POST",
     headers: adminHeaders(),
@@ -1987,7 +1881,7 @@ async function recrawlProvider(key, options = {}) {
 
   const job = await queueRecrawlJob(provider);
 
-  if (options.runNow && job?.id && !DEV_ADMIN_ACCESS) {
+  if (options.runNow && job?.id) {
     await runScrapeJob(job.id);
     return true;
   }
@@ -2006,13 +1900,6 @@ async function publishProvider(id) {
 
   if (provider && isBelowConfidenceGuardrail(provider) && scraperQualityLogForProfile(provider).feedback !== "up") {
     throw new Error("Open this profile and mark reviewer feedback as Looks good before publishing. It is below the 75% confidence guardrail.");
-  }
-
-  if (DEV_ADMIN_ACCESS) {
-    patchProviderInState(id, { status: "approved" });
-    renderStats();
-    renderLists();
-    return true;
   }
 
   const response = await fetch("/api/admin-publish", {
@@ -2136,16 +2023,6 @@ async function updateProviderStatus(key, status) {
     return false;
   }
 
-  if (DEV_ADMIN_ACCESS) {
-    patchProviderInState(key, { status });
-    renderStats();
-    renderLists();
-    if (!LIVE_PROFILE_STATUSES.has(normalizeLifecycleStatus(status))) {
-      setSection("review");
-    }
-    return true;
-  }
-
   const response = await fetch("/api/admin-provider", {
     method: "PATCH",
     headers: adminHeaders(),
@@ -2169,13 +2046,6 @@ async function deleteProvider(key) {
     return { cancelled: true };
   }
 
-  if (DEV_ADMIN_ACCESS) {
-    state.providers = state.providers.filter((provider) => providerKey(provider) !== key);
-    renderStats();
-    renderLists();
-    return true;
-  }
-
   const response = await fetch("/api/admin-provider", {
     method: "DELETE",
     headers: adminHeaders(),
@@ -2194,13 +2064,6 @@ async function deleteProvider(key) {
 async function deleteJob(id) {
   if (!id || !window.confirm("Delete this scrape job?")) {
     return { cancelled: true };
-  }
-
-  if (DEV_ADMIN_ACCESS) {
-    state.jobs = state.jobs.filter((job) => String(job.id || "") !== String(id));
-    renderStats();
-    renderLists();
-    return true;
   }
 
   const response = await fetch("/api/admin-job", {
@@ -2288,15 +2151,6 @@ async function saveProfileEdit(event) {
   setBusy(submitButton, true, "Saving");
 
   try {
-    if (DEV_ADMIN_ACCESS) {
-      patchProviderInState(key, { ...patch, status });
-      elements.profileEditDialog.close();
-      renderStats();
-      renderLists();
-      showToast("Profile saved.");
-      return;
-    }
-
     const response = await fetch("/api/admin-provider", {
       method: "PATCH",
       headers: adminHeaders(),
