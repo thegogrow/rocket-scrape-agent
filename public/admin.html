@@ -32,8 +32,8 @@
       <aside class="adminSidebar">
         <div class="adminBrandRow">
           <a class="adminBrand" href="/admin" aria-label="Rocket Engineers Admin">
-            <span class="cloudLogo">Rocket Engineers</span>
             <span class="adminBrandText">Admin</span>
+            <span class="cloudLogo">Rocket Engineers</span>
           </a>
         </div>
         <nav class="adminSideNav" aria-label="Admin navigation">
@@ -52,6 +52,10 @@
           <button type="button" data-admin-section="data-quality" title="Missing Data">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" /></svg>
             <span>Missing Data</span>
+          </button>
+          <button type="button" data-admin-section="tags" title="Tags">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9l7 7-6 6-7-7V7Z" /><path d="M8 10h.01" /></svg>
+            <span>Tags</span>
           </button>
           <button type="button" data-admin-section="published" title="Live Providers">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
@@ -76,11 +80,11 @@
             <span id="adminSignedInAs">dev-admin@rocketengineers.local</span>
             <button id="adminRefreshButton" class="secondaryAction iconButtonText" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.2L13 11h8V3l-3.3 3.3Z" /></svg>
-              Refresh
+              <span>Refresh</span>
             </button>
             <button id="adminSignOutButton" class="secondaryAction iconButtonText" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h8v2H7v12h6v2H5V4Zm10.5 4.5L19 12l-3.5 3.5-1.4-1.4 1.1-1.1H10v-2h5.2l-1.1-1.1 1.4-1.4Z" /></svg>
-              Sign Out
+              <span>Sign Out</span>
             </button>
           </div>
         </header>
@@ -167,11 +171,11 @@
             <div class="paginationBar">
               <button id="jobsPrevButton" class="secondaryAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
-                Previous
+                <span>Previous</span>
               </button>
               <div id="jobsPageNumbers" class="paginationNumbers" aria-label="Job pages"></div>
               <button id="jobsNextButton" class="secondaryAction iconButtonText" type="button">
-                Next
+                <span>Next</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
               </button>
               <span id="jobsPageInfo">Page 1 of 1</span>
@@ -188,7 +192,7 @@
               </div>
               <button id="reviewSelectModeButton" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M5 12h14" /><path d="M5 17h14" /><path d="m4 7 1 1 2-2" /></svg>
-                Select
+                <span>Select</span>
               </button>
             </div>
             <div id="reviewBulkActionBar" class="bulkActionBar" hidden>
@@ -203,7 +207,7 @@
               </select>
               <button id="reviewBulkApply" class="secondaryAction compactAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
-                Apply
+                <span>Apply</span>
               </button>
               <span id="reviewBulkCount">0 selected</span>
             </div>
@@ -211,11 +215,11 @@
             <div class="paginationBar">
               <button id="reviewPrevButton" class="secondaryAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
-                Previous
+                <span>Previous</span>
               </button>
               <div id="reviewPageNumbers" class="paginationNumbers" aria-label="Provider review pages"></div>
               <button id="reviewNextButton" class="secondaryAction iconButtonText" type="button">
-                Next
+                <span>Next</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
               </button>
               <span id="reviewPageInfo">Page 1 of 1</span>
@@ -232,6 +236,47 @@
               </div>
             </div>
             <div id="missingDataList" class="adminTable adminMissingDataTable"></div>
+          </section>
+        </section>
+
+        <section class="adminSection" data-admin-panel="tags">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Tags</h2>
+                <p>Approve, rename, or merge scraped service, industry, technology, and partner tags before admins reuse them.</p>
+              </div>
+              <button id="tagApproveVisibleButton" class="primaryAction iconButtonText" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
+                <span>Approve Visible</span>
+              </button>
+            </div>
+            <div id="tagSummary" class="tagSummaryGrid" aria-label="Tag summary"></div>
+            <form class="adminFilterBar tagFilterBar">
+              <label>
+                Search
+                <input id="tagSearchFilter" type="search" placeholder="Find a tag" />
+              </label>
+              <label>
+                Category
+                <select id="tagCategoryFilter">
+                  <option value="">All categories</option>
+                  <option value="services">Services</option>
+                  <option value="industries">Industries</option>
+                  <option value="technologies">Technologies</option>
+                  <option value="vendor_partnerships">Vendor Partnerships</option>
+                </select>
+              </label>
+              <label>
+                Status
+                <select id="tagStatusFilter">
+                  <option value="">Any status</option>
+                  <option value="candidate">New / Candidate</option>
+                  <option value="approved">Approved</option>
+                </select>
+              </label>
+            </form>
+            <div id="tagList" class="adminTable adminTagsTable"></div>
           </section>
         </section>
 
@@ -275,11 +320,11 @@
               </label>
               <button id="publishedFlipButton" class="secondaryAction iconButtonText" type="button" aria-label="Flip list order">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v14" /><path d="m3 14 4 4 4-4" /><path d="M17 20V6" /><path d="m13 10 4-4 4 4" /></svg>
-                A-Z
+                <span>A-Z</span>
               </button>
               <button id="publishedSelectModeButton" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M5 12h14" /><path d="M5 17h14" /><path d="m4 7 1 1 2-2" /></svg>
-                Select
+                <span>Select</span>
               </button>
             </form>
             <div id="publishedBulkActionBar" class="bulkActionBar" hidden>
@@ -294,7 +339,7 @@
               </select>
               <button id="publishedBulkApply" class="secondaryAction compactAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
-                Apply
+                <span>Apply</span>
               </button>
               <span id="publishedBulkCount">0 selected</span>
             </div>
@@ -302,11 +347,11 @@
             <div class="paginationBar">
               <button id="publishedPrevButton" class="secondaryAction iconButtonText" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
-                Previous
+                <span>Previous</span>
               </button>
               <div id="publishedPageNumbers" class="paginationNumbers" aria-label="Published provider pages"></div>
               <button id="publishedNextButton" class="secondaryAction iconButtonText" type="button">
-                Next
+                <span>Next</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
               </button>
               <span id="publishedPageInfo">Page 1 of 1</span>
@@ -326,7 +371,14 @@
           <button id="profileEditClose" class="secondaryAction compactAction" type="button">Close</button>
         </div>
         <input id="profileEditKey" type="hidden" />
-        <div class="adminEditGrid">
+        <section class="structuredEditGroup adminEditSection">
+          <div class="structuredEditHeader">
+            <div>
+              <h3>Company Basics</h3>
+              <p>Name, website, location, lifecycle, and plan.</p>
+            </div>
+          </div>
+          <div class="adminEditGrid">
           <label>
             Company Name
             <input id="profileEditName" type="text" required />
@@ -361,6 +413,9 @@
               <option value="removed">Removed</option>
             </select>
           </label>
+          <div id="profileEditGuardrailNotice" class="guardrailNotice" hidden>
+            Confidence is below 75%. Keep this profile in review until a human reviewer fixes the profile or approves it.
+          </div>
           <label class="adminCheckboxLabel">
             <input id="profileEditClaimed" type="checkbox" />
             <span>Claimed / Verified</span>
@@ -372,23 +427,40 @@
               <option value="premium">Premium</option>
             </select>
           </label>
-        </div>
-        <label>
+          </div>
+        </section>
+        <section class="structuredEditGroup adminEditSection">
+          <div class="structuredEditHeader">
+            <div>
+              <h3>Classification Tags</h3>
+              <p>Use approved tags so public filters and profile matching stay consistent.</p>
+            </div>
+          </div>
+        <label class="tagPicker">
           Services
-          <textarea id="profileEditServices" rows="3" placeholder="One item per line"></textarea>
+          <div class="tagPickerList" data-tag-picker-list="services"></div>
+          <select id="profileEditServices" data-tag-picker-select="services"></select>
         </label>
-        <label>
+        <label class="tagPicker">
           Industries
-          <textarea id="profileEditIndustries" rows="3" placeholder="One item per line"></textarea>
+          <div class="tagPickerList" data-tag-picker-list="industries"></div>
+          <select id="profileEditIndustries" data-tag-picker-select="industries"></select>
         </label>
-        <label>
+        <label class="tagPicker">
           Technologies
-          <textarea id="profileEditTechnologies" rows="3" placeholder="One item per line"></textarea>
+          <div class="tagPickerList" data-tag-picker-list="technologies"></div>
+          <select id="profileEditTechnologies" data-tag-picker-select="technologies"></select>
         </label>
-        <label>
+        <label class="tagPicker">
           Vendor Partnerships
-          <textarea id="profileEditPartnerships" rows="3" placeholder="One item per line"></textarea>
+          <div class="tagPickerList" data-tag-picker-list="vendor_partnerships"></div>
+          <select id="profileEditPartnerships" data-tag-picker-select="vendor_partnerships"></select>
         </label>
+        </section>
+        <div class="adminEditSectionTitle">
+          <span>Public Content</span>
+          <p>Stories, solutions, and activity shown or used on the provider profile.</p>
+        </div>
         <section class="structuredEditGroup">
           <div class="structuredEditHeader">
             <h3>Success Stories</h3>
@@ -409,6 +481,10 @@
           Recent Activities
           <textarea id="profileEditActivities" rows="4" placeholder="One activity per line. Optional: 2026-06-30 | Activity title | Source"></textarea>
         </label>
+        <div class="adminEditSectionTitle">
+          <span>Reviewer Notes</span>
+          <p>Internal notes and quality details for manual review.</p>
+        </div>
         <label>
           Review Notes
           <textarea id="profileEditNotes" rows="3" placeholder="One note per line"></textarea>
@@ -418,6 +494,17 @@
             <h3>Scraper Quality Log</h3>
           </div>
           <span class="fieldHelp">Capture what the scraper missed or got wrong. These notes feed future scraper improvements.</span>
+          <fieldset class="reviewerFeedbackControl">
+            <legend>Reviewer Feedback</legend>
+            <label>
+              <input id="profileEditQualityFeedbackUp" name="profileEditQualityFeedback" type="radio" value="up" />
+              <span>👍 Looks good</span>
+            </label>
+            <label>
+              <input id="profileEditQualityFeedbackDown" name="profileEditQualityFeedback" type="radio" value="down" />
+              <span>👎 Needs work</span>
+            </label>
+          </fieldset>
           <label>
             Missing From Scrape
             <textarea id="profileEditQualityMissing" rows="3" placeholder="One item per line"></textarea>
@@ -435,11 +522,20 @@
             <textarea id="profileEditQualityNotes" rows="3" placeholder="Patterns, observations, or scraper improvement notes"></textarea>
           </label>
         </section>
+        <section class="structuredEditGroup">
+          <div class="structuredEditHeader">
+            <div>
+              <h3>Activity Log</h3>
+              <p>Recent review, save, and status changes for this profile.</p>
+            </div>
+          </div>
+          <div id="profileEditActivityLog" class="profileActivityLog"></div>
+        </section>
         <div id="profileEditMessage" class="authMessage" role="status"></div>
         <div class="adminDialogActions">
           <button class="primaryAction iconButtonText" type="submit">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7.5" /></svg>
-            Save Profile
+            <span>Save Profile</span>
           </button>
         </div>
       </form>

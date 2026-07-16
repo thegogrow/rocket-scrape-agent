@@ -15,7 +15,9 @@ const API_HANDLERS = {
   "/api/admin-run-job": require("../../api/admin-run-job"),
   "/api/admin-scrape": require("../../api/admin-scrape"),
   "/api/admin-state": require("../../api/admin-state"),
+  "/api/admin-tags": require("../../api/admin-tags"),
   "/api/logo": require("../../api/logo"),
+  "/api/tags": require("../../api/tags"),
 };
 
 function sendJson(response, statusCode, payload) {

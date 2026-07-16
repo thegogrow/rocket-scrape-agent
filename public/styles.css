@@ -662,7 +662,59 @@ a:hover {
 .iconButtonText {
   display: inline-flex;
   align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 7px;
+}
+
+.iconButtonText > svg,
+.iconButtonText > span {
+  flex: 0 0 auto;
+}
+
+.iconButtonText > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.adminBody button,
+.adminBody a.secondaryAction,
+.adminBody a.primaryAction,
+.adminBody summary {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.adminBody button > svg,
+.adminBody a.secondaryAction > svg,
+.adminBody a.primaryAction > svg,
+.adminBody summary > svg {
+  flex: 0 0 auto;
+}
+
+.adminBody button > span,
+.adminBody a.secondaryAction > span,
+.adminBody a.primaryAction > span,
+.adminBody summary > span {
+  display: inline-block;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.adminCellAction button,
+.adminCellAction a,
+.paginationBar button,
+.adminTopbarActions button,
+.bulkActionBar button,
+.adminDialogActions button {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
 }
 
 .adminApp.sidebarCollapsed .adminSidebar {
@@ -816,6 +868,11 @@ a:hover {
   min-width: 0;
 }
 
+.adminTableHeader span:last-child {
+  justify-self: end;
+  text-align: right;
+}
+
 .adminTableRow {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.72fr) minmax(92px, 0.45fr) minmax(92px, 0.48fr) minmax(150px, 0.78fr);
@@ -830,16 +887,20 @@ a:hover {
 
 .adminPublishedTable .adminTableHeader,
 .adminPublishedTable .adminTableRow {
-  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.4fr) minmax(88px, 0.3fr) minmax(82px, 0.26fr) minmax(500px, 1.1fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.45fr) minmax(94px, 0.32fr) minmax(82px, 0.25fr) minmax(310px, 0.72fr);
 }
 
 .adminPublishedTable.adminSelectionMode .adminTableHeader,
 .adminPublishedTable.adminSelectionMode .adminTableRow {
-  grid-template-columns: 58px minmax(0, 1.14fr) minmax(0, 0.38fr) minmax(88px, 0.28fr) minmax(82px, 0.24fr) minmax(500px, 1.1fr);
+  grid-template-columns: 58px minmax(0, 1.15fr) minmax(0, 0.42fr) minmax(94px, 0.3fr) minmax(82px, 0.24fr) minmax(310px, 0.72fr);
 }
 
 .adminPublishedTable .adminTableHeader span:last-child {
   text-align: right;
+}
+
+.adminPublishedTable {
+  overflow: visible;
 }
 
 .adminJobsTable .adminTableHeader,
@@ -1112,6 +1173,11 @@ a:hover {
   gap: 12px;
 }
 
+.structuredEditHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
 .structuredEditHeader h3 {
   margin: 0;
   color: var(--ink);
@@ -1308,22 +1374,23 @@ a:hover {
 
 .adminPublishedTable .adminCellAction {
   flex-wrap: nowrap;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 
 .adminPublishedTable .compactAction {
-  min-height: 40px;
-  gap: 8px;
-  padding: 0 16px;
-  border-radius: 6px;
-  font-size: 13px;
+  min-height: 34px;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 0;
+  font-size: 11px;
   line-height: 1;
 }
 
 .adminPublishedTable .compactAction svg {
-  width: 19px;
-  height: 19px;
-  flex: 0 0 19px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
 }
 
 .compactAction {
@@ -1338,8 +1405,8 @@ a:hover {
 }
 
 .compactAction svg {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -3803,6 +3870,833 @@ h4,
 .adminHeader h1,
 .adminPanel h2 {
   color: #111;
+}
+
+.adminBody {
+  background: #fff;
+  color: #111;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  --admin-line: #d8d8d4;
+  --admin-line-strong: #b9b9b2;
+  --admin-red: #c8102e;
+  --admin-red-dark: #8f0b20;
+  --admin-soft-red: #fff1f3;
+}
+
+.adminLoginScreen {
+  background: #fff;
+}
+
+.adminLoginCard {
+  border: 1px solid #111;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.adminApp {
+  min-height: 100vh;
+  grid-template-columns: 238px minmax(0, 1fr);
+  background: #fff;
+}
+
+.adminSidebar {
+  padding: 22px 14px;
+  border-right: 1px solid var(--admin-line-strong);
+  background: #fff;
+}
+
+.adminBrand {
+  gap: 8px;
+}
+
+.adminBrand .cloudLogo,
+.adminBrandText {
+  height: 40px;
+  display: inline-grid;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.adminBrandText {
+  padding: 0 11px;
+  border: 1px solid var(--admin-red);
+  color: var(--admin-red);
+  text-transform: uppercase;
+}
+
+.adminSideNav {
+  gap: 8px;
+}
+
+.adminSideNav button,
+.publicSiteLink,
+.sidebarToggle {
+  min-height: 44px;
+  padding: 0 12px;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.adminSideNav svg,
+.publicSiteLink svg,
+.sidebarToggle svg,
+.iconButtonText svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+}
+
+.adminSideNav button:hover,
+.publicSiteLink:hover,
+.sidebarToggle:hover {
+  border-color: var(--admin-red);
+  background: #f6f6f4;
+}
+
+.adminSideNav button.active {
+  border-color: var(--admin-red);
+  background: var(--admin-red);
+  color: #fff;
+}
+
+.adminMain {
+  min-width: 0;
+  background: #fff;
+}
+
+.adminTopbar {
+  min-height: 76px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--admin-line-strong);
+  background: #fff;
+}
+
+.adminTopbarActions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.adminTopbarActions > span {
+  min-width: 0;
+  padding-right: 8px;
+  color: #555;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminSection {
+  padding: 28px;
+}
+
+.adminStats {
+  gap: 0;
+  border-top: 1px solid var(--admin-line-strong);
+  border-left: 1px solid var(--admin-line-strong);
+}
+
+.adminStats article {
+  min-height: 134px;
+  padding: 22px;
+  border: 0;
+  border-right: 1px solid var(--admin-line-strong);
+  border-bottom: 1px solid var(--admin-line-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.adminStats article svg {
+  color: var(--admin-red);
+}
+
+.adminStats span {
+  color: #555;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.adminStats strong {
+  font-size: 42px;
+  letter-spacing: 0;
+}
+
+.adminTwoColumn {
+  gap: 0;
+  border-left: 1px solid var(--admin-line-strong);
+}
+
+.adminTwoColumn > .adminPanel {
+  border-left: 0;
+}
+
+.adminPanel {
+  gap: 20px;
+  padding: 26px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.panelHeader {
+  align-items: center;
+}
+
+.panelHeader h2 {
+  color: #111;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.panelHeader p {
+  color: #555;
+  font-size: 14px;
+}
+
+.adminFilterBar,
+.bulkActionBar {
+  padding: 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: 0;
+  background: #fff;
+}
+
+.adminTable {
+  gap: 0;
+  border-top: 1px solid var(--admin-line);
+  border-left: 1px solid var(--admin-line);
+}
+
+.adminTableHeader {
+  padding: 11px 14px;
+  border-right: 1px solid var(--admin-line);
+  border-bottom: 1px solid var(--admin-line);
+  background: #f6f6f4;
+  color: #555;
+  letter-spacing: 0;
+}
+
+.adminTableRow {
+  min-height: 76px;
+  padding: 14px;
+  border: 0;
+  border-right: 1px solid var(--admin-line);
+  border-bottom: 1px solid var(--admin-line);
+  border-radius: 0;
+  background: #fff;
+}
+
+.adminTableRow:hover {
+  background: #fafafa;
+}
+
+.adminLowConfidenceRow {
+  background: var(--admin-soft-red);
+  box-shadow: inset 5px 0 0 var(--admin-red);
+}
+
+.adminLowConfidenceRow:hover {
+  background: #fff0f0;
+}
+
+.adminIssueChip {
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid var(--admin-red);
+  border-radius: 999px;
+  background: #fff0f0;
+  color: var(--admin-red-dark);
+}
+
+.statusPill {
+  min-height: 26px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  letter-spacing: 0;
+}
+
+.statusPill-scraped,
+.statusPill-in_review,
+.statusPill-removal_requested {
+  border-color: #c1121f;
+  background: #fff0f0;
+  color: var(--admin-red-dark);
+}
+
+.statusPill-outreach_pending,
+.statusPill-outreach_active,
+.statusPill-unclaimed {
+  border-color: #b77b00;
+  background: #fff8e8;
+  color: #7d4b00;
+}
+
+.adminProviderIdentity {
+  gap: 12px;
+}
+
+.adminProviderLogo,
+.logoFallback {
+  border-radius: 0;
+}
+
+.adminCellAction {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.adminMissingDataTable .adminCellAction,
+.adminTagsTable .adminCellAction {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--admin-line);
+  border-left: 1px solid var(--admin-line);
+}
+
+.tagSummaryGrid article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-right: 1px solid var(--admin-line);
+  border-bottom: 1px solid var(--admin-line);
+  background: #fafafa;
+}
+
+.tagSummaryGrid span {
+  min-width: 0;
+  color: #555;
+  font-size: 11px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.tagSummaryGrid strong {
+  flex: 0 0 auto;
+  color: var(--admin-red);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.adminTagsTable {
+  border-top: 0;
+}
+
+.adminTagsTable .adminTableHeader,
+.adminTagsTable .adminTableRow {
+  grid-template-columns: minmax(180px, 1fr) minmax(130px, 0.42fr) minmax(180px, 0.82fr) minmax(200px, 0.9fr) minmax(250px, 0.95fr);
+}
+
+.adminTagRow {
+  min-height: 92px;
+  align-items: stretch;
+}
+
+.adminTagMetaCell {
+  align-content: center;
+  gap: 8px;
+}
+
+.adminTagInlineField {
+  align-content: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.adminTagsTable .adminCellAction {
+  align-content: center;
+  justify-content: flex-start;
+}
+
+.secondaryAction,
+.primaryAction,
+.adminForm button[type="submit"],
+.compactAction,
+.iconButtonText {
+  min-height: 36px;
+  padding: 0 20px;
+  gap: 8px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.compactAction {
+  min-height: 34px;
+  padding: 0 18px;
+}
+
+.adminPublishedTable .compactAction {
+  border-radius: 0;
+}
+
+.adminPublishedActions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.adminPublishedActions > .compactAction:first-child {
+  border-color: var(--admin-red);
+  background: var(--admin-red);
+  color: #fff;
+}
+
+.adminActionMenu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.adminActionMenu summary {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--admin-line-strong);
+  background: #fff;
+  color: #111;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  list-style: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.adminActionMenu summary svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  fill: currentColor;
+}
+
+.adminActionMenu summary span {
+  display: inline;
+  white-space: nowrap;
+}
+
+.adminActionMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.adminActionMenu summary::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 10px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.adminActionMenu[open] summary {
+  border-color: var(--admin-red);
+}
+
+.adminActionMenuPanel {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: calc(100% + 6px);
+  display: grid;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--admin-line-strong);
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.12);
+}
+
+.adminActionMenuPanel .compactAction {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  border: 0;
+  white-space: nowrap;
+}
+
+.adminActionMenuPanel .compactAction svg {
+  flex: 0 0 15px;
+}
+
+.adminActionMenuPanel .compactAction span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.adminActionMenuPanel .compactAction:hover {
+  background: var(--admin-soft-red);
+}
+
+.primaryAction,
+.adminForm button[type="submit"] {
+  border-color: var(--admin-red);
+  background: var(--admin-red);
+  color: #fff;
+}
+
+.secondaryAction {
+  border-color: var(--admin-line-strong);
+  background: #fff;
+  color: #111;
+}
+
+.secondaryAction:hover,
+.compactAction:hover {
+  background: #f6f6f4;
+}
+
+.adminDialog::backdrop {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.adminDialog {
+  width: min(1220px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.adminDialogCard {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  gap: 22px;
+  padding: 28px;
+  border: 1px solid var(--admin-line-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.adminDialogCard > * {
+  min-width: 0;
+}
+
+.adminEditGrid {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 18px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.adminEditSection .adminEditGrid {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.adminEditSectionTitle {
+  display: grid;
+  gap: 4px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--admin-line-strong);
+}
+
+.adminEditSectionTitle:first-of-type {
+  padding-top: 4px;
+  border-top: 0;
+}
+
+.adminEditSectionTitle span {
+  color: #111;
+  font-family: "Poppins", "Inter", sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.adminEditSectionTitle p {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.adminDialogCard label,
+.adminFilterBar label {
+  letter-spacing: 0;
+}
+
+.adminDialogCard label {
+  gap: 8px;
+}
+
+.adminDialogCard input,
+.adminDialogCard select,
+.adminDialogCard textarea,
+.adminFilterBar input,
+.adminFilterBar select,
+.adminTagsTable input,
+.adminTagsTable select {
+  border-color: var(--admin-line-strong);
+  border-radius: 0;
+}
+
+.guardrailNotice {
+  align-self: end;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-red);
+  background: var(--admin-soft-red);
+  color: var(--admin-red-dark);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.structuredEditGroup {
+  min-width: 0;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--admin-line);
+  background: #fff;
+}
+
+.structuredEditGroup:has(#profileEditQualityMissing) {
+  border-left: 6px solid var(--admin-red);
+  background: #fffafa;
+}
+
+.structuredEditHeader h3 {
+  color: #111;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.structuredEditHeader p {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.reviewerFeedbackControl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reviewerFeedbackControl legend {
+  width: 100%;
+  margin-bottom: 2px;
+  color: #111;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reviewerFeedbackControl label {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border: 1px solid var(--admin-line-strong);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.reviewerFeedbackControl input {
+  width: 14px;
+  min-height: 14px;
+  accent-color: var(--admin-red);
+}
+
+.tagChip {
+  border-radius: 0;
+}
+
+.adminDialogCard > label,
+.tagPicker {
+  min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.adminDialogCard textarea {
+  max-width: 100%;
+}
+
+.tagPickerList {
+  border-color: var(--admin-line-strong);
+  border-radius: 0;
+}
+
+.structuredEntryRow {
+  min-width: 0;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.1fr);
+  gap: 14px;
+  padding: 16px;
+  border-color: var(--admin-line);
+  border-radius: 0;
+  background: #fafafa;
+}
+
+.structuredEntryRow > * {
+  min-width: 0;
+}
+
+.structuredEntryRemove {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-height: 34px;
+}
+
+.profileActivityLog {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--admin-line);
+}
+
+.profileActivityItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(0, 1fr) minmax(160px, 0.35fr);
+  gap: 14px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.profileActivityItem div,
+.profileActivityItem p,
+.profileActivityItem small {
+  min-width: 0;
+}
+
+.profileActivityItem strong,
+.profileActivityItem span,
+.profileActivityItem small {
+  display: block;
+}
+
+.profileActivityItem strong {
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.profileActivityItem span,
+.profileActivityItem small {
+  color: #666;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profileActivityItem p {
+  margin: 0;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.adminDialogActions {
+  position: sticky;
+  bottom: -28px;
+  margin: 4px -28px -28px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--admin-line-strong);
+  background: #fff;
+}
+
+.adminDialogActions .primaryAction {
+  min-height: 40px;
+  padding-inline: 24px;
+}
+
+@media (max-width: 980px) {
+  .adminEditGrid,
+  .adminStats,
+  .adminTwoColumn,
+  .tagSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminTwoColumn {
+    border-left: 0;
+  }
+
+  .adminSection {
+    padding: 20px;
+  }
+
+  .adminTagsTable .adminTableHeader {
+    display: none;
+  }
+
+  .adminTagsTable .adminTableRow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .adminEditGrid,
+  .structuredEntryRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .adminDialogCard {
+    width: 100%;
+    max-width: 100%;
+    padding: 18px;
+  }
+
+  .adminDialogCard .panelHeader,
+  .adminTopbarActions {
+    align-items: stretch;
+  }
+
+  .adminEditGrid,
+  .structuredEntryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .adminDialogActions {
+    bottom: -18px;
+    margin: 4px -18px -18px;
+    padding: 12px 18px;
+  }
 }
 
 @media (max-width: 1160px) {

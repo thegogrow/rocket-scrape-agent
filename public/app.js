@@ -1,5 +1,6 @@
 const state = {
   profiles: [],
+  tags: [],
   filtered: [],
   selectedDomain: null,
   profileMode: false,
@@ -103,6 +104,7 @@ const FILTER_DEFS = [
   {
     key: "service",
     label: "Service",
+    tagCategory: "services",
     container: elements.serviceFilter,
     values(profile) {
       return profile.filterBuckets?.services || normalizeServices(profile.services);
@@ -111,6 +113,7 @@ const FILTER_DEFS = [
   {
     key: "technology",
     label: "Technology",
+    tagCategory: "technologies",
     container: elements.technologyFilter,
     values(profile) {
       return profile.filterBuckets?.technologies || normalizeTechnologies(profile.technologies);
@@ -119,6 +122,7 @@ const FILTER_DEFS = [
   {
     key: "partner",
     label: "Partnerships",
+    tagCategory: "vendor_partnerships",
     container: elements.partnerFilter,
     values(profile) {
       return profile.filterBuckets?.partnerships || normalizePartnerships(profile.vendorPartnerships);
@@ -127,6 +131,7 @@ const FILTER_DEFS = [
   {
     key: "industry",
     label: "Industries",
+    tagCategory: "industries",
     container: elements.industryFilter,
     values(profile) {
       return profile.filterBuckets?.industries || getIndustries(profile);
@@ -702,11 +707,56 @@ function countFilterValues(filterDef) {
   return counts;
 }
 
+function publicTagsFromPayload(payload) {
+  return (Array.isArray(payload) ? payload : [])
+    .filter((tag) => tag?.status === "approved")
+    .map((tag) => ({
+      category: String(tag.category || "").trim(),
+      name: String(tag.name || "").trim(),
+      status: tag.status,
+    }))
+    .filter((tag) => tag.category && tag.name);
+}
+
+function approvedFilterTagValues(filterDef) {
+  if (!filterDef.tagCategory) {
+    return [];
+  }
+
+  const seen = new Set();
+
+  return state.tags
+    .filter((tag) => tag.category === filterDef.tagCategory && tag.status === "approved")
+    .map((tag) => tag.name)
+    .filter(Boolean)
+    .filter((name) => {
+      const key = name.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function filterOptionValues(filterDef, counts, selected) {
+  const approvedValues = approvedFilterTagValues(filterDef);
+
+  if (approvedValues.length === 0) {
+    return [...counts.keys()].sort((left, right) => left.localeCompare(right));
+  }
+
+  return approvedValues.filter((value) => counts.has(value) || selected.has(value));
+}
+
 function renderFilterOptions(filterDef) {
   const counts = countFilterValues(filterDef);
   const selected = new Set(state.filters[filterDef.key]);
   const search = state.filterSearches[filterDef.key].toLowerCase();
-  const values = [...counts.keys()]
+  const values = filterOptionValues(filterDef, counts, selected)
     .filter((value) => !search || value.toLowerCase().includes(search))
     .sort((left, right) => left.localeCompare(right));
 
@@ -720,7 +770,7 @@ function renderFilterOptions(filterDef) {
             <label class="filterOption" for="${escapeHtml(inputId)}">
               <input id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(value)}" data-filter-option="${escapeHtml(filterDef.key)}"${checked} />
               <span>${escapeHtml(value)}</span>
-              <strong>${counts.get(value)}</strong>
+              <strong>${counts.get(value) || 0}</strong>
             </label>
           `;
         })
@@ -2008,6 +2058,7 @@ async function loadProfiles() {
   }
 
   state.filtered = state.profiles;
+  state.tags = await loadApprovedTags();
   state.selectedDomain = null;
   elements.status.textContent = `${state.profiles.length} loaded`;
   populateFilters();
@@ -2016,6 +2067,20 @@ async function loadProfiles() {
   applyFilters();
   syncPageFromLocation();
   syncProviderRouteFromLocation({ replaceHistory: true });
+}
+
+async function loadApprovedTags() {
+  try {
+    const response = await fetch("/api/tags");
+
+    if (!response.ok) {
+      return [];
+    }
+
+    return publicTagsFromPayload(await response.json());
+  } catch (error) {
+    return [];
+  }
 }
 
 loadProfiles().catch((error) => {

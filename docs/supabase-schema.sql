@@ -22,6 +22,7 @@ create table if not exists public.providers (
   recent_activity jsonb not null default '[]'::jsonb,
   review_notes jsonb not null default '[]'::jsonb,
   scraper_quality_log jsonb not null default '{}'::jsonb,
+  activity_log jsonb not null default '[]'::jsonb,
   files jsonb not null default '{}'::jsonb,
   confidence_score integer not null default 0,
   github_url text,
@@ -62,6 +63,25 @@ create table if not exists public.scrape_jobs (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.tag_taxonomy (
+  id uuid primary key default gen_random_uuid(),
+  category text not null check (category in ('services', 'industries', 'technologies', 'vendor_partnerships')),
+  name text not null,
+  normalized_name text not null,
+  status text not null default 'candidate' check (status in ('candidate', 'approved', 'merged')),
+  merge_target text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (category, normalized_name)
+);
+
+alter table public.tag_taxonomy
+  drop constraint if exists tag_taxonomy_category_check;
+
+alter table public.tag_taxonomy
+  add constraint tag_taxonomy_category_check
+  check (category in ('services', 'industries', 'technologies', 'vendor_partnerships'));
+
 alter table public.providers
   add column if not exists city text,
   add column if not exists claimed boolean not null default false,
@@ -69,7 +89,8 @@ alter table public.providers
   add column if not exists industries jsonb not null default '[]'::jsonb,
   add column if not exists success_stories jsonb not null default '[]'::jsonb,
   add column if not exists solutions jsonb not null default '[]'::jsonb,
-  add column if not exists scraper_quality_log jsonb not null default '{}'::jsonb;
+  add column if not exists scraper_quality_log jsonb not null default '{}'::jsonb,
+  add column if not exists activity_log jsonb not null default '[]'::jsonb;
 
 alter table public.providers
   drop constraint if exists providers_status_check;
@@ -118,8 +139,14 @@ create trigger scrape_jobs_set_updated_at
 before update on public.scrape_jobs
 for each row execute function public.set_updated_at();
 
+drop trigger if exists tag_taxonomy_set_updated_at on public.tag_taxonomy;
+create trigger tag_taxonomy_set_updated_at
+before update on public.tag_taxonomy
+for each row execute function public.set_updated_at();
+
 alter table public.providers enable row level security;
 alter table public.scrape_jobs enable row level security;
+alter table public.tag_taxonomy enable row level security;
 
 drop policy if exists "Published providers are public" on public.providers;
 create policy "Published providers are public"

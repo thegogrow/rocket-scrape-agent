@@ -19,7 +19,7 @@ module.exports = async function handler(request, response) {
 
   try {
     const admin = await verifyAdminToken(request.headers.authorization);
-    const { url, companyName } = await readJsonBody(request);
+    const { url, companyName, allowExisting } = await readJsonBody(request);
     const normalizedUrl = normalizeWebsiteUrl(url);
 
     try {
@@ -29,8 +29,9 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    response.status(200).json(await createScrapeJob({ url: normalizedUrl, companyName, requestedBy: admin.email }));
+    response.status(200).json(await createScrapeJob({ url: normalizedUrl, companyName, requestedBy: admin.email, allowExisting }));
   } catch (error) {
-    response.status(401).json({ error: error.message });
+    const status = /already exists/i.test(error.message) ? 409 : 401;
+    response.status(status).json({ error: error.message });
   }
 };

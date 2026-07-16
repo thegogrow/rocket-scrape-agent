@@ -4,6 +4,7 @@ const state = {
   activeSection: "dashboard",
   jobs: [],
   providers: [],
+  tags: [],
   sidebarCollapsed: window.localStorage.getItem("rocketEngineersAdminSidebar") === "collapsed",
   jobsPage: 1,
   jobsPageSize: 10,
@@ -23,6 +24,11 @@ const state = {
   selectionMode: {
     review: false,
     published: false,
+  },
+  tagFilters: {
+    search: "",
+    category: "",
+    status: "",
   },
 };
 
@@ -76,6 +82,7 @@ const LIVE_PROFILE_STATUSES = new Set([
   "claimed",
   "unclaimed",
 ]);
+const CONFIDENCE_GUARDRAIL_SCORE = 75;
 const REVIEW_PROFILE_STATUSES = new Set([
   "scraped",
   "in_review",
@@ -183,6 +190,12 @@ const elements = {
   publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
   missingDataList: document.querySelector("#missingDataList"),
+  tagApproveVisibleButton: document.querySelector("#tagApproveVisibleButton"),
+  tagSummary: document.querySelector("#tagSummary"),
+  tagSearchFilter: document.querySelector("#tagSearchFilter"),
+  tagCategoryFilter: document.querySelector("#tagCategoryFilter"),
+  tagStatusFilter: document.querySelector("#tagStatusFilter"),
+  tagList: document.querySelector("#tagList"),
   publishedPrevButton: document.querySelector("#publishedPrevButton"),
   publishedNextButton: document.querySelector("#publishedNextButton"),
   publishedPageInfo: document.querySelector("#publishedPageInfo"),
@@ -197,6 +210,7 @@ const elements = {
   profileEditCountry: document.querySelector("#profileEditCountry"),
   profileEditCity: document.querySelector("#profileEditCity"),
   profileEditStatus: document.querySelector("#profileEditStatus"),
+  profileEditGuardrailNotice: document.querySelector("#profileEditGuardrailNotice"),
   profileEditClaimed: document.querySelector("#profileEditClaimed"),
   profileEditSubscriptionTier: document.querySelector("#profileEditSubscriptionTier"),
   profileEditServices: document.querySelector("#profileEditServices"),
@@ -213,6 +227,9 @@ const elements = {
   profileEditQualityIncorrect: document.querySelector("#profileEditQualityIncorrect"),
   profileEditQualityAdded: document.querySelector("#profileEditQualityAdded"),
   profileEditQualityNotes: document.querySelector("#profileEditQualityNotes"),
+  profileEditQualityFeedbackUp: document.querySelector("#profileEditQualityFeedbackUp"),
+  profileEditQualityFeedbackDown: document.querySelector("#profileEditQualityFeedbackDown"),
+  profileEditActivityLog: document.querySelector("#profileEditActivityLog"),
   profileEditMessage: document.querySelector("#profileEditMessage"),
   toastRegion: document.querySelector("#adminToastRegion"),
 };
@@ -347,6 +364,17 @@ function lifecycleStatusForProvider(provider = {}) {
   return explicitStatus;
 }
 
+function confidenceScoreForProvider(provider = {}) {
+  const rawScore = provider.confidenceScore ?? provider.confidence_score;
+  const score = Number.parseInt(rawScore, 10);
+
+  return Number.isFinite(score) ? score : 0;
+}
+
+function isBelowConfidenceGuardrail(provider = {}) {
+  return confidenceScoreForProvider(provider) < CONFIDENCE_GUARDRAIL_SCORE;
+}
+
 function isLiveProvider(provider = {}) {
   return LIVE_PROFILE_STATUSES.has(lifecycleStatusForProvider(provider));
 }
@@ -474,7 +502,7 @@ function actionButton(kind, label, attrs = "") {
     publish: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>`,
   };
 
-  return `<button class="secondaryAction compactAction iconButtonText" type="button" ${attrs}>${icons[kind] || ""}${escapeHtml(label)}</button>`;
+  return `<button class="secondaryAction compactAction iconButtonText" type="button" ${attrs}>${icons[kind] || ""}<span>${escapeHtml(label)}</span></button>`;
 }
 
 function actionLink(kind, label, href) {
@@ -482,7 +510,7 @@ function actionLink(kind, label, href) {
     ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Z" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>`
     : "";
 
-  return `<a class="secondaryAction compactAction iconButtonText" href="${escapeHtml(href)}">${icon}${escapeHtml(label)}</a>`;
+  return `<a class="secondaryAction compactAction iconButtonText" href="${escapeHtml(href)}">${icon}<span>${escapeHtml(label)}</span></a>`;
 }
 
 function providerActions(provider, options = {}) {
@@ -494,6 +522,32 @@ function providerActions(provider, options = {}) {
     includeProfile = true,
     includeRecrawl = true,
   } = options;
+
+  if (includeManage) {
+    const key = escapeHtml(provider.id || provider.domain || "");
+    const profileAction = provider.domain
+      ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
+      : "";
+
+    return `
+      <div class="adminPublishedActions">
+        ${actionButton("edit", "Edit", `data-edit-provider="${key}"`)}
+        ${profileAction}
+        <details class="adminActionMenu">
+          <summary aria-label="More provider actions">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+            <span>More</span>
+          </summary>
+          <div class="adminActionMenuPanel">
+            ${actionButton("recrawl", "Recrawl", `data-recrawl-provider="${key}"`)}
+            ${actionButton("unpublish", "Unpublish", `data-unpublish-provider="${key}"`)}
+            ${actionButton("delete", "Delete", `data-delete-provider="${key}"`)}
+          </div>
+        </details>
+      </div>
+    `;
+  }
+
   const actions = [
     includeProfile && provider.domain
       ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
@@ -510,18 +564,6 @@ function providerActions(provider, options = {}) {
     includeDelete
       ? actionButton("delete", "Delete", `data-delete-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
-    includeManage
-      ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-    includeManage
-      ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-    includeManage
-      ? actionButton("unpublish", "Unpublish", `data-unpublish-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-    includeManage
-      ? actionButton("delete", "Delete", `data-delete-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
   ].filter(Boolean);
 
   return actions.length ? actions.join("") : "";
@@ -531,6 +573,7 @@ function providerRow(provider, options = {}) {
   const { includeAction = false, compact = false } = options;
   const key = providerKey(provider);
   const checked = state.selectedProviders.has(key) ? " checked" : "";
+  const attentionClass = isBelowConfidenceGuardrail(provider) ? " adminLowConfidenceRow" : "";
   const action = providerActions(provider, {
     includeDelete: includeAction,
     includeEdit: includeAction,
@@ -540,7 +583,7 @@ function providerRow(provider, options = {}) {
   });
 
   return `
-    <article class="adminTableRow ${compact ? "adminPublishedRow" : "adminReviewRow"}">
+    <article class="adminTableRow ${compact ? "adminPublishedRow" : "adminReviewRow"}${attentionClass}">
       <div class="adminCell adminSelectCell">
         <input type="checkbox" data-select-provider="${escapeHtml(key)}"${checked} aria-label="Select ${escapeHtml(provider.companyName || provider.domain || "provider")}" />
       </div>
@@ -562,8 +605,10 @@ function providerRow(provider, options = {}) {
 }
 
 function compactProviderRow(provider) {
+  const attentionClass = isBelowConfidenceGuardrail(provider) ? " adminLowConfidenceRow" : "";
+
   return `
-    <article class="adminTableRow adminReviewRow adminCompactRow adminDashboardProviderRow">
+    <article class="adminTableRow adminReviewRow adminCompactRow adminDashboardProviderRow${attentionClass}">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -696,6 +741,118 @@ function uniqueList(values) {
     });
 }
 
+function normalizeTagName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeTagKey(value) {
+  return normalizeTagName(value).toLowerCase();
+}
+
+function tagsForCategory(category, options = {}) {
+  const { approvedOnly = false, includeMerged = false } = options;
+
+  return state.tags
+    .filter((tag) => tag.category === category)
+    .filter((tag) => includeMerged || tag.status !== "merged")
+    .filter((tag) => !approvedOnly || tag.status === "approved")
+    .sort((left, right) => String(left.name).localeCompare(String(right.name), undefined, { sensitivity: "base" }));
+}
+
+function approvedTagNames(category) {
+  return tagsForCategory(category, { approvedOnly: true }).map((tag) => tag.name);
+}
+
+function selectedTagNames(category) {
+  const list = document.querySelector(`[data-tag-picker-list="${category}"]`);
+
+  if (!list) {
+    return [];
+  }
+
+  return uniqueList(Array.from(list.querySelectorAll("[data-tag-value]")).map((item) => item.dataset.tagValue));
+}
+
+function setTagPickerValues(category, values = []) {
+  const list = document.querySelector(`[data-tag-picker-list="${category}"]`);
+
+  if (!list) {
+    return;
+  }
+
+  const allKnown = uniqueList([...approvedTagNames(category), ...values]);
+  const selected = uniqueList(values);
+  list.innerHTML = selected.length
+    ? selected.map((value) => `
+      <span class="tagChip" data-tag-value="${escapeHtml(value)}">
+        ${escapeHtml(value)}
+        <button type="button" data-remove-tag="${escapeHtml(category)}" aria-label="Remove ${escapeHtml(value)}">x</button>
+      </span>
+    `).join("")
+    : `<span class="emptyTagHint">No tags selected.</span>`;
+
+  renderTagPickerOptions(category, allKnown);
+}
+
+function renderTagPickerOptions(category, tagNames = approvedTagNames(category)) {
+  const select = document.querySelector(`[data-tag-picker-select="${category}"]`);
+
+  if (!select) {
+    return;
+  }
+
+  const selectedKeys = new Set(selectedTagNames(category).map(normalizeTagKey));
+  const options = uniqueList(tagNames).filter((name) => !selectedKeys.has(normalizeTagKey(name)));
+  select.innerHTML = `<option value="">Add existing tag</option>${options.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}`;
+  select.disabled = options.length === 0;
+}
+
+function addTagToPicker(category, value) {
+  const name = normalizeTagName(value);
+
+  if (!name) {
+    return;
+  }
+
+  setTagPickerValues(category, [...selectedTagNames(category), name]);
+}
+
+function tagValuesForCategory(provider = {}, category) {
+  if (category === "vendor_partnerships") {
+    return Array.isArray(provider.vendorPartnerships) ? provider.vendorPartnerships : [];
+  }
+
+  return Array.isArray(provider?.[category]) ? provider[category] : [];
+}
+
+function tagRowsFromProviders(providers = []) {
+  const rows = [];
+  const seen = new Set();
+
+  providers.forEach((provider) => {
+    ["services", "industries", "technologies", "vendor_partnerships"].forEach((category) => {
+      tagValuesForCategory(provider, category).forEach((value) => {
+        const name = normalizeTagName(value);
+        const key = `${category}:${normalizeTagKey(name)}`;
+
+        if (!name || seen.has(key)) {
+          return;
+        }
+
+        seen.add(key);
+        rows.push({
+          id: key,
+          category,
+          name,
+          status: "approved",
+        });
+      });
+    });
+  });
+
+  return rows;
+}
+
 function normalizeIndustryName(value) {
   const text = String(value || "").trim();
 
@@ -825,6 +982,31 @@ function subscriptionTierForProfile(profile = {}) {
   return hasPremiumProfileAccess(profile) ? "premium" : "free";
 }
 
+function normalizeReviewerFeedback(value) {
+  const feedback = String(value || "").trim().toLowerCase();
+
+  return feedback === "up" || feedback === "down" ? feedback : "";
+}
+
+function selectedReviewerFeedback() {
+  if (elements.profileEditQualityFeedbackUp.checked) {
+    return "up";
+  }
+
+  if (elements.profileEditQualityFeedbackDown.checked) {
+    return "down";
+  }
+
+  return "";
+}
+
+function setReviewerFeedback(value) {
+  const feedback = normalizeReviewerFeedback(value);
+
+  elements.profileEditQualityFeedbackUp.checked = feedback === "up";
+  elements.profileEditQualityFeedbackDown.checked = feedback === "down";
+}
+
 function scraperQualityLogForProfile(profile = {}) {
   const log = profile.scraperQualityLog || {};
 
@@ -833,7 +1015,71 @@ function scraperQualityLogForProfile(profile = {}) {
     incorrect: Array.isArray(log.incorrect) ? log.incorrect : [],
     added: Array.isArray(log.added) ? log.added : [],
     notes: typeof log.notes === "string" ? log.notes : "",
+    feedback: normalizeReviewerFeedback(log.feedback || log.reviewerFeedback),
   };
+}
+
+function activityLogForProfile(profile = {}) {
+  return Array.isArray(profile.activityLog) ? profile.activityLog : [];
+}
+
+function formatActivityDate(value) {
+  const date = value ? new Date(value) : null;
+
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : "No date";
+}
+
+function renderProfileActivityLog(profile = {}) {
+  if (!elements.profileEditActivityLog) {
+    return;
+  }
+
+  const entries = activityLogForProfile(profile).slice(0, 12);
+
+  elements.profileEditActivityLog.innerHTML = entries.length
+    ? entries.map((entry) => `
+      <article class="profileActivityItem">
+        <div>
+          <strong>${escapeHtml(entry.label || titleCase(entry.type || "activity"))}</strong>
+          <span>${escapeHtml(formatActivityDate(entry.createdAt || entry.created_at))}</span>
+        </div>
+        <p>${escapeHtml(entry.summary || "")}</p>
+        <small>${escapeHtml(entry.adminEmail || entry.admin_email || "Unknown admin")}</small>
+      </article>
+    `).join("")
+    : `<div class="emptyState">No activity logged yet.</div>`;
+}
+
+function buildActivityEntry(provider = {}, patch = {}, nextStatus) {
+  const previousStatus = lifecycleStatusForProvider(provider);
+  const statusChanged = previousStatus !== nextStatus;
+  const qualityLog = patch.scraperQualityLog || {};
+  const qualityTouched = Boolean(
+    qualityLog.feedback ||
+    qualityLog.notes ||
+    qualityLog.missing?.length ||
+    qualityLog.incorrect?.length ||
+    qualityLog.added?.length
+  );
+  const label = statusChanged ? "Profile status changed" : "Profile reviewed";
+  const details = [
+    statusChanged ? `${titleCase(previousStatus)} to ${titleCase(nextStatus)}` : "Profile content saved",
+    qualityTouched ? "quality log updated" : "",
+  ].filter(Boolean);
+
+  return {
+    type: statusChanged ? "profile_status_changed" : "profile_reviewed",
+    label,
+    summary: details.join("; "),
+    statusFrom: previousStatus,
+    statusTo: nextStatus,
+    adminEmail: adminEmail() || "Unknown admin",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function appendActivityLog(provider = {}, entry) {
+  return [entry, ...activityLogForProfile(provider)].slice(0, 50);
 }
 
 function openEditProfile(key) {
@@ -852,10 +1098,10 @@ function openEditProfile(key) {
   elements.profileEditStatus.value = lifecycleStatusForProvider(provider);
   elements.profileEditClaimed.checked = Boolean(provider.claimed);
   elements.profileEditSubscriptionTier.value = subscriptionTierForProfile(provider);
-  elements.profileEditServices.value = listToText(provider.services);
-  elements.profileEditIndustries.value = listToText(normalizeIndustryList(provider.industries, provider.focusAreas));
-  elements.profileEditTechnologies.value = listToText(provider.technologies);
-  elements.profileEditPartnerships.value = listToText(provider.vendorPartnerships);
+  setTagPickerValues("services", provider.services);
+  setTagPickerValues("industries", normalizeIndustryList(provider.industries, provider.focusAreas));
+  setTagPickerValues("technologies", provider.technologies);
+  setTagPickerValues("vendor_partnerships", provider.vendorPartnerships);
   renderEditableEntries(elements.profileEditSuccessStories, provider.successStories);
   renderEditableEntries(elements.profileEditSolutions, provider.solutions);
   elements.profileEditActivities.value = recentActivitiesToText(provider.recentActivity);
@@ -865,6 +1111,15 @@ function openEditProfile(key) {
   elements.profileEditQualityIncorrect.value = listToText(qualityLog.incorrect);
   elements.profileEditQualityAdded.value = listToText(qualityLog.added);
   elements.profileEditQualityNotes.value = qualityLog.notes;
+  setReviewerFeedback(qualityLog.feedback);
+  renderProfileActivityLog(provider);
+  if (elements.profileEditGuardrailNotice) {
+    const belowGuardrail = isBelowConfidenceGuardrail(provider);
+    elements.profileEditGuardrailNotice.hidden = !belowGuardrail;
+    elements.profileEditGuardrailNotice.textContent = belowGuardrail
+      ? `Confidence is ${confidenceScoreForProvider(provider)}%, below the 75% guardrail. Keep this profile in review until a human reviewer fixes it or approves it.`
+      : "";
+  }
   elements.profileEditMessage.textContent = "";
   elements.profileEditMessage.classList.remove("error");
   elements.profileEditDialog.showModal();
@@ -996,7 +1251,7 @@ function providerMissingIssues(provider = {}) {
   if (!Array.isArray(provider.services) || provider.services.length === 0) issues.push("Services");
   if (normalizeIndustryList(provider.industries, provider.focusAreas).length === 0) issues.push("Industries");
   if (!Array.isArray(provider.technologies) || provider.technologies.length === 0) issues.push("Technologies");
-  if ((Number.parseInt(provider.confidenceScore, 10) || 0) < 60) issues.push("Low confidence");
+  if (isBelowConfidenceGuardrail(provider)) issues.push("Below 75% confidence guardrail");
 
   return issues;
 }
@@ -1004,7 +1259,7 @@ function providerMissingIssues(provider = {}) {
 function scraperQualityLogCount(provider = {}) {
   const log = scraperQualityLogForProfile(provider);
 
-  return log.missing.length + log.incorrect.length + log.added.length + (log.notes ? 1 : 0);
+  return log.missing.length + log.incorrect.length + log.added.length + (log.notes ? 1 : 0) + (log.feedback ? 1 : 0);
 }
 
 function confidenceLabel(provider = {}) {
@@ -1026,9 +1281,10 @@ function issueChips(issues) {
 function missingDataRow(provider) {
   const key = providerKey(provider);
   const issues = providerMissingIssues(provider);
+  const attentionClass = isBelowConfidenceGuardrail(provider) ? " adminLowConfidenceRow" : "";
 
   return `
-    <article class="adminTableRow adminMissingDataRow">
+    <article class="adminTableRow adminMissingDataRow${attentionClass}">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -1057,6 +1313,231 @@ function renderMissingDataReview() {
   elements.missingDataList.innerHTML = providersWithIssues.length
     ? `${tableHeader(["Company", "Missing / Needs Review", "Confidence", "Actions"])}${providersWithIssues.map((item) => missingDataRow(item.provider)).join("")}`
     : emptyState("No missing data issues found.");
+}
+
+function tagStatusPill(tag = {}) {
+  const status = tag.status || "candidate";
+  const label = status.replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  return `<span class="statusPill statusPill-${escapeHtml(status)}">${escapeHtml(label)}</span>`;
+}
+
+function tagCategoryLabel(category) {
+  if (category === "industries") {
+    return "Industries";
+  }
+
+  if (category === "vendor_partnerships") {
+    return "Vendor Partnerships";
+  }
+
+  return category === "technologies" ? "Technologies" : "Services";
+}
+
+function tagUsageCount(tag = {}) {
+  return state.providers.filter((provider) => (
+    tagValuesForCategory(provider, tag.category)
+      .some((value) => normalizeTagKey(value) === normalizeTagKey(tag.name))
+  )).length;
+}
+
+function filteredTags() {
+  const search = state.tagFilters.search.trim().toLowerCase();
+
+  return state.tags
+    .filter((tag) => tag.status !== "merged")
+    .filter((tag) => !state.tagFilters.category || tag.category === state.tagFilters.category)
+    .filter((tag) => !state.tagFilters.status || tag.status === state.tagFilters.status)
+    .filter((tag) => !search || `${tag.name} ${tag.category} ${tag.status}`.toLowerCase().includes(search))
+    .sort((left, right) => {
+      const statusOrder = { candidate: 0, approved: 1 };
+      const leftStatus = statusOrder[left.status] ?? 2;
+      const rightStatus = statusOrder[right.status] ?? 2;
+
+      if (leftStatus !== rightStatus) {
+        return leftStatus - rightStatus;
+      }
+
+      return String(left.name).localeCompare(String(right.name), undefined, { sensitivity: "base" });
+    });
+}
+
+function renderTagSummary() {
+  if (!elements.tagSummary) {
+    return;
+  }
+
+  const activeTags = state.tags.filter((tag) => tag.status !== "merged");
+  const candidate = activeTags.filter((tag) => tag.status === "candidate").length;
+  const approved = activeTags.filter((tag) => tag.status === "approved").length;
+  const services = activeTags.filter((tag) => tag.category === "services").length;
+  const industries = activeTags.filter((tag) => tag.category === "industries").length;
+  const technologies = activeTags.filter((tag) => tag.category === "technologies").length;
+  const partnerships = activeTags.filter((tag) => tag.category === "vendor_partnerships").length;
+
+  elements.tagSummary.innerHTML = [
+    ["Needs Review", candidate],
+    ["Approved", approved],
+    ["Services", services],
+    ["Industries", industries],
+    ["Technologies", technologies],
+    ["Partners", partnerships],
+  ].map(([label, count]) => `
+    <article>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(count)}</strong>
+    </article>
+  `).join("");
+}
+
+function tagRow(tag) {
+  const approvedTags = tagsForCategory(tag.category, { approvedOnly: true })
+    .filter((item) => normalizeTagKey(item.name) !== normalizeTagKey(tag.name));
+  const mergeOptions = approvedTags
+    .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`)
+    .join("");
+  const usageCount = tagUsageCount(tag);
+  const canMerge = approvedTags.length > 0;
+  const approveAction = tag.status !== "approved"
+    ? actionButton("publish", "Approve", `data-approve-tag="${escapeHtml(tag.id)}"`)
+    : "";
+
+  return `
+    <article class="adminTableRow adminTagRow">
+      <div class="adminCell adminCellPrimary">
+        <strong>${escapeHtml(tag.name)}</strong>
+        <span>${escapeHtml(tagCategoryLabel(tag.category))} · used by ${escapeHtml(usageCount)} provider${usageCount === 1 ? "" : "s"}</span>
+      </div>
+      <div class="adminCell adminTagMetaCell">
+        ${tagStatusPill(tag)}
+        <span class="adminCellLabel">${escapeHtml(tagCategoryLabel(tag.category))}</span>
+      </div>
+      <label class="adminCell adminTagInlineField">
+        <span class="adminCellLabel">Rename</span>
+        <input type="text" value="${escapeHtml(tag.name)}" data-tag-name="${escapeHtml(tag.id)}" aria-label="Edit tag name" />
+      </label>
+      <label class="adminCell adminTagInlineField">
+        <span class="adminCellLabel">Merge Into Approved Tag</span>
+        <select data-tag-merge-target="${escapeHtml(tag.id)}" aria-label="Merge target"${canMerge ? "" : " disabled"}>
+          <option value="">Merge into...</option>
+          ${mergeOptions}
+        </select>
+      </label>
+      <div class="adminCell adminCellAction">
+        ${approveAction}
+        ${actionButton("edit", "Save Rename", `data-save-tag="${escapeHtml(tag.id)}"`)}
+        ${actionButton("unpublish", "Merge", `data-merge-tag="${escapeHtml(tag.id)}"${canMerge ? "" : " disabled"}`)}
+      </div>
+    </article>
+  `;
+}
+
+function renderTags() {
+  if (!elements.tagList) {
+    return;
+  }
+
+  const tags = filteredTags();
+
+  renderTagSummary();
+  if (elements.tagApproveVisibleButton) {
+    elements.tagApproveVisibleButton.disabled = !tags.some((tag) => tag.status === "candidate");
+  }
+
+  elements.tagList.innerHTML = tags.length
+    ? `${tableHeader(["Tag", "Status", "Rename", "Merge Target", "Actions"])}${tags.map(tagRow).join("")}`
+    : emptyState("No tags match the current filters.");
+
+  bindTagButtons();
+}
+
+function findTag(id) {
+  return state.tags.find((tag) => String(tag.id) === String(id));
+}
+
+async function saveTagUpdate(id, patch) {
+  const response = await fetch("/api/admin-tags", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, ...patch }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to update tag.");
+  }
+
+  await refreshAdminState();
+  return payload;
+}
+
+function bindTagButtons() {
+  document.querySelectorAll("[data-tag-name]").forEach((input) => {
+    input.addEventListener("keydown", async (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.preventDefault();
+      const id = input.dataset.tagName;
+      const button = document.querySelector(`[data-save-tag="${CSS.escape(id)}"]`);
+      await runAdminAction(button || input, "Saving", "Tag saved.", () => (
+        saveTagUpdate(id, { name: input.value })
+      ));
+    });
+  });
+
+  document.querySelectorAll("[data-approve-tag]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(button, "Approving", "Tag approved.", () => (
+        saveTagUpdate(button.dataset.approveTag, { status: "approved" })
+      ));
+    });
+  });
+
+  document.querySelectorAll("[data-save-tag]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const input = document.querySelector(`[data-tag-name="${CSS.escape(button.dataset.saveTag)}"]`);
+      await runAdminAction(button, "Saving", "Tag saved.", () => (
+        saveTagUpdate(button.dataset.saveTag, { name: input.value })
+      ));
+    });
+  });
+
+  document.querySelectorAll("[data-merge-tag]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (button.disabled) {
+        return;
+      }
+
+      const select = document.querySelector(`[data-tag-merge-target="${CSS.escape(button.dataset.mergeTag)}"]`);
+      const tag = findTag(button.dataset.mergeTag);
+
+      if (!select.value) {
+        showToast("Choose a merge target first.", "error");
+        return;
+      }
+
+      await runAdminAction(button, "Merging", "Tag merged.", () => (
+        saveTagUpdate(button.dataset.mergeTag, { mergeTarget: select.value, category: tag?.category })
+      ));
+    });
+  });
+}
+
+async function approveVisibleTags() {
+  const candidateTags = filteredTags().filter((tag) => tag.status === "candidate");
+
+  if (candidateTags.length === 0) {
+    showToast("No visible candidate tags to approve.");
+    return false;
+  }
+
+  for (const tag of candidateTags) {
+    await saveTagUpdate(tag.id, { status: "approved" });
+  }
+
+  return true;
 }
 
 function renderStats() {
@@ -1193,6 +1674,7 @@ function renderLists() {
     : emptyState("No published providers match the current filters.");
 
   renderMissingDataReview();
+  renderTags();
 
   renderPagination({
     currentPage: state.jobsPage,
@@ -1255,6 +1737,7 @@ async function loadPublicProfilesForDevelopment() {
   state.providers = Array.isArray(profiles)
     ? profiles.map((profile) => ({ ...profile, status: lifecycleStatusForProvider(profile) }))
     : [];
+  state.tags = tagRowsFromProviders(state.providers);
   state.jobs = [];
 }
 
@@ -1277,12 +1760,14 @@ async function refreshAdminState() {
     elements.setupNotice.hidden = false;
     state.jobs = [];
     state.providers = [];
+    state.tags = [];
   } else if (!response.ok) {
     throw new Error(payload.error || "Failed to load admin state.");
   } else {
     elements.setupNotice.hidden = true;
     state.jobs = payload.jobs || [];
     state.providers = payload.providers || [];
+    state.tags = payload.tags || [];
     state.selectedProviders = new Set(
       [...state.selectedProviders].filter((key) => state.providers.some((provider) => providerKey(provider) === key))
     );
@@ -1338,6 +1823,27 @@ async function handleScrapeSubmit(event) {
   elements.scrapeMessage.classList.remove("error");
   setBusy(submitButton, true, "Queueing");
   const normalizedUrl = normalizeWebsiteInput(elements.scrapeUrl.value);
+  let normalizedDomain = "";
+
+  try {
+    normalizedDomain = new URL(normalizedUrl).hostname.replace(/^www\./, "").toLowerCase();
+  } catch (error) {
+    elements.scrapeMessage.textContent = "Enter a valid company website URL.";
+    elements.scrapeMessage.classList.add("error");
+    setBusy(submitButton, false);
+    return;
+  }
+  const existingProvider = state.providers.find((provider) => String(provider.domain || "").toLowerCase() === normalizedDomain);
+  const existingJob = state.jobs.find((job) => String(job.domain || "").toLowerCase() === normalizedDomain && ["queued", "running"].includes(job.status));
+
+  if (existingProvider || existingJob) {
+    const existingName = existingProvider?.companyName || existingJob?.company_name || normalizedDomain;
+    elements.scrapeMessage.textContent = `${existingName} already exists.`;
+    elements.scrapeMessage.classList.add("error");
+    showToast(`${existingName} already exists.`, "error");
+    setBusy(submitButton, false);
+    return;
+  }
 
   if (DEV_ADMIN_ACCESS) {
     state.jobs.unshift({
@@ -1460,6 +1966,7 @@ async function queueRecrawlJob(provider) {
     body: JSON.stringify({
       url,
       companyName: provider.companyName || provider.domain || "",
+      allowExisting: true,
     }),
   });
   const payload = await response.json();
@@ -1493,6 +2000,12 @@ async function recrawlProvider(key, options = {}) {
 async function publishProvider(id) {
   if (!id) {
     return false;
+  }
+
+  const provider = findProvider(id);
+
+  if (provider && isBelowConfidenceGuardrail(provider) && scraperQualityLogForProfile(provider).feedback !== "up") {
+    throw new Error("Open this profile and mark reviewer feedback as Looks good before publishing. It is below the 75% confidence guardrail.");
   }
 
   if (DEV_ADMIN_ACCESS) {
@@ -1532,7 +2045,7 @@ function updateBulkControls() {
   if (elements.reviewSelectPage) {
     elements.reviewBulkActionBar.hidden = !state.selectionMode.review;
     elements.reviewSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.review));
-    elements.reviewSelectModeButton.lastChild.textContent = state.selectionMode.review ? " Done" : " Select";
+    elements.reviewSelectModeButton.lastChild.textContent = state.selectionMode.review ? "Done" : "Select";
     elements.reviewSelectPage.checked = reviewAllSelected;
     elements.reviewSelectPage.indeterminate = !reviewAllSelected && reviewSelected.length > 0;
     elements.reviewBulkCount.textContent = `${reviewSelected.length} selected`;
@@ -1542,7 +2055,7 @@ function updateBulkControls() {
   if (elements.publishedSelectPage) {
     elements.publishedBulkActionBar.hidden = !state.selectionMode.published;
     elements.publishedSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.published));
-    elements.publishedSelectModeButton.lastChild.textContent = state.selectionMode.published ? " Done" : " Select";
+    elements.publishedSelectModeButton.lastChild.textContent = state.selectionMode.published ? "Done" : "Select";
     elements.publishedSelectPage.checked = publishedAllSelected;
     elements.publishedSelectPage.indeterminate = !publishedAllSelected && publishedSelected.length > 0;
     elements.publishedBulkCount.textContent = `${publishedSelected.length} selected`;
@@ -1726,6 +2239,19 @@ async function saveProfileEdit(event) {
   const removalStatus = selectedStatus === "removed" || selectedStatus === "removal_requested";
   const claimed = !removalStatus && (elements.profileEditClaimed.checked || selectedStatus === "claimed");
   const status = removalStatus ? selectedStatus : (claimed ? "claimed" : selectedStatus);
+  const reviewerFeedback = selectedReviewerFeedback();
+
+  if (
+    isBelowConfidenceGuardrail(provider) &&
+    LIVE_PROFILE_STATUSES.has(status) &&
+    reviewerFeedback !== "up"
+  ) {
+    elements.profileEditMessage.textContent =
+      "This profile is below the 75% confidence guardrail. Mark reviewer feedback as Looks good before moving it forward.";
+    elements.profileEditMessage.classList.add("error");
+    return;
+  }
+
   const patch = {
     companyName: elements.profileEditName.value.trim(),
     logoUrl: elements.profileEditLogo.value.trim() || null,
@@ -1738,10 +2264,10 @@ async function saveProfileEdit(event) {
       country: elements.profileEditCountry.value.trim(),
       city: elements.profileEditCity.value.trim(),
     },
-    services: textToList(elements.profileEditServices.value),
-    industries: normalizeIndustryList(textToList(elements.profileEditIndustries.value)),
-    technologies: textToList(elements.profileEditTechnologies.value),
-    vendorPartnerships: textToList(elements.profileEditPartnerships.value),
+    services: selectedTagNames("services"),
+    industries: normalizeIndustryList(selectedTagNames("industries")),
+    technologies: selectedTagNames("technologies"),
+    vendorPartnerships: selectedTagNames("vendor_partnerships"),
     successStories,
     solutions,
     recentActivity: textToRecentActivities(elements.profileEditActivities.value),
@@ -1751,8 +2277,11 @@ async function saveProfileEdit(event) {
       incorrect: textToList(elements.profileEditQualityIncorrect.value),
       added: textToList(elements.profileEditQualityAdded.value),
       notes: elements.profileEditQualityNotes.value.trim(),
+      feedback: reviewerFeedback,
     },
   };
+  const activityEntry = buildActivityEntry(provider, patch, status);
+  patch.activityLog = appendActivityLog(provider, activityEntry);
 
   elements.profileEditMessage.textContent = "Saving profile...";
   elements.profileEditMessage.classList.remove("error");
@@ -1822,7 +2351,7 @@ function updatePublishedSortButton() {
     "aria-label",
     isAscending ? "Flip list to descending order" : "Flip list to ascending order"
   );
-  elements.publishedFlipButton.lastChild.textContent = ` ${label}`;
+  elements.publishedFlipButton.lastChild.textContent = label;
 }
 
 function bindEvents() {
@@ -1853,6 +2382,41 @@ function bindEvents() {
   });
   elements.publishedBulkApply.addEventListener("click", () => {
     runAdminAction(elements.publishedBulkApply, "Applying", "Bulk action complete.", () => applyBulkAction("published"));
+  });
+  elements.tagSearchFilter?.addEventListener("input", () => {
+    state.tagFilters.search = elements.tagSearchFilter.value;
+    renderTags();
+  });
+  [elements.tagCategoryFilter, elements.tagStatusFilter].forEach((select) => {
+    select?.addEventListener("change", () => {
+      state.tagFilters.search = elements.tagSearchFilter?.value || "";
+      state.tagFilters.category = elements.tagCategoryFilter.value;
+      state.tagFilters.status = elements.tagStatusFilter.value;
+      renderTags();
+    });
+  });
+  elements.tagApproveVisibleButton?.addEventListener("click", () => {
+    runAdminAction(elements.tagApproveVisibleButton, "Approving", "Visible candidate tags approved.", approveVisibleTags);
+  });
+  document.querySelectorAll("[data-tag-picker-select]").forEach((select) => {
+    select.addEventListener("change", () => {
+      addTagToPicker(select.dataset.tagPickerSelect, select.value);
+      select.value = "";
+    });
+  });
+  document.querySelectorAll("[data-tag-picker-list]").forEach((list) => {
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-tag]");
+
+      if (!button) {
+        return;
+      }
+
+      const category = button.dataset.removeTag;
+      const chip = button.closest("[data-tag-value]");
+      const nextValues = selectedTagNames(category).filter((value) => normalizeTagKey(value) !== normalizeTagKey(chip.dataset.tagValue));
+      setTagPickerValues(category, nextValues);
+    });
   });
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
