@@ -25,6 +25,9 @@ const elements = {
   status: document.querySelector("#status"),
   searchHero: document.querySelector(".searchHero"),
   homePage: document.querySelector("#homePage"),
+  storiesPage: document.querySelector("#storiesPage"),
+  eventsPage: document.querySelector("#eventsPage"),
+  signalsPage: document.querySelector("#signalsPage"),
   providersPage: document.querySelector("#providersPage"),
   navTabs: document.querySelectorAll("[data-nav-tab]"),
   searchInput: document.querySelector("#searchInput"),
@@ -41,6 +44,52 @@ const elements = {
   profileList: document.querySelector("#profileList"),
   detailContent: document.querySelector("#detailContent"),
 };
+
+const STATIC_STORIES = [
+  {
+    title: "Modernising energy trading platforms with Kubernetes and GitOps on Azure",
+    vertical: "Energy",
+    size: "700",
+    location: "CH",
+    provider: "VSHN AG",
+    domain: "vshn.ch",
+    focus: ["CLD", "PLT"],
+    result: "15x more frequent releases",
+  },
+  {
+    title: "Scaling a regulated fintech from 2M to 6M users",
+    vertical: "Fintech",
+    size: "200+",
+    location: "CH",
+    provider: "Puzzle ITC",
+    domain: "puzzle.ch",
+    focus: ["CLD", "SEC"],
+    result: "Zero downtime during migration",
+  },
+  {
+    title: "From API calls to business answers: the strategic lift of an AI-native approach",
+    vertical: "Logistics",
+    size: "10-50",
+    location: "DE",
+    provider: "Appvia",
+    domain: "appvia.io",
+    focus: ["AI", "PLT"],
+    result: "Internal platform launched in 8 weeks",
+  },
+];
+
+const STATIC_EVENTS = [
+  { day: "14", month: "JUL", type: "Webinar", title: "Zero Trust in practice - securing hybrid cloud estates", provider: "Adfinis", time: "11:00-12:00 CET", location: "Online" },
+  { day: "22", month: "JUL", type: "In-person", title: "Platform engineering meetup Bern", provider: "acend gmbh", time: "17:30-21:00", location: "Bern, CH" },
+  { day: "27", month: "AUG", type: "In-person", title: "Kubernetes community day Zurich", provider: "VSHN AG", time: "09:00-18:00", location: "Zurich, CH" },
+];
+
+const STATIC_SIGNALS = [
+  { day: "07", month: "JUL", type: "Hiring", company: "Helvetia Insurance", headline: "Posted 9 AI / ML engineering roles in the last 30 days", source: "Job listings - LinkedIn, jobs.ch", match: "Matches AI & Data" },
+  { day: "05", month: "JUL", type: "Leadership", company: "Migros Group", headline: "Appointed a new Head of Infrastructure starting September", source: "Company announcement", match: "Warm intro window" },
+  { day: "03", month: "JUL", type: "Tender", company: "Canton of Vaud", headline: "Public tender: sovereign cloud platform for cantonal services", source: "simap.ch - deadline 15 Aug", match: "Matches Digital Sovereignty" },
+  { day: "01", month: "JUL", type: "Project", company: "BKW Energie", headline: "Announced group-wide platform modernisation programme", source: "Press release + earnings call", match: "Modernisation budget confirmed" },
+];
 
 const FILTER_DEFS = [
   {
@@ -775,7 +824,7 @@ function renderList() {
   elements.profileList.innerHTML = `
     <div class="resultsToolbar">
       <div class="resultsHeader">
-        <h2>${listProfiles.length} provider${listProfiles.length === 1 ? "" : "s"}</h2>
+        <h2>Provider index<span>.</span></h2>
         <span>${resultSummaryText(listProfiles.length)}</span>
       </div>
       <label class="sortControl">
@@ -788,7 +837,7 @@ function renderList() {
         </select>
       </label>
     </div>
-    <div class="providerGrid">
+    <div class="providerGrid providerIndexRows">
       ${listProfiles.map(cardMarkup).join("")}
     </div>
   `;
@@ -863,12 +912,15 @@ function renderActiveFilters() {
 function cardMarkup(profile) {
   const active = profile.domain === state.selectedDomain ? " active" : "";
   const location = locationParts(profile);
-  const services = profile.services.slice(0, 3);
+  const services = normalizeServices(profile.services).slice(0, 3);
   const industries = getIndustries(profile).slice(0, 2);
-  const tags = [...services.slice(0, 2), ...industries.slice(0, 2)];
+  const technologies = normalizeTechnologies(profile.technologies).slice(0, 3);
+  const tags = [...services.slice(0, 2), ...technologies.slice(0, 2)];
   const description = profile.description || services.join(", ") || "Profile details available.";
-  const verifiedBadge = profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : "";
+  const verifiedBadge = profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">Verified</span>` : "";
   const locationText = [location.city, location.country].filter(Boolean).join(", ");
+  const partnerCount = normalizePartnerships(profile.vendorPartnerships).filter((value) => value !== "Other Partnerships").length;
+  const score = Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0));
 
   return `
     <button class="profileCard${active}" type="button" data-domain="${escapeHtml(profile.domain)}">
@@ -879,8 +931,13 @@ function cardMarkup(profile) {
           <span class="cardMeta">${escapeHtml(locationText || profile.domain)}</span>
         </span>
       </span>
-      <span class="cardText">${escapeHtml(description).slice(0, 155)}</span>
+      <span class="cardText">${escapeHtml(description).slice(0, 180)}</span>
       <span class="cardTags">${chips(tags, "No tags found")}</span>
+      <span class="cardStats">
+        <span><strong>${partnerCount}</strong> partners</span>
+        <span><strong>${score}%</strong> evidence</span>
+        <span>${industries.map(escapeHtml).join(" / ") || "Software & Technology"}</span>
+      </span>
     </button>
   `;
 }
@@ -896,6 +953,7 @@ function bindProfileCards() {
 function providerDetailUrl(domain) {
   const url = new URL(window.location.href);
   url.searchParams.set("provider", domain);
+  url.hash = "";
 
   return `${url.pathname}${url.search}${url.hash}`;
 }
@@ -903,6 +961,7 @@ function providerDetailUrl(domain) {
 function providerListUrl() {
   const url = new URL(window.location.href);
   url.searchParams.delete("provider");
+  url.hash = "";
 
   return `${url.pathname}${url.search}${url.hash}`;
 }
@@ -1280,14 +1339,14 @@ function renderDetail() {
             <div>
               <div class="detailTitleRow">
                 <h2>${escapeHtml(profile.companyName)}</h2>
-                ${profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">✓ Verified</span>` : ""}
+                ${profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">Verified</span>` : ""}
               </div>
-              <p class="platformLine">${escapeHtml(getProfileCategory(profile))} Provider</p>
+              <p class="platformLine">${escapeHtml(getProfileCategory(profile))} provider for cloud, platform, and engineering teams.</p>
             </div>
           </div>
 
           <div class="headerField">
-            <h3>Company Location</h3>
+            <h3>Location</h3>
             ${locationMarkup(profile)}
           </div>
 
@@ -1310,6 +1369,18 @@ function renderDetail() {
             <h3>${fieldTitle("Industries", industries)}</h3>
             ${limitedChipButtons(industries, "industry", "No industries found", true)}
           </div>
+        </section>
+
+        <section class="profileMasthead">
+          <div>
+            <span class="eyebrow">Company introduction</span>
+            <p>${escapeHtml(profile.description || "No company introduction available.")}</p>
+          </div>
+          <aside>
+            <span>Evidence score</span>
+            <strong>${Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0))}%</strong>
+            <small>Based on scraped profile evidence and enrichment sources.</small>
+          </aside>
         </section>
 
         <nav class="detailTabs" aria-label="Profile sections">
@@ -1467,12 +1538,187 @@ function resetFilters() {
   applyFilters();
 }
 
+function providerByDomain(domain) {
+  return state.profiles.find((profile) => profile.domain === domain);
+}
+
+function miniProviderMarkup(domain, name) {
+  const profile = providerByDomain(domain);
+
+  if (!profile) {
+    return `<span class="miniProvider"><span class="miniInitials">${escapeHtml(String(name || "?").slice(0, 2))}</span>${escapeHtml(name || domain)}</span>`;
+  }
+
+  return `
+    <button class="miniProvider miniProviderButton" type="button" data-static-provider="${escapeHtml(profile.domain)}">
+      ${logoMarkup(profile)}
+      <span>${escapeHtml(profile.companyName || name || domain)}</span>
+    </button>
+  `;
+}
+
+function staticShell(title, kicker, copy, meta = "") {
+  return `
+    <div class="staticShell">
+      <section class="staticHero">
+        <div>
+          <span class="eyebrow">${escapeHtml(kicker)}</span>
+          <h1>${escapeHtml(title)}<span>.</span></h1>
+          <p>${escapeHtml(copy)}</p>
+        </div>
+        ${meta ? `<aside>${meta}</aside>` : ""}
+      </section>
+    </div>
+  `;
+}
+
+function bindStaticProviderLinks(root) {
+  root.querySelectorAll("[data-static-provider]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActivePage("providers");
+      openProviderDetail(button.dataset.staticProvider);
+    });
+  });
+}
+
+function renderStoriesPage() {
+  elements.storiesPage.innerHTML = `
+    ${staticShell(
+      "Success stories",
+      "Customer proof",
+      "Customer proof examples for the marketplace, using the same Rocket Engineers visual language.",
+      `<strong>${STATIC_STORIES.length}</strong><span>featured stories</span><strong>Static</strong><span>preview content</span>`
+    )}
+    <div class="staticShell staticGrid">
+      <section class="staticPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Success Stories</h2>
+            <p>Static examples for the page 10 direction.</p>
+          </div>
+        </div>
+        <div class="storyList">
+          ${STATIC_STORIES.map((story) => `
+            <article class="storyCard">
+              <div class="storyMeta">
+                <span>${escapeHtml(story.vertical)}</span>
+                <span>${escapeHtml(story.size)} company size</span>
+                <span>${escapeHtml(story.location)}</span>
+              </div>
+              <h3>${escapeHtml(story.title)}</h3>
+              <div class="storyFooter">
+                ${miniProviderMarkup(story.domain, story.provider)}
+                <strong>${escapeHtml(story.result)}</strong>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+  bindStaticProviderLinks(elements.storiesPage);
+}
+
+function renderEventsPage() {
+  elements.eventsPage.innerHTML = `
+    ${staticShell(
+      "Events",
+      "Provider calendar",
+      "Webinars, meetups, and in-person sessions from provider teams.",
+      `<strong>${STATIC_EVENTS.length}</strong><span>upcoming events</span><strong>Static</strong><span>preview content</span>`
+    )}
+    <div class="staticShell staticGrid">
+      <section class="staticPanel">
+        <div class="eventList">
+          ${STATIC_EVENTS.map((event) => `
+            <article class="eventRow">
+              <time><strong>${escapeHtml(event.day)}</strong><span>${escapeHtml(event.month)}</span></time>
+              <div>
+                <span class="eyebrow">${escapeHtml(event.type)}</span>
+                <h3>${escapeHtml(event.title)}</h3>
+                <p>${escapeHtml(event.provider)} - ${escapeHtml(event.time)} - ${escapeHtml(event.location)}</p>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderSignalsPage() {
+  elements.signalsPage.innerHTML = `
+    ${staticShell(
+      "Signals Pro",
+      "Premium intelligence",
+      "A static GTM signals feed for providers: hiring movement, public tenders, leadership changes, and project announcements.",
+      `<strong>${STATIC_SIGNALS.length}</strong><span>matched signals</span><strong>Weekly</strong><span>digest cadence</span>`
+    )}
+    <div class="staticShell">
+      <section class="staticPanel">
+        <div class="signalList">
+          ${STATIC_SIGNALS.map((signal) => `
+            <article class="signalRow">
+              <time><strong>${escapeHtml(signal.day)}</strong><span>${escapeHtml(signal.month)}</span></time>
+              <div>
+                <span class="signalType">${escapeHtml(signal.type)}</span>
+                <h3>${escapeHtml(signal.company)}</h3>
+                <p>${escapeHtml(signal.headline)}</p>
+                <small>${escapeHtml(signal.source)}</small>
+              </div>
+              <strong>${escapeHtml(signal.match)}</strong>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderStaticPages() {
+  elements.homePage.innerHTML = `
+    ${staticShell(
+      "Rocket Engineers",
+      "Provider marketplace",
+      "Find cloud, DevOps, platform engineering, security, and software partners from live profile evidence.",
+      `<strong>${state.profiles.length}</strong><span>public providers</span><strong>5</strong><span>marketplace sections</span>`
+    )}
+    <div class="staticShell staticGrid threeColumnStatic">
+      ${[
+        ["Provider index", "Search and filter live provider profiles by country, services, technologies, partnerships, and industries.", "providers"],
+        ["Success stories", "Browse static customer proof while the content model is being built out.", "stories"],
+        ["Events", "Preview provider webinars, meetups, and technical sessions.", "events"],
+        ["Signals Pro", "Preview the premium intelligence feed for provider GTM teams.", "signals"]
+      ].map(([title, copy, page]) => `
+        <button class="workspaceCard homeNavCard" type="button" data-home-page="${escapeHtml(page)}">
+          <span class="eyebrow">Open</span>
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(copy)}</p>
+        </button>
+      `).join("")}
+    </div>
+  `;
+  elements.homePage.querySelectorAll("[data-home-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActivePage(button.dataset.homePage);
+      window.history.pushState({ page: button.dataset.homePage }, "", button.dataset.homePage === "providers" ? providerListUrl() : `#${button.dataset.homePage}`);
+    });
+  });
+  renderStoriesPage();
+  renderEventsPage();
+  renderSignalsPage();
+}
+
 function setActivePage(page) {
-  const requestedPage = page === "home" ? "home" : "providers";
+  const validPages = new Set(["home", "providers", "stories", "events", "signals"]);
+  const requestedPage = validPages.has(page) ? page : "providers";
 
   elements.searchHero.hidden = requestedPage !== "providers";
   elements.homePage.hidden = requestedPage !== "home";
   elements.providersPage.hidden = requestedPage !== "providers";
+  elements.storiesPage.hidden = requestedPage !== "stories";
+  elements.eventsPage.hidden = requestedPage !== "events";
+  elements.signalsPage.hidden = requestedPage !== "signals";
 
   elements.navTabs.forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.navTab === requestedPage);
@@ -1554,12 +1800,19 @@ function bindEvents() {
     tab.addEventListener("click", (event) => {
       event.preventDefault();
       setActivePage(tab.dataset.navTab);
+      window.history.pushState({ page: tab.dataset.navTab }, "", tab.dataset.navTab === "providers" ? providerListUrl() : `#${tab.dataset.navTab}`);
     });
   });
 
   window.addEventListener("popstate", () => {
+    syncPageFromLocation();
     syncProviderRouteFromLocation({ scroll: true });
   });
+}
+
+function syncPageFromLocation() {
+  const page = window.location.hash.replace("#", "");
+  setActivePage(page || "providers");
 }
 
 function toggleFilterGroup(group) {
@@ -1624,8 +1877,10 @@ async function loadProfiles() {
   state.selectedDomain = null;
   elements.status.textContent = `${state.profiles.length} loaded`;
   populateFilters();
+  renderStaticPages();
   bindEvents();
   applyFilters();
+  syncPageFromLocation();
   syncProviderRouteFromLocation({ replaceHistory: true });
 }
 

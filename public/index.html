@@ -6,7 +6,6 @@
     <title>Rocket Engineers</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -17,6 +16,9 @@
       <nav class="topNav" aria-label="Primary navigation">
         <a href="#" data-nav-tab="home">Home</a>
         <a href="#" class="active" data-nav-tab="providers">Providers</a>
+        <a href="#" data-nav-tab="stories">Success stories</a>
+        <a href="#" data-nav-tab="events">Events</a>
+        <a href="#" data-nav-tab="signals">Signals <span class="navBadge">Pro</span></a>
       </nav>
       <div class="headerActions">
         <span id="status" hidden>Loading profiles</span>
@@ -35,6 +37,9 @@
     </section>
 
     <section id="homePage" class="homePage" hidden></section>
+    <section id="storiesPage" class="staticPage" hidden></section>
+    <section id="eventsPage" class="staticPage" hidden></section>
+    <section id="signalsPage" class="staticPage" hidden></section>
 
     <main id="providersPage" class="marketplace">
       <button id="filterDrawerButton" class="filterDrawerButton" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters</button>
