@@ -114,6 +114,7 @@ SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_EMAILS=phil@thegogrow.ch,nunezkathleenm@gmail.com
+OPENROUTER_API_KEY=
 ```
 
 The `/api/admin-*` routes verify Supabase Auth tokens and use the service role key only on the server. The Admin tab can queue scrape requests, view jobs, review database providers, and publish providers. The actual background scrape processor is intentionally separate from this UI layer.
@@ -126,6 +127,7 @@ The `/api/admin-*` routes verify Supabase Auth tokens and use the service role k
 - `docs/week3-cost-model.md`: Firecrawl, Apollo/Clearbit, Brandfetch, and OpenRouter cost model for 1,000 and 5,000 profiles.
 - `docs/final-report.md`: Final project report with architecture, quality, cost, scale, limitations, and next steps.
 - `docs/demo-script.md`: 15-minute demo runbook.
+- `docs/sprint2-operations.md`: Sprint 2 readiness checks, audit-history decision, and Admin CSV exports.
 
 ## Environment Variables
 
@@ -146,6 +148,8 @@ The `/api/admin-*` routes verify Supabase Auth tokens and use the service role k
 - `SUPABASE_ANON_KEY`: Supabase anon key used for admin sign-in verification.
 - `SUPABASE_SERVICE_ROLE_KEY`: Server-only key used by Vercel API routes.
 - `ADMIN_EMAILS`: Comma-separated admin emails allowed to access the Admin tab.
+
+Run `npm run readiness:sprint2` before deployment to verify Supabase schema, required API route files, and deployment environment variables.
 
 ## Important
 

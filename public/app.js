@@ -1377,13 +1377,79 @@ function providerFocusCodes(profile) {
 
 function providerActionMarkup(profile) {
   const website = profile.website || (profile.domain ? `https://${profile.domain}` : "");
-  const contactHref = `mailto:hello@rocketengineers.co?subject=${encodeURIComponent(`Introduction to ${profile.companyName || profile.domain}`)}`;
 
   return `
     <div class="providerActions">
-      <a class="providerPrimaryAction" href="${escapeHtml(contactHref)}">Contact provider</a>
+      <a class="providerPrimaryAction" href="#provider-contact" data-provider-action="contact">Contact provider</a>
+      <a class="providerSecondaryAction" href="#provider-claim" data-provider-action="claim">Claim this profile</a>
       ${website ? `<a class="providerSecondaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
     </div>
+  `;
+}
+
+function providerClaimStatusMarkup(profile) {
+  const claimed = Boolean(profile.claimed);
+
+  return `
+    <div class="providerClaimStatus">
+      <strong>${claimed ? "Claimed and verified" : "Unclaimed profile"}</strong>
+      <span>${claimed
+        ? "This profile has been verified by Rocket Engineers."
+        : "A verified company representative can request profile ownership."}</span>
+    </div>
+  `;
+}
+
+function providerRequestPanelMarkup(profile) {
+  return `
+    <section id="provider-contact" class="providerRequestPanel">
+      <div>
+        <span class="eyebrow">Request</span>
+        <h3>Brokered introduction</h3>
+        <p>Rocket Engineers reviews each request before any provider contact is made.</p>
+      </div>
+      <form class="providerRequestForm" data-provider-lead-form>
+        <input type="hidden" name="domain" value="${escapeHtml(profile.domain || "")}" />
+        <label>
+          Work email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Name
+          <input name="name" type="text" autocomplete="name" />
+        </label>
+        <label>
+          Company
+          <input name="company" type="text" autocomplete="organization" />
+        </label>
+        <label>
+          What do you need help with?
+          <textarea name="message" rows="4" required></textarea>
+        </label>
+        <button class="providerPrimaryAction" type="submit">Request introduction</button>
+        <p class="providerRequestMessage" data-provider-lead-message aria-live="polite"></p>
+      </form>
+    </section>
+    <section id="provider-claim" class="providerRequestPanel compact">
+      <div>
+        <span class="eyebrow">Profile owner</span>
+        <h3>Claim or request removal</h3>
+        ${providerClaimStatusMarkup(profile)}
+        <p>Approved claimants can manage company information, profile content, and future lead handling. Requests are queued for manual verification and no public profile changes happen automatically.</p>
+      </div>
+      <form class="providerRequestForm providerClaimForm" data-claim-request-form>
+        <input type="hidden" name="domain" value="${escapeHtml(profile.domain || "")}" />
+        <label>
+          Business email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <div class="providerClaimActions">
+          <button class="providerSecondaryAction" name="requestType" value="claim" type="submit">Claim profile</button>
+          <button class="providerSecondaryAction danger" name="requestType" value="removal" type="submit">Request removal</button>
+        </div>
+        <p class="providerRequestMessage" data-claim-request-message aria-live="polite"></p>
+      </form>
+    </section>
   `;
 }
 
@@ -1422,10 +1488,12 @@ function providerStoriesListMarkup(profile) {
     ? structuredStories.slice(0, 2).map((story) => ({
         title: typeof story === "string" ? story : story.title || story.name || "Customer story",
         meta: typeof story === "string" ? "Customer proof" : story.shortText || story.summary || story.description || "Customer proof",
+        link: typeof story === "string" ? "" : story.link || story.sourceUrl || "",
       }))
     : fallbackStories.slice(0, 2).map((story) => ({
         title: story.title || "Customer story",
         meta: [story.sourceType, story.date].filter(Boolean).join(" · ") || "Customer proof",
+        link: story.url || story.link || "",
       }));
 
   if (stories.length === 0) {
@@ -1439,14 +1507,67 @@ function providerStoriesListMarkup(profile) {
     <article class="providerStoryRow">
       <div class="providerStoryThumb">photo</div>
       <div>
-        <h4>${escapeHtml(story.title)}</h4>
+        <h4>${
+          story.link
+            ? `<a href="${escapeHtml(story.link)}" target="_blank" rel="noreferrer">${escapeHtml(story.title)}</a>`
+            : escapeHtml(story.title)
+        }</h4>
         <p>${escapeHtml(story.meta)}</p>
       </div>
     </article>
   `).join("");
 }
 
+function approvedProviderEvents(profile = {}) {
+  const now = Date.now();
+
+  return (Array.isArray(profile.providerEvents) ? profile.providerEvents : [])
+    .filter((event) => {
+      const startsAt = event.startsAt || event.starts_at;
+      const startsTime = startsAt ? new Date(startsAt).getTime() : NaN;
+
+      return event.title && Number.isFinite(startsTime) && startsTime >= now;
+    })
+    .sort((left, right) => new Date(left.startsAt || left.starts_at) - new Date(right.startsAt || right.starts_at));
+}
+
+function eventDateParts(value) {
+  const date = value ? new Date(value) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return { day: "--", month: "TBD", time: "Time TBD" };
+  }
+
+  return {
+    day: date.toLocaleDateString(undefined, { day: "2-digit" }),
+    month: date.toLocaleDateString(undefined, { month: "short" }).toUpperCase(),
+    time: date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+  };
+}
+
 function providerUpcomingEventMarkup(profile) {
+  const [event] = approvedProviderEvents(profile);
+
+  if (event) {
+    const dateParts = eventDateParts(event.startsAt || event.starts_at);
+    const location = event.online ? "Online" : event.location || providerLocationText(profile);
+    const eventBody = `
+      <div class="providerEventDate">
+        <strong>${escapeHtml(dateParts.day)}</strong>
+        <span>${escapeHtml(dateParts.month)}</span>
+      </div>
+      <div>
+        <h4>${escapeHtml(event.title)}</h4>
+        <p>${escapeHtml(location)} · ${escapeHtml(dateParts.time)}</p>
+        <span>${escapeHtml(event.online ? "Online event" : "Provider event")}</span>
+      </div>
+    `;
+
+    return event.sourceUrl
+      ? `<a class="providerEventCard providerEventLink" href="${escapeHtml(event.sourceUrl)}" target="_blank" rel="noreferrer">${eventBody}</a>`
+      : `<article class="providerEventCard">${eventBody}</article>`;
+  }
+
   return `
     <article class="providerEventCard">
       <div class="providerEventDate">
@@ -1547,6 +1668,7 @@ function renderDetail() {
             </section>
           </aside>
         </section>
+        ${providerRequestPanelMarkup(profile)}
 
         ${
           adminVisible
@@ -1576,7 +1698,7 @@ function renderDetail() {
         }
         <section class="providerIntroFooter">
           <span>Interested but not sure? Rocket Engineers can broker the introduction.</span>
-          <a href="mailto:hello@rocketengineers.co?subject=${encodeURIComponent(`Introduction to ${profile.companyName || profile.domain}`)}">Request an introduction -></a>
+          <a href="#provider-contact" data-provider-action="contact">Request an introduction -></a>
         </section>
       </div>
     </div>
@@ -1615,6 +1737,95 @@ function renderDetail() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
+
+  elements.detailContent.querySelectorAll("[data-provider-action]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const target = elements.detailContent.querySelector(
+        link.dataset.providerAction === "claim" ? "#provider-claim" : "#provider-contact"
+      );
+
+      if (!target) {
+        return;
+      }
+
+      event.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.querySelector("input, textarea")?.focus({ preventScroll: true });
+    });
+  });
+
+  elements.detailContent.querySelector("[data-provider-lead-form]")?.addEventListener("submit", handleProviderLeadSubmit);
+  elements.detailContent.querySelector("[data-claim-request-form]")?.addEventListener("submit", handleClaimRequestSubmit);
+}
+
+async function submitJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(body.error || "Request failed.");
+  }
+
+  return body;
+}
+
+async function handleProviderLeadSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = form.querySelector("[data-provider-lead-message]");
+  const submitButton = form.querySelector("button[type='submit']");
+  const data = Object.fromEntries(new FormData(form).entries());
+
+  message.textContent = "Submitting request...";
+  message.classList.remove("error");
+  submitButton.disabled = true;
+
+  try {
+    await submitJson("/api/provider-lead", data);
+    form.reset();
+    message.textContent = "Request received. Rocket Engineers will review it before any introduction.";
+  } catch (error) {
+    message.textContent = error.message;
+    message.classList.add("error");
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+async function handleClaimRequestSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = form.querySelector("[data-claim-request-message]");
+  const submitter = event.submitter;
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.requestType = submitter?.value || data.requestType || "claim";
+
+  message.textContent = "Submitting request...";
+  message.classList.remove("error");
+  form.querySelectorAll("button").forEach((button) => {
+    button.disabled = true;
+  });
+
+  try {
+    await submitJson("/api/claim-request", data);
+    form.reset();
+    message.textContent = data.requestType === "removal"
+      ? "Removal request received for manual review."
+      : "Claim request received for manual verification.";
+  } catch (error) {
+    message.textContent = error.message;
+    message.classList.add("error");
+  } finally {
+    form.querySelectorAll("button").forEach((button) => {
+      button.disabled = false;
+    });
+  }
 }
 
 function initializeChipDisclosures() {
@@ -1804,26 +2015,52 @@ function renderStoriesPage() {
 }
 
 function renderEventsPage() {
+  const providerEvents = state.profiles
+    .flatMap((profile) => approvedProviderEvents(profile).map((event) => ({ ...event, provider: profile.companyName || profile.domain })))
+    .sort((left, right) => new Date(left.startsAt || left.starts_at) - new Date(right.startsAt || right.starts_at));
+  const hasProviderEvents = providerEvents.length > 0;
+  const eventRows = hasProviderEvents
+    ? providerEvents.map((event) => {
+      const dateParts = eventDateParts(event.startsAt || event.starts_at);
+      const location = event.online ? "Online" : event.location || "Location TBD";
+
+      return `
+        <article class="eventRow">
+          <time><strong>${escapeHtml(dateParts.day)}</strong><span>${escapeHtml(dateParts.month)}</span></time>
+          <div>
+            <span class="eyebrow">${escapeHtml(event.online ? "Online" : "Provider event")}</span>
+            <h3>${
+              event.sourceUrl
+                ? `<a href="${escapeHtml(event.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(event.title)}</a>`
+                : escapeHtml(event.title)
+            }</h3>
+            <p>${escapeHtml(event.provider)} - ${escapeHtml(dateParts.time)} - ${escapeHtml(location)}</p>
+          </div>
+        </article>
+      `;
+    }).join("")
+    : STATIC_EVENTS.map((event) => `
+      <article class="eventRow">
+        <time><strong>${escapeHtml(event.day)}</strong><span>${escapeHtml(event.month)}</span></time>
+        <div>
+          <span class="eyebrow">${escapeHtml(event.type)}</span>
+          <h3>${escapeHtml(event.title)}</h3>
+          <p>${escapeHtml(event.provider)} - ${escapeHtml(event.time)} - ${escapeHtml(event.location)}</p>
+        </div>
+      </article>
+    `).join("");
+
   elements.eventsPage.innerHTML = `
     ${staticShell(
       "Events",
       "Provider calendar",
       "Webinars, meetups, and in-person sessions from provider teams.",
-      `<strong>${STATIC_EVENTS.length}</strong><span>upcoming events</span><strong>Static</strong><span>preview content</span>`
+      `<strong>${hasProviderEvents ? providerEvents.length : STATIC_EVENTS.length}</strong><span>upcoming events</span><strong>${hasProviderEvents ? "Reviewed" : "Static"}</strong><span>${hasProviderEvents ? "approved provider events" : "preview content"}</span>`
     )}
     <div class="staticShell staticGrid">
       <section class="staticPanel">
         <div class="eventList">
-          ${STATIC_EVENTS.map((event) => `
-            <article class="eventRow">
-              <time><strong>${escapeHtml(event.day)}</strong><span>${escapeHtml(event.month)}</span></time>
-              <div>
-                <span class="eyebrow">${escapeHtml(event.type)}</span>
-                <h3>${escapeHtml(event.title)}</h3>
-                <p>${escapeHtml(event.provider)} - ${escapeHtml(event.time)} - ${escapeHtml(event.location)}</p>
-              </div>
-            </article>
-          `).join("")}
+          ${eventRows}
         </div>
       </section>
     </div>
@@ -1831,28 +2068,60 @@ function renderEventsPage() {
 }
 
 function renderSignalsPage() {
+  const marketSignals = state.profiles
+    .flatMap((profile) => (Array.isArray(profile.marketSignals) ? profile.marketSignals : []).map((signal) => ({
+      ...signal,
+      provider: profile.companyName || profile.domain,
+    })))
+    .sort((left, right) => new Date(right.observedAt || right.observed_at || 0) - new Date(left.observedAt || left.observed_at || 0));
+  const hasMarketSignals = marketSignals.length > 0;
+  const signalRows = hasMarketSignals
+    ? marketSignals.map((signal) => {
+      const dateParts = eventDateParts(signal.observedAt || signal.observed_at);
+      const metadata = signal.metadata || {};
+      const match = metadata.match || metadata.intent || "Provider GTM signal";
+
+      return `
+        <article class="signalRow">
+          <time><strong>${escapeHtml(dateParts.day)}</strong><span>${escapeHtml(dateParts.month)}</span></time>
+          <div>
+            <span class="signalType">${escapeHtml(titleCase(signal.signalType || signal.signal_type || "news"))}</span>
+            <h3>${escapeHtml(signal.provider)}</h3>
+            <p>${escapeHtml(signal.title)}</p>
+            <small>${
+              signal.sourceUrl
+                ? `<a href="${escapeHtml(signal.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(signal.sourceUrl)}</a>`
+                : "Manual source"
+            }</small>
+          </div>
+          <strong>${escapeHtml(match)}</strong>
+        </article>
+      `;
+    }).join("")
+    : STATIC_SIGNALS.map((signal) => `
+      <article class="signalRow">
+        <time><strong>${escapeHtml(signal.day)}</strong><span>${escapeHtml(signal.month)}</span></time>
+        <div>
+          <span class="signalType">${escapeHtml(signal.type)}</span>
+          <h3>${escapeHtml(signal.company)}</h3>
+          <p>${escapeHtml(signal.headline)}</p>
+          <small>${escapeHtml(signal.source)}</small>
+        </div>
+        <strong>${escapeHtml(signal.match)}</strong>
+      </article>
+    `).join("");
+
   elements.signalsPage.innerHTML = `
     ${staticShell(
       "Signals Pro",
       "Premium intelligence",
       "A static GTM signals feed for providers: hiring movement, public tenders, leadership changes, and project announcements.",
-      `<strong>${STATIC_SIGNALS.length}</strong><span>matched signals</span><strong>Weekly</strong><span>digest cadence</span>`
+      `<strong>${hasMarketSignals ? marketSignals.length : STATIC_SIGNALS.length}</strong><span>matched signals</span><strong>${hasMarketSignals ? "Reviewed" : "Weekly"}</strong><span>${hasMarketSignals ? "approved signal intake" : "digest cadence"}</span>`
     )}
     <div class="staticShell">
       <section class="staticPanel">
         <div class="signalList">
-          ${STATIC_SIGNALS.map((signal) => `
-            <article class="signalRow">
-              <time><strong>${escapeHtml(signal.day)}</strong><span>${escapeHtml(signal.month)}</span></time>
-              <div>
-                <span class="signalType">${escapeHtml(signal.type)}</span>
-                <h3>${escapeHtml(signal.company)}</h3>
-                <p>${escapeHtml(signal.headline)}</p>
-                <small>${escapeHtml(signal.source)}</small>
-              </div>
-              <strong>${escapeHtml(signal.match)}</strong>
-            </article>
-          `).join("")}
+          ${signalRows}
         </div>
       </section>
     </div>

@@ -16,6 +16,7 @@ const PRESERVED_FIELDS = [
   "subscription_tier",
   "review_notes",
   "scraper_quality_log",
+  "activity_log",
 ];
 const PROVIDER_COLUMNS = [
   "domain",
@@ -41,6 +42,7 @@ const PROVIDER_COLUMNS = [
   "recent_activity",
   "review_notes",
   "scraper_quality_log",
+  "activity_log",
   "files",
   "source_data",
   "status",

@@ -321,6 +321,50 @@ a:hover {
   background: #fff7e8;
 }
 
+.adminNoticeList {
+  display: grid;
+  gap: 10px;
+}
+
+.adminReadinessHeader,
+.adminReadinessWarning {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff7e8;
+}
+
+.adminReadinessHeader {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.adminReadinessHeader strong,
+.adminReadinessWarning strong {
+  color: #111;
+}
+
+.adminReadinessHeader span,
+.adminReadinessWarning p {
+  margin: 0;
+  color: #6d5a38;
+}
+
+.adminReadinessWarning {
+  padding: 12px 16px;
+}
+
+.adminReadinessWarning.isError {
+  border-color: #efb1a8;
+  background: #fff1ef;
+}
+
+.adminExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .adminPanel {
   display: grid;
   gap: 16px;
@@ -810,7 +854,7 @@ a:hover {
 
 .adminStats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -939,6 +983,21 @@ a:hover {
 .adminTagsTable .adminTableHeader,
 .adminTagsTable .adminTableRow {
   grid-template-columns: minmax(180px, 0.85fr) minmax(110px, 0.32fr) minmax(180px, 0.75fr) minmax(180px, 0.75fr) minmax(260px, 0.9fr);
+}
+
+.adminRequestsTable .adminTableHeader,
+.adminRequestsTable .adminTableRow {
+  grid-template-columns: minmax(220px, 1fr) minmax(110px, 0.3fr) minmax(150px, 0.44fr) minmax(170px, 0.48fr) minmax(300px, 0.82fr);
+}
+
+.adminLeadsTable .adminTableHeader,
+.adminLeadsTable .adminTableRow {
+  grid-template-columns: minmax(190px, 0.8fr) minmax(180px, 0.65fr) minmax(280px, 1.2fr) minmax(100px, 0.34fr) minmax(150px, 0.5fr) minmax(140px, 0.42fr);
+}
+
+.adminCompactRequestsTable .adminTableHeader,
+.adminCompactRequestsTable .adminTableRow {
+  grid-template-columns: minmax(0, 1fr) 96px 104px;
 }
 
 .adminTagsTable input,
@@ -1088,8 +1147,133 @@ a:hover {
   white-space: nowrap;
 }
 
+.adminRequestsTable .adminCell > span small {
+  display: block;
+  margin-top: 4px;
+  color: #777;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
 .adminPanel {
   min-width: 0;
+}
+
+.metricsSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.metricsSummaryGrid article {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  background: #fff;
+}
+
+.metricsSummaryGrid span,
+.metricsSummaryGrid small {
+  color: #666;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.metricsSummaryGrid strong {
+  color: #111;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.metricBreakdownList {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--admin-line);
+}
+
+.metricBreakdownList section {
+  display: grid;
+  gap: 0;
+  padding-bottom: 14px;
+}
+
+.metricBreakdownList h3 {
+  margin: 16px 0 8px;
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.metricBreakdownRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.metricBreakdownRow span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: #555;
+  font-weight: 800;
+}
+
+.metricBreakdownRow span small {
+  color: #777;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.metricBreakdownRow strong {
+  color: #111;
+  font-size: 18px;
+}
+
+.adminActivityTimeline {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--admin-line);
+}
+
+.adminActivityItem {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.45fr) minmax(0, 1fr) minmax(150px, 0.4fr);
+  gap: 16px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.adminActivityItem strong,
+.adminActivityItem span {
+  display: block;
+}
+
+.adminActivityItem strong {
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.adminActivityItem span,
+.adminActivityItem small {
+  color: #666;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adminActivityItem p {
+  margin: 0;
+  color: #333;
+  line-height: 1.45;
 }
 
 .adminFilterBar {
@@ -1176,6 +1360,13 @@ a:hover {
 .structuredEditHeader > div {
   display: grid;
   gap: 4px;
+}
+
+.structuredHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .structuredEditHeader h3 {
@@ -2871,14 +3062,18 @@ button.isLoading::after,
   .adminReviewTable .adminTableRow,
   .adminMissingDataTable .adminTableRow,
   .adminTagsTable .adminTableRow,
+  .adminRequestsTable .adminTableRow,
+  .adminLeadsTable .adminTableRow,
   .adminCompactProviderTable .adminTableRow,
-  .adminCompactJobsTable .adminTableRow {
+  .adminCompactJobsTable .adminTableRow,
+  .adminCompactRequestsTable .adminTableRow {
     grid-template-columns: 1fr;
   }
 
   .adminFilterBar,
   .adminEditGrid,
-  .structuredEntryRow {
+  .structuredEntryRow,
+  .adminActivityItem {
     grid-template-columns: 1fr;
   }
 
@@ -3397,11 +3592,13 @@ h4,
 }
 
 .providerActions a,
-.providerInlineLink {
+.providerInlineLink,
+.providerRequestForm button {
   display: grid;
   place-items: center;
   min-height: 46px;
   padding: 0 24px;
+  border: 0;
   font-weight: 800;
   text-align: center;
 }
@@ -3413,12 +3610,125 @@ h4,
 
 .providerSecondaryAction {
   border: 1px solid #111;
+  background: #fff;
   color: #111;
 }
 
+.providerSecondaryAction.danger {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.providerClaimStatus {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #111;
+  background: #fff;
+}
+
+.providerClaimStatus strong {
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.providerClaimStatus span {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .providerActions a:hover,
-.providerInlineLink:hover {
+.providerInlineLink:hover,
+.providerRequestForm button:hover {
   text-decoration: none;
+}
+
+.providerRequestPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+  gap: 28px;
+  padding: 36px 48px;
+  border-top: 1px solid #111;
+  background: #f7f7f7;
+}
+
+.providerRequestPanel.compact {
+  border-top-color: #d8d8d8;
+  background: #fff;
+}
+
+.providerRequestPanel h3 {
+  margin: 8px 0;
+  color: #111;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.providerRequestPanel p {
+  margin: 0;
+  color: #666;
+  line-height: 1.55;
+}
+
+.providerRequestForm {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.providerRequestForm label {
+  display: grid;
+  gap: 7px;
+  color: #555;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.providerRequestForm input,
+.providerRequestForm textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  text-transform: none;
+}
+
+.providerRequestForm input {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.providerRequestForm textarea {
+  resize: vertical;
+  padding: 12px;
+}
+
+.providerClaimForm {
+  align-content: start;
+}
+
+.providerClaimActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.providerRequestMessage {
+  min-height: 20px;
+  color: #111;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.providerRequestMessage.error {
+  color: #b42318;
 }
 
 .providerProfileGrid {
@@ -3542,6 +3852,11 @@ h4,
   display: flex;
   gap: 18px;
   align-items: flex-start;
+}
+
+.providerEventLink {
+  color: inherit;
+  text-decoration: none;
 }
 
 .providerEventDate {
@@ -4581,6 +4896,128 @@ h4,
   min-height: 34px;
 }
 
+.outreachContactList {
+  display: grid;
+  gap: 14px;
+}
+
+.managedSuccessStoryList,
+.managedEventList,
+.managedSignalList {
+  display: grid;
+  gap: 14px;
+}
+
+.managedSuccessStoryRow,
+.managedEventRow,
+.managedSignalRow {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  background: #fafafa;
+}
+
+.managedSuccessStoryHeader,
+.managedSuccessStoryGrid,
+.managedEventHeader,
+.managedEventGrid,
+.managedSignalHeader,
+.managedSignalGrid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.managedStoryFeaturedControl,
+.managedEventFlagControl {
+  min-height: 42px;
+}
+
+.managedSuccessStoryHeader .secondaryAction,
+.managedEventHeader .secondaryAction,
+.managedSignalHeader .secondaryAction {
+  min-height: 34px;
+}
+
+.outreachContactRow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  background: #fafafa;
+}
+
+.outreachContactRow > * {
+  min-width: 0;
+}
+
+.outreachPrimaryControl {
+  align-self: end;
+  min-height: 42px;
+}
+
+.outreachContactRemove {
+  align-self: end;
+  justify-self: end;
+  min-height: 34px;
+}
+
+.outreachMessageList {
+  display: grid;
+  gap: 14px;
+}
+
+.outreachMessageRow {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  background: #fafafa;
+}
+
+.outreachMessageHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.outreachMessageHeader strong,
+.outreachMessageHeader span {
+  display: block;
+}
+
+.outreachMessageHeader strong {
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.outreachMessageHeader span {
+  color: #666;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.outreachMessageControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.outreachMessageControls select {
+  min-height: 34px;
+}
+
 .profileActivityLog {
   display: grid;
   gap: 0;
@@ -4670,12 +5107,28 @@ h4,
 
 @media (max-width: 1100px) {
   .adminEditGrid,
-  .structuredEntryRow {
+  .structuredEntryRow,
+  .managedSuccessStoryHeader,
+  .managedSuccessStoryGrid,
+  .managedEventHeader,
+  .managedEventGrid,
+  .managedSignalHeader,
+  .managedSignalGrid,
+  .outreachContactRow {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
+  .outreachMessageHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .outreachMessageControls {
+    justify-content: flex-start;
+  }
+
   .adminDialogCard {
     width: 100%;
     max-width: 100%;
@@ -4878,6 +5331,7 @@ h4,
   .providerProfileHero,
   .providerProfileBlock,
   .providerProfileAside section,
+  .providerRequestPanel,
   .providerIntroFooter,
   .profileBackBar {
     width: 100%;
@@ -4957,6 +5411,18 @@ h4,
   }
 
   .providerIntroFooter {
+    display: grid;
+  }
+
+  .providerRequestPanel {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+
+  .providerClaimActions,
+  .providerActions {
     display: grid;
   }
 

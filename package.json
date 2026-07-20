@@ -17,6 +17,8 @@
     "profiles:sync-supabase:dry-run": "node src/utils/syncProfilesToSupabase.js --dry-run",
     "report:week3": "node src/utils/generateWeek3QualityReport.js",
     "cost:week3": "node src/utils/generateCostModel.js",
+    "outreach:prompt": "node src/utils/previewOutreachPrompt.js",
+    "readiness:sprint2": "node src/utils/checkSprint2Readiness.js",
     "demo": "node src/utils/runDemo.js",
     "demo:live": "node src/utils/runDemo.js --mode=live",
     "export:ui": "node src/utils/exportStaticUiData.js",

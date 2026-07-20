@@ -1,7 +1,12 @@
 const state = {
   activeSection: "dashboard",
+  activityEvents: [],
+  claimRequests: [],
   jobs: [],
+  metrics: {},
+  providerLeads: [],
   providers: [],
+  readiness: null,
   tags: [],
   sidebarCollapsed: window.localStorage.getItem("rocketEngineersAdminSidebar") === "collapsed",
   jobsPage: 1,
@@ -81,11 +86,22 @@ const LIVE_PROFILE_STATUSES = new Set([
   "unclaimed",
 ]);
 const CONFIDENCE_GUARDRAIL_SCORE = 75;
+const PROVIDER_EVENT_STATUSES = new Set(["suggested", "approved", "expired", "archived"]);
+const MARKET_SIGNAL_TYPES = new Set(["hiring", "news", "leadership", "tender", "technology", "partnership"]);
+const MARKET_SIGNAL_STATUSES = new Set(["scraped", "reviewed", "approved", "archived"]);
 const REVIEW_PROFILE_STATUSES = new Set([
   "scraped",
   "in_review",
   "removal_requested",
 ]);
+const OUTREACH_MESSAGE_STEPS = [
+  { messageStep: "email_1", channel: "email", label: "Email 1" },
+  { messageStep: "email_2", channel: "email", label: "Email 2" },
+  { messageStep: "email_3", channel: "email", label: "Email 3" },
+  { messageStep: "linkedin_message", channel: "linkedin", label: "LinkedIn" },
+  { messageStep: "claim_profile_invitation", channel: "claim_invite", label: "Claim Invite" },
+];
+const OUTREACH_MESSAGE_STATUSES = new Set(["draft", "approved", "sent", "opened", "clicked", "replied"]);
 const GENERIC_INDUSTRIES = new Set([
   "cloud",
   "cloud computing",
@@ -147,14 +163,19 @@ const elements = {
   refreshButton: document.querySelector("#adminRefreshButton"),
   signOutButton: document.querySelector("#adminSignOutButton"),
   setupNotice: document.querySelector("#adminSetupNotice"),
+  readinessWarnings: document.querySelector("#adminReadinessWarnings"),
   navButtons: document.querySelectorAll("[data-admin-section]"),
   panels: document.querySelectorAll("[data-admin-panel]"),
   queuedCount: document.querySelector("#queuedCount"),
   reviewCount: document.querySelector("#reviewCount"),
   publishedCount: document.querySelector("#publishedCount"),
   failedCount: document.querySelector("#failedCount"),
+  outreachDraftCount: document.querySelector("#outreachDraftCount"),
+  requestCount: document.querySelector("#requestCount"),
   dashboardReviewList: document.querySelector("#dashboardReviewList"),
   dashboardJobList: document.querySelector("#dashboardJobList"),
+  dashboardOutreachList: document.querySelector("#dashboardOutreachList"),
+  dashboardRequestList: document.querySelector("#dashboardRequestList"),
   scrapeForm: document.querySelector("#scrapeForm"),
   scrapeUrl: document.querySelector("#scrapeUrl"),
   scrapeCompanyName: document.querySelector("#scrapeCompanyName"),
@@ -188,6 +209,12 @@ const elements = {
   publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
   missingDataList: document.querySelector("#missingDataList"),
+  claimRequestList: document.querySelector("#claimRequestList"),
+  providerLeadList: document.querySelector("#providerLeadList"),
+  metricsSummary: document.querySelector("#metricsSummary"),
+  profileStatusMetrics: document.querySelector("#profileStatusMetrics"),
+  outreachSignalMetrics: document.querySelector("#outreachSignalMetrics"),
+  activityTimeline: document.querySelector("#activityTimeline"),
   tagApproveVisibleButton: document.querySelector("#tagApproveVisibleButton"),
   tagSummary: document.querySelector("#tagSummary"),
   tagSearchFilter: document.querySelector("#tagSearchFilter"),
@@ -217,9 +244,20 @@ const elements = {
   profileEditPartnerships: document.querySelector("#profileEditPartnerships"),
   profileEditSuccessStories: document.querySelector("#profileEditSuccessStories"),
   profileEditAddSuccessStory: document.querySelector("#profileEditAddSuccessStory"),
+  profileEditManagedSuccessStories: document.querySelector("#profileEditManagedSuccessStories"),
+  profileEditAddManagedSuccessStory: document.querySelector("#profileEditAddManagedSuccessStory"),
   profileEditSolutions: document.querySelector("#profileEditSolutions"),
   profileEditAddSolution: document.querySelector("#profileEditAddSolution"),
   profileEditActivities: document.querySelector("#profileEditActivities"),
+  profileEditManagedEvents: document.querySelector("#profileEditManagedEvents"),
+  profileEditAddManagedEvent: document.querySelector("#profileEditAddManagedEvent"),
+  profileEditManagedSignals: document.querySelector("#profileEditManagedSignals"),
+  profileEditAddManagedSignal: document.querySelector("#profileEditAddManagedSignal"),
+  profileEditOutreachContacts: document.querySelector("#profileEditOutreachContacts"),
+  profileEditAddOutreachContact: document.querySelector("#profileEditAddOutreachContact"),
+  profileEditOutreachMessages: document.querySelector("#profileEditOutreachMessages"),
+  profileEditGenerateOutreach: document.querySelector("#profileEditGenerateOutreach"),
+  profileEditApproveAllOutreach: document.querySelector("#profileEditApproveAllOutreach"),
   profileEditNotes: document.querySelector("#profileEditNotes"),
   profileEditQualityMissing: document.querySelector("#profileEditQualityMissing"),
   profileEditQualityIncorrect: document.querySelector("#profileEditQualityIncorrect"),
@@ -371,6 +409,12 @@ function isReviewProvider(provider = {}) {
 
 function emptyState(label) {
   return `<div class="emptyResults">${escapeHtml(label)}</div>`;
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function showToast(message, type = "success") {
@@ -672,6 +716,10 @@ function findProvider(key) {
   return state.providers.find((provider) => providerKey(provider) === key);
 }
 
+function findProviderByDomain(domain) {
+  return state.providers.find((provider) => provider.domain === domain);
+}
+
 function listToText(items) {
   return (items || [])
     .map((item) => {
@@ -930,6 +978,623 @@ function addEditableEntry(container) {
   container.insertAdjacentHTML("beforeend", editableEntryRowMarkup());
 }
 
+function normalizeManagedSuccessStory(story = {}) {
+  const status = String(story.status || "draft").trim().toLowerCase();
+
+  return {
+    id: story.id || "",
+    title: story.title || "",
+    shortText: story.shortText || story.short_text || "",
+    link: story.link || "",
+    sourceUrl: story.sourceUrl || story.source_url || "",
+    status: ["suggested", "draft", "approved", "archived"].includes(status) ? status : "draft",
+    featured: Boolean(story.featured),
+    approvedBy: story.approvedBy || story.approved_by || "",
+    approvedAt: story.approvedAt || story.approved_at || "",
+    metadata: story.metadata && typeof story.metadata === "object" ? story.metadata : {},
+  };
+}
+
+function managedSuccessStoryRowMarkup(story = {}) {
+  const normalizedStory = normalizeManagedSuccessStory(story);
+
+  return `
+    <article class="managedSuccessStoryRow">
+      <div class="managedSuccessStoryHeader">
+        <label>
+          Status
+          <select data-story-field="status">
+            ${["suggested", "draft", "approved", "archived"].map((status) => `
+              <option value="${status}" ${normalizedStory.status === status ? "selected" : ""}>${escapeHtml(titleCase(status))}</option>
+            `).join("")}
+          </select>
+        </label>
+        <label class="adminCheckboxLabel managedStoryFeaturedControl">
+          <input data-story-field="featured" type="checkbox" ${normalizedStory.featured ? "checked" : ""} />
+          <span>Featured</span>
+        </label>
+        <button class="secondaryAction compactAction managedSuccessStoryApprove" type="button">Approve</button>
+        <button class="secondaryAction compactAction managedSuccessStoryRemove" type="button">Remove</button>
+      </div>
+      <label>
+        Title
+        <input data-story-field="title" type="text" value="${escapeHtml(normalizedStory.title)}" placeholder="Customer story title" />
+      </label>
+      <label>
+        Short text
+        <textarea data-story-field="shortText" rows="2" placeholder="Short story summary">${escapeHtml(normalizedStory.shortText)}</textarea>
+      </label>
+      <div class="managedSuccessStoryGrid">
+        <label>
+          Link
+          <input data-story-field="link" type="url" value="${escapeHtml(normalizedStory.link)}" placeholder="https://example.com/story" />
+        </label>
+        <label>
+          Source URL
+          <input data-story-field="sourceUrl" type="url" value="${escapeHtml(normalizedStory.sourceUrl)}" placeholder="https://source.example.com/story" />
+        </label>
+      </div>
+      <input data-story-field="id" type="hidden" value="${escapeHtml(normalizedStory.id)}" />
+      <input data-story-field="approvedBy" type="hidden" value="${escapeHtml(normalizedStory.approvedBy)}" />
+      <input data-story-field="approvedAt" type="hidden" value="${escapeHtml(normalizedStory.approvedAt)}" />
+      <textarea data-story-metadata hidden>${escapeHtml(JSON.stringify(normalizedStory.metadata || {}))}</textarea>
+    </article>
+  `;
+}
+
+function renderManagedSuccessStories(container, stories = []) {
+  const normalizedStories = (stories || []).map(normalizeManagedSuccessStory);
+  const renderStories = normalizedStories.length > 0 ? normalizedStories : [normalizeManagedSuccessStory()];
+
+  container.innerHTML = renderStories.map(managedSuccessStoryRowMarkup).join("");
+}
+
+function collectManagedSuccessStories(container) {
+  return Array.from(container.querySelectorAll(".managedSuccessStoryRow"))
+    .map((row) => {
+      let metadata = {};
+
+      try {
+        metadata = JSON.parse(row.querySelector("[data-story-metadata]")?.value || "{}");
+      } catch (error) {
+        metadata = {};
+      }
+
+      return {
+        id: row.querySelector('[data-story-field="id"]').value.trim(),
+        title: row.querySelector('[data-story-field="title"]').value.trim(),
+        shortText: row.querySelector('[data-story-field="shortText"]').value.trim(),
+        link: row.querySelector('[data-story-field="link"]').value.trim(),
+        sourceUrl: row.querySelector('[data-story-field="sourceUrl"]').value.trim(),
+        status: row.querySelector('[data-story-field="status"]').value,
+        featured: row.querySelector('[data-story-field="featured"]').checked,
+        approvedBy: row.querySelector('[data-story-field="approvedBy"]').value.trim(),
+        approvedAt: row.querySelector('[data-story-field="approvedAt"]').value.trim() || null,
+        metadata,
+      };
+    })
+    .filter((story) => story.title || story.shortText || story.link || story.sourceUrl)
+    .map((story) => ({ ...story, title: story.title || "Untitled success story" }));
+}
+
+function addManagedSuccessStory(container) {
+  container.insertAdjacentHTML("beforeend", managedSuccessStoryRowMarkup());
+}
+
+function approveManagedSuccessStory(row) {
+  row.querySelector('[data-story-field="status"]').value = "approved";
+  row.querySelector('[data-story-field="approvedBy"]').value = adminEmail() || "Unknown admin";
+  row.querySelector('[data-story-field="approvedAt"]').value = new Date().toISOString();
+}
+
+function normalizeProviderEventStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+
+  return PROVIDER_EVENT_STATUSES.has(status) ? status : "suggested";
+}
+
+function normalizeManagedProviderEvent(event = {}) {
+  const startsAt = event.startsAt || event.starts_at || "";
+
+  return {
+    id: event.id || "",
+    title: event.title || "",
+    startsAt: startsAt ? startsAt.slice(0, 16) : "",
+    location: event.location || "",
+    online: Boolean(event.online),
+    sourceUrl: event.sourceUrl || event.source_url || "",
+    status: normalizeProviderEventStatus(event.status),
+    featured: Boolean(event.featured),
+    approvedBy: event.approvedBy || event.approved_by || "",
+    approvedAt: event.approvedAt || event.approved_at || "",
+    metadata: event.metadata && typeof event.metadata === "object" ? event.metadata : {},
+  };
+}
+
+function managedProviderEventRowMarkup(event = {}) {
+  const normalizedEvent = normalizeManagedProviderEvent(event);
+
+  return `
+    <article class="managedEventRow">
+      <div class="managedEventHeader">
+        <label>
+          Title
+          <input data-event-field="title" type="text" value="${escapeHtml(normalizedEvent.title)}" placeholder="Provider webinar or meetup" />
+        </label>
+        <label>
+          Starts At
+          <input data-event-field="startsAt" type="datetime-local" value="${escapeHtml(normalizedEvent.startsAt)}" />
+        </label>
+        <label>
+          Status
+          <select data-event-field="status">
+            ${["suggested", "approved", "expired", "archived"].map((status) => `
+              <option value="${status}" ${normalizedEvent.status === status ? "selected" : ""}>${escapeHtml(titleCase(status))}</option>
+            `).join("")}
+          </select>
+        </label>
+        <button class="secondaryAction compactAction managedEventApprove" type="button">Approve</button>
+      </div>
+      <div class="managedEventGrid">
+        <label>
+          Location
+          <input data-event-field="location" type="text" value="${escapeHtml(normalizedEvent.location)}" placeholder="Online, Bern, Zurich" />
+        </label>
+        <label>
+          Source URL
+          <input data-event-field="sourceUrl" type="url" value="${escapeHtml(normalizedEvent.sourceUrl)}" placeholder="https://provider.com/events/..." />
+        </label>
+        <label class="adminCheckboxLabel managedEventFlagControl">
+          <input data-event-field="online" type="checkbox" ${normalizedEvent.online ? "checked" : ""} />
+          <span>Online Event</span>
+        </label>
+        <label class="adminCheckboxLabel managedEventFlagControl">
+          <input data-event-field="featured" type="checkbox" ${normalizedEvent.featured ? "checked" : ""} />
+          <span>Featured</span>
+        </label>
+      </div>
+      <input data-event-field="id" type="hidden" value="${escapeHtml(normalizedEvent.id)}" />
+      <input data-event-field="approvedBy" type="hidden" value="${escapeHtml(normalizedEvent.approvedBy)}" />
+      <input data-event-field="approvedAt" type="hidden" value="${escapeHtml(normalizedEvent.approvedAt)}" />
+      <textarea data-event-metadata hidden>${escapeHtml(JSON.stringify(normalizedEvent.metadata || {}))}</textarea>
+      <button class="secondaryAction compactAction managedEventRemove" type="button">Remove</button>
+    </article>
+  `;
+}
+
+function renderManagedProviderEvents(container, events = []) {
+  const normalizedEvents = (events || []).map(normalizeManagedProviderEvent);
+  const renderEvents = normalizedEvents.length > 0 ? normalizedEvents : [normalizeManagedProviderEvent()];
+
+  container.innerHTML = renderEvents.map(managedProviderEventRowMarkup).join("");
+}
+
+function collectManagedProviderEvents(container) {
+  return Array.from(container.querySelectorAll(".managedEventRow"))
+    .map((row) => {
+      let metadata = {};
+
+      try {
+        metadata = JSON.parse(row.querySelector("[data-event-metadata]")?.value || "{}");
+      } catch (error) {
+        metadata = {};
+      }
+
+      return {
+        id: row.querySelector('[data-event-field="id"]').value.trim(),
+        title: row.querySelector('[data-event-field="title"]').value.trim(),
+        startsAt: row.querySelector('[data-event-field="startsAt"]').value.trim(),
+        location: row.querySelector('[data-event-field="location"]').value.trim(),
+        online: row.querySelector('[data-event-field="online"]').checked,
+        sourceUrl: row.querySelector('[data-event-field="sourceUrl"]').value.trim(),
+        status: normalizeProviderEventStatus(row.querySelector('[data-event-field="status"]').value),
+        featured: row.querySelector('[data-event-field="featured"]').checked,
+        approvedBy: row.querySelector('[data-event-field="approvedBy"]').value.trim(),
+        approvedAt: row.querySelector('[data-event-field="approvedAt"]').value.trim() || null,
+        metadata,
+      };
+    })
+    .filter((event) => event.title || event.startsAt || event.location || event.sourceUrl)
+    .map((event) => ({ ...event, title: event.title || "Untitled provider event" }));
+}
+
+function addManagedProviderEvent(container) {
+  container.insertAdjacentHTML("beforeend", managedProviderEventRowMarkup());
+}
+
+function approveManagedProviderEvent(row) {
+  row.querySelector('[data-event-field="status"]').value = "approved";
+  row.querySelector('[data-event-field="approvedBy"]').value = adminEmail() || "Unknown admin";
+  row.querySelector('[data-event-field="approvedAt"]').value = new Date().toISOString();
+}
+
+function normalizeMarketSignalType(value) {
+  const type = String(value || "").trim().toLowerCase();
+
+  return MARKET_SIGNAL_TYPES.has(type) ? type : "news";
+}
+
+function normalizeMarketSignalStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+
+  return MARKET_SIGNAL_STATUSES.has(status) ? status : "scraped";
+}
+
+function normalizeManagedMarketSignal(signal = {}) {
+  const observedAt = signal.observedAt || signal.observed_at || "";
+
+  return {
+    id: signal.id || "",
+    signalType: normalizeMarketSignalType(signal.signalType || signal.signal_type),
+    title: signal.title || "",
+    sourceUrl: signal.sourceUrl || signal.source_url || "",
+    status: normalizeMarketSignalStatus(signal.status),
+    approvedBy: signal.approvedBy || signal.approved_by || "",
+    approvedAt: signal.approvedAt || signal.approved_at || "",
+    observedAt: observedAt ? observedAt.slice(0, 16) : "",
+    metadata: signal.metadata && typeof signal.metadata === "object" ? signal.metadata : {},
+  };
+}
+
+function managedMarketSignalRowMarkup(signal = {}) {
+  const normalizedSignal = normalizeManagedMarketSignal(signal);
+
+  return `
+    <article class="managedSignalRow">
+      <div class="managedSignalHeader">
+        <label>
+          Type
+          <select data-signal-field="signalType">
+            ${["hiring", "news", "leadership", "tender", "technology", "partnership"].map((type) => `
+              <option value="${type}" ${normalizedSignal.signalType === type ? "selected" : ""}>${escapeHtml(titleCase(type))}</option>
+            `).join("")}
+          </select>
+        </label>
+        <label>
+          Status
+          <select data-signal-field="status">
+            ${["scraped", "reviewed", "approved", "archived"].map((status) => `
+              <option value="${status}" ${normalizedSignal.status === status ? "selected" : ""}>${escapeHtml(titleCase(status))}</option>
+            `).join("")}
+          </select>
+        </label>
+        <label>
+          Observed At
+          <input data-signal-field="observedAt" type="datetime-local" value="${escapeHtml(normalizedSignal.observedAt)}" />
+        </label>
+        <button class="secondaryAction compactAction managedSignalApprove" type="button">Approve</button>
+      </div>
+      <div class="managedSignalGrid">
+        <label>
+          Signal
+          <textarea data-signal-field="title" rows="3" placeholder="Hiring spike, funding, new partnership, tender, technology adoption">${escapeHtml(normalizedSignal.title)}</textarea>
+        </label>
+        <label>
+          Source URL
+          <input data-signal-field="sourceUrl" type="url" value="${escapeHtml(normalizedSignal.sourceUrl)}" placeholder="https://source.example/..." />
+        </label>
+      </div>
+      <input data-signal-field="id" type="hidden" value="${escapeHtml(normalizedSignal.id)}" />
+      <input data-signal-field="approvedBy" type="hidden" value="${escapeHtml(normalizedSignal.approvedBy)}" />
+      <input data-signal-field="approvedAt" type="hidden" value="${escapeHtml(normalizedSignal.approvedAt)}" />
+      <textarea data-signal-metadata hidden>${escapeHtml(JSON.stringify(normalizedSignal.metadata || {}))}</textarea>
+      <button class="secondaryAction compactAction managedSignalRemove" type="button">Remove</button>
+    </article>
+  `;
+}
+
+function renderManagedMarketSignals(container, signals = []) {
+  const normalizedSignals = (signals || []).map(normalizeManagedMarketSignal);
+  const renderSignals = normalizedSignals.length > 0 ? normalizedSignals : [normalizeManagedMarketSignal()];
+
+  container.innerHTML = renderSignals.map(managedMarketSignalRowMarkup).join("");
+}
+
+function collectManagedMarketSignals(container) {
+  return Array.from(container.querySelectorAll(".managedSignalRow"))
+    .map((row) => {
+      let metadata = {};
+
+      try {
+        metadata = JSON.parse(row.querySelector("[data-signal-metadata]")?.value || "{}");
+      } catch (error) {
+        metadata = {};
+      }
+
+      return {
+        id: row.querySelector('[data-signal-field="id"]').value.trim(),
+        signalType: normalizeMarketSignalType(row.querySelector('[data-signal-field="signalType"]').value),
+        title: row.querySelector('[data-signal-field="title"]').value.trim(),
+        sourceUrl: row.querySelector('[data-signal-field="sourceUrl"]').value.trim(),
+        status: normalizeMarketSignalStatus(row.querySelector('[data-signal-field="status"]').value),
+        approvedBy: row.querySelector('[data-signal-field="approvedBy"]').value.trim(),
+        approvedAt: row.querySelector('[data-signal-field="approvedAt"]').value.trim() || null,
+        observedAt: row.querySelector('[data-signal-field="observedAt"]').value.trim(),
+        metadata,
+      };
+    })
+    .filter((signal) => signal.title || signal.sourceUrl)
+    .map((signal) => ({ ...signal, title: signal.title || "Untitled market signal" }));
+}
+
+function addManagedMarketSignal(container) {
+  container.insertAdjacentHTML("beforeend", managedMarketSignalRowMarkup());
+}
+
+function approveManagedMarketSignal(row) {
+  row.querySelector('[data-signal-field="status"]').value = "approved";
+  row.querySelector('[data-signal-field="approvedBy"]').value = adminEmail() || "Unknown admin";
+  row.querySelector('[data-signal-field="approvedAt"]').value = new Date().toISOString();
+  if (!row.querySelector('[data-signal-field="observedAt"]').value) {
+    row.querySelector('[data-signal-field="observedAt"]').value = new Date().toISOString().slice(0, 16);
+  }
+}
+
+function normalizeOutreachContact(contact = {}) {
+  return {
+    name: contact.name || "",
+    title: contact.title || contact.role || "",
+    email: contact.email || "",
+    linkedinUrl: contact.linkedinUrl || contact.linkedin_url || "",
+    seniority: contact.seniority || "",
+    source: contact.source || "",
+    primaryContact: Boolean(contact.primaryContact || contact.primary_contact),
+  };
+}
+
+function outreachContactRowMarkup(contact = {}) {
+  const normalizedContact = normalizeOutreachContact(contact);
+
+  return `
+    <article class="outreachContactRow">
+      <label>
+        Name
+        <input data-contact-field="name" type="text" value="${escapeHtml(normalizedContact.name)}" placeholder="Contact name" />
+      </label>
+      <label>
+        Role / Title
+        <input data-contact-field="title" type="text" value="${escapeHtml(normalizedContact.title)}" placeholder="VP Engineering" />
+      </label>
+      <label>
+        Email
+        <input data-contact-field="email" type="email" value="${escapeHtml(normalizedContact.email)}" placeholder="name@company.com" />
+      </label>
+      <label>
+        LinkedIn URL
+        <input data-contact-field="linkedinUrl" type="url" value="${escapeHtml(normalizedContact.linkedinUrl)}" placeholder="https://www.linkedin.com/in/name" />
+      </label>
+      <label>
+        Seniority
+        <input data-contact-field="seniority" type="text" value="${escapeHtml(normalizedContact.seniority)}" placeholder="Executive, Director, Manager" />
+      </label>
+      <label>
+        Source
+        <input data-contact-field="source" type="text" value="${escapeHtml(normalizedContact.source)}" placeholder="Manual research, Apollo, LinkedIn" />
+      </label>
+      <label class="adminCheckboxLabel outreachPrimaryControl">
+        <input data-contact-field="primaryContact" type="checkbox" ${normalizedContact.primaryContact ? "checked" : ""} />
+        <span>Primary Contact</span>
+      </label>
+      <button class="secondaryAction compactAction outreachContactRemove" type="button">Remove</button>
+    </article>
+  `;
+}
+
+function renderOutreachContacts(container, contacts = []) {
+  const normalizedContacts = (contacts || []).map(normalizeOutreachContact);
+  const renderContacts = normalizedContacts.length > 0 ? normalizedContacts : [normalizeOutreachContact()];
+
+  container.innerHTML = renderContacts.map(outreachContactRowMarkup).join("");
+}
+
+function collectOutreachContacts(container) {
+  let primaryAssigned = false;
+
+  return Array.from(container.querySelectorAll(".outreachContactRow"))
+    .map((row) => {
+      const primaryInput = row.querySelector('[data-contact-field="primaryContact"]');
+      const primaryContact = primaryInput.checked && !primaryAssigned;
+
+      if (primaryContact) {
+        primaryAssigned = true;
+      }
+
+      return {
+        name: row.querySelector('[data-contact-field="name"]').value.trim(),
+        title: row.querySelector('[data-contact-field="title"]').value.trim(),
+        email: row.querySelector('[data-contact-field="email"]').value.trim(),
+        linkedinUrl: row.querySelector('[data-contact-field="linkedinUrl"]').value.trim(),
+        seniority: row.querySelector('[data-contact-field="seniority"]').value.trim(),
+        source: row.querySelector('[data-contact-field="source"]').value.trim(),
+        primaryContact,
+      };
+    })
+    .filter((contact) => contact.name || contact.title || contact.email || contact.linkedinUrl || contact.seniority || contact.source);
+}
+
+function addOutreachContact(container) {
+  container.insertAdjacentHTML("beforeend", outreachContactRowMarkup());
+}
+
+function normalizeOutreachMessageStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+
+  return OUTREACH_MESSAGE_STATUSES.has(status) ? status : "draft";
+}
+
+function normalizeOutreachMessage(message = {}) {
+  const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === (message.messageStep || message.message_step)) || OUTREACH_MESSAGE_STEPS[0];
+
+  return {
+    id: message.id || "",
+    contactId: message.contactId || message.contact_id || "",
+    channel: message.channel || stepDef.channel,
+    messageStep: stepDef.messageStep,
+    subject: message.subject || "",
+    body: message.body || "",
+    status: normalizeOutreachMessageStatus(message.status),
+    generatedBy: message.generatedBy || message.generated_by || "",
+    approvedBy: message.approvedBy || message.approved_by || "",
+    approvedAt: message.approvedAt || message.approved_at || "",
+    sentAt: message.sentAt || message.sent_at || "",
+    metadata: message.metadata && typeof message.metadata === "object" ? message.metadata : {},
+  };
+}
+
+function outreachMessagesByStep(messages = []) {
+  return new Map((messages || []).map((message) => {
+    const normalizedMessage = normalizeOutreachMessage(message);
+    return [normalizedMessage.messageStep, normalizedMessage];
+  }));
+}
+
+function outreachMessageRowMarkup(message = {}) {
+  const normalizedMessage = normalizeOutreachMessage(message);
+  const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
+  const isLinkedIn = stepDef.channel === "linkedin";
+
+  return `
+    <article class="outreachMessageRow" data-message-step="${escapeHtml(stepDef.messageStep)}" data-message-channel="${escapeHtml(stepDef.channel)}">
+      <div class="outreachMessageHeader">
+        <div>
+          <strong>${escapeHtml(stepDef.label)}</strong>
+          <span>${escapeHtml(stepDef.channel.replace(/_/g, " "))}</span>
+        </div>
+        <div class="outreachMessageControls">
+          <select data-message-field="status" aria-label="${escapeHtml(stepDef.label)} status">
+            ${["draft", "approved", "sent", "opened", "clicked", "replied"].map((status) => `
+              <option value="${status}" ${normalizedMessage.status === status ? "selected" : ""}>${escapeHtml(titleCase(status))}</option>
+            `).join("")}
+          </select>
+          <button class="secondaryAction compactAction outreachMessageApprove" type="button">Approve</button>
+          <button class="secondaryAction compactAction outreachMessageCopy" type="button">Copy</button>
+        </div>
+      </div>
+      <label ${isLinkedIn ? "hidden" : ""}>
+        Subject
+        <input data-message-field="subject" type="text" value="${escapeHtml(normalizedMessage.subject)}" placeholder="${escapeHtml(stepDef.label)} subject" />
+      </label>
+      <label>
+        Body
+        <textarea data-message-field="body" rows="${isLinkedIn ? "4" : "7"}" placeholder="${escapeHtml(stepDef.label)} body">${escapeHtml(normalizedMessage.body)}</textarea>
+      </label>
+      <input data-message-field="id" type="hidden" value="${escapeHtml(normalizedMessage.id)}" />
+      <input data-message-field="contactId" type="hidden" value="${escapeHtml(normalizedMessage.contactId)}" />
+      <input data-message-field="generatedBy" type="hidden" value="${escapeHtml(normalizedMessage.generatedBy)}" />
+      <input data-message-field="approvedBy" type="hidden" value="${escapeHtml(normalizedMessage.approvedBy)}" />
+      <input data-message-field="approvedAt" type="hidden" value="${escapeHtml(normalizedMessage.approvedAt)}" />
+      <input data-message-field="sentAt" type="hidden" value="${escapeHtml(normalizedMessage.sentAt)}" />
+      <textarea data-message-metadata hidden>${escapeHtml(JSON.stringify(normalizedMessage.metadata || {}))}</textarea>
+    </article>
+  `;
+}
+
+function renderOutreachMessages(container, messages = []) {
+  const byStep = outreachMessagesByStep(messages);
+
+  container.innerHTML = OUTREACH_MESSAGE_STEPS
+    .map((step) => outreachMessageRowMarkup(byStep.get(step.messageStep) || step))
+    .join("");
+}
+
+function collectOutreachMessages(container) {
+  return Array.from(container.querySelectorAll(".outreachMessageRow"))
+    .map((row) => {
+      const metadataText = row.querySelector("[data-message-metadata]")?.value || "{}";
+      let metadata = {};
+
+      try {
+        metadata = JSON.parse(metadataText);
+      } catch (error) {
+        metadata = {};
+      }
+
+      return {
+        id: row.querySelector('[data-message-field="id"]').value.trim(),
+        contactId: row.querySelector('[data-message-field="contactId"]').value.trim() || null,
+        channel: row.dataset.messageChannel,
+        messageStep: row.dataset.messageStep,
+        subject: row.querySelector('[data-message-field="subject"]')?.value.trim() || "",
+        body: row.querySelector('[data-message-field="body"]').value.trim(),
+        status: normalizeOutreachMessageStatus(row.querySelector('[data-message-field="status"]').value),
+        generatedBy: row.querySelector('[data-message-field="generatedBy"]').value.trim(),
+        approvedBy: row.querySelector('[data-message-field="approvedBy"]').value.trim(),
+        approvedAt: row.querySelector('[data-message-field="approvedAt"]').value.trim() || null,
+        sentAt: row.querySelector('[data-message-field="sentAt"]').value.trim() || null,
+        metadata,
+      };
+    })
+    .filter((message) => message.body);
+}
+
+function approveOutreachMessage(row) {
+  row.querySelector('[data-message-field="status"]').value = "approved";
+  row.querySelector('[data-message-field="approvedBy"]').value = adminEmail() || "Unknown admin";
+  row.querySelector('[data-message-field="approvedAt"]').value = new Date().toISOString();
+}
+
+function approveAllDraftOutreachMessages() {
+  let approvedCount = 0;
+
+  elements.profileEditOutreachMessages.querySelectorAll(".outreachMessageRow").forEach((row) => {
+    const statusSelect = row.querySelector('[data-message-field="status"]');
+
+    if (statusSelect?.value === "draft" && row.querySelector('[data-message-field="body"]')?.value.trim()) {
+      approveOutreachMessage(row);
+      approvedCount += 1;
+    }
+  });
+
+  showToast(
+    approvedCount
+      ? `${approvedCount} draft message${approvedCount === 1 ? "" : "s"} marked approved. Save profile to persist.`
+      : "No draft messages to approve."
+  );
+}
+
+async function copyOutreachMessage(row) {
+  const subject = row.querySelector('[data-message-field="subject"]')?.value.trim();
+  const body = row.querySelector('[data-message-field="body"]')?.value.trim();
+  const text = [subject ? `Subject: ${subject}` : "", body].filter(Boolean).join("\n\n");
+
+  if (!text) {
+    showToast("Message is empty.", "error");
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-1000px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+
+  const provider = findProvider(elements.profileEditKey.value) || {};
+  fetch("/api/admin-activity", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      providerId: provider.id || elements.profileEditKey.value,
+      eventType: row.dataset.messageChannel === "linkedin" ? "linkedin_message_copied" : "outreach_copied",
+      label: row.dataset.messageChannel === "linkedin" ? "LinkedIn message copied" : "Outreach message copied",
+      summary: `${outreachMessageLabel(row.dataset.messageStep)} copied. No outreach was sent.`,
+      metadata: {
+        messageStep: row.dataset.messageStep,
+        channel: row.dataset.messageChannel,
+      },
+    }),
+  }).catch(() => {});
+
+  showToast("Message copied. No outreach was sent.");
+}
+
 function hasPremiumProfileAccess(profile = {}) {
   const tier = String(profile.subscriptionTier || profile.subscription_tier || profile.plan || "").toLowerCase();
 
@@ -999,10 +1664,10 @@ function renderProfileActivityLog(profile = {}) {
       <article class="profileActivityItem">
         <div>
           <strong>${escapeHtml(entry.label || titleCase(entry.type || "activity"))}</strong>
-          <span>${escapeHtml(formatActivityDate(entry.createdAt || entry.created_at))}</span>
+          <span>${escapeHtml(formatActivityDate(entry.createdAt || entry.created_at || entry.at))}</span>
         </div>
         <p>${escapeHtml(entry.summary || "")}</p>
-        <small>${escapeHtml(entry.adminEmail || entry.admin_email || "Unknown admin")}</small>
+        <small>${escapeHtml(entry.adminEmail || entry.admin_email || entry.by || "Unknown admin")}</small>
       </article>
     `).join("")
     : `<div class="emptyState">No activity logged yet.</div>`;
@@ -1036,8 +1701,316 @@ function buildActivityEntry(provider = {}, patch = {}, nextStatus) {
   };
 }
 
-function appendActivityLog(provider = {}, entry) {
-  return [entry, ...activityLogForProfile(provider)].slice(0, 50);
+function stableContactKey(contact = {}) {
+  return [
+    contact.email,
+    contact.linkedinUrl || contact.linkedin_url,
+    contact.name,
+    contact.title || contact.role,
+  ]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean)
+    .join("|");
+}
+
+function messageSignature(message = {}) {
+  return JSON.stringify({
+    subject: message.subject || "",
+    body: message.body || "",
+    status: normalizeOutreachMessageStatus(message.status),
+  });
+}
+
+function outreachMessageLabel(messageStep) {
+  return OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === messageStep)?.label || titleCase(messageStep || "message");
+}
+
+function buildOutreachActivityEntries(provider = {}, patch = {}) {
+  const entries = [];
+  const previousContacts = provider.outreachContacts || [];
+  const nextContacts = patch.outreachContacts || [];
+  const previousContactKeys = new Set(previousContacts.map(stableContactKey).filter(Boolean));
+  const nextContactKeys = new Set(nextContacts.map(stableContactKey).filter(Boolean));
+  const addedContacts = [...nextContactKeys].filter((key) => !previousContactKeys.has(key)).length;
+  const removedContacts = [...previousContactKeys].filter((key) => !nextContactKeys.has(key)).length;
+  const previousPrimary = previousContacts.find((contact) => contact.primaryContact);
+  const nextPrimary = nextContacts.find((contact) => contact.primaryContact);
+  const primaryChanged = stableContactKey(previousPrimary) !== stableContactKey(nextPrimary);
+  const now = new Date().toISOString();
+  const admin = adminEmail() || "Unknown admin";
+
+  if (addedContacts || removedContacts || primaryChanged) {
+    entries.push({
+      type: "outreach_contacts_updated",
+      label: "Outreach contacts updated",
+      summary: [
+        addedContacts ? `${addedContacts} added` : "",
+        removedContacts ? `${removedContacts} removed` : "",
+        primaryChanged ? "primary contact changed" : "",
+      ].filter(Boolean).join("; "),
+      adminEmail: admin,
+      createdAt: now,
+    });
+  }
+
+  const previousMessages = outreachMessagesByStep(provider.outreachMessages || []);
+  const nextMessages = outreachMessagesByStep(patch.outreachMessages || []);
+  let generatedCount = 0;
+  let editedCount = 0;
+  const approvedLabels = [];
+
+  for (const [messageStep, nextMessage] of nextMessages) {
+    const previousMessage = previousMessages.get(messageStep);
+
+    if (!previousMessage) {
+      generatedCount += 1;
+      continue;
+    }
+
+    if (messageSignature(previousMessage) !== messageSignature(nextMessage)) {
+      editedCount += 1;
+    }
+
+    if (previousMessage.status !== "approved" && nextMessage.status === "approved") {
+      approvedLabels.push(outreachMessageLabel(messageStep));
+    }
+  }
+
+  if (generatedCount) {
+    entries.push({
+      type: "outreach_messages_added",
+      label: "Outreach messages added",
+      summary: `${generatedCount} draft message${generatedCount === 1 ? "" : "s"} added for review.`,
+      adminEmail: admin,
+      createdAt: now,
+    });
+  }
+
+  if (editedCount) {
+    entries.push({
+      type: "outreach_messages_edited",
+      label: "Outreach messages edited",
+      summary: `${editedCount} message${editedCount === 1 ? "" : "s"} edited or status changed.`,
+      adminEmail: admin,
+      createdAt: now,
+    });
+  }
+
+  if (approvedLabels.length) {
+    entries.push({
+      type: "outreach_approved",
+      label: "Outreach approved",
+      summary: `${approvedLabels.join(", ")} approved for outreach workflow.`,
+      adminEmail: admin,
+      createdAt: now,
+    });
+  }
+
+  return entries;
+}
+
+function storySignature(story = {}) {
+  return JSON.stringify({
+    title: story.title || "",
+    shortText: story.shortText || "",
+    link: story.link || "",
+    sourceUrl: story.sourceUrl || "",
+    status: story.status || "draft",
+    featured: Boolean(story.featured),
+  });
+}
+
+function buildSuccessStoryActivityEntries(provider = {}, patch = {}) {
+  const previousStories = new Map((provider.managedSuccessStories || []).map((story) => [story.id || story.title, normalizeManagedSuccessStory(story)]));
+  const nextStories = patch.managedSuccessStories || [];
+  const admin = adminEmail() || "Unknown admin";
+  const now = new Date().toISOString();
+  let addedCount = 0;
+  let editedCount = 0;
+  const approvedStories = [];
+
+  for (const story of nextStories) {
+    const key = story.id || story.title;
+    const previousStory = previousStories.get(key);
+
+    if (!previousStory) {
+      addedCount += 1;
+      if (story.status === "approved") {
+        approvedStories.push(story.title);
+      }
+      continue;
+    }
+
+    if (storySignature(previousStory) !== storySignature(story)) {
+      editedCount += 1;
+    }
+
+    if (previousStory.status !== "approved" && story.status === "approved") {
+      approvedStories.push(story.title);
+    }
+  }
+
+  return [
+    addedCount ? {
+      type: "success_story_scraped",
+      label: "Success stories added",
+      summary: `${addedCount} managed success stor${addedCount === 1 ? "y" : "ies"} added for review.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    editedCount ? {
+      type: "success_story_updated",
+      label: "Success stories updated",
+      summary: `${editedCount} managed success stor${editedCount === 1 ? "y" : "ies"} edited.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    approvedStories.length ? {
+      type: "success_story_approved",
+      label: "Success story approved",
+      summary: approvedStories.slice(0, 3).join(", "),
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+  ].filter(Boolean);
+}
+
+function eventSignature(event = {}) {
+  return JSON.stringify({
+    title: event.title || "",
+    startsAt: event.startsAt || "",
+    location: event.location || "",
+    online: Boolean(event.online),
+    sourceUrl: event.sourceUrl || "",
+    status: event.status || "suggested",
+    featured: Boolean(event.featured),
+  });
+}
+
+function buildProviderEventActivityEntries(provider = {}, patch = {}) {
+  const previousEvents = new Map((provider.managedProviderEvents || []).map((event) => [event.id || event.title, normalizeManagedProviderEvent(event)]));
+  const nextEvents = patch.managedProviderEvents || [];
+  const admin = adminEmail() || "Unknown admin";
+  const now = new Date().toISOString();
+  let addedCount = 0;
+  let editedCount = 0;
+  const approvedEvents = [];
+
+  for (const event of nextEvents) {
+    const key = event.id || event.title;
+    const previousEvent = previousEvents.get(key);
+
+    if (!previousEvent) {
+      addedCount += 1;
+      if (event.status === "approved") {
+        approvedEvents.push(event.title);
+      }
+      continue;
+    }
+
+    if (eventSignature(previousEvent) !== eventSignature(event)) {
+      editedCount += 1;
+    }
+
+    if (previousEvent.status !== "approved" && event.status === "approved") {
+      approvedEvents.push(event.title);
+    }
+  }
+
+  return [
+    addedCount ? {
+      type: "provider_event_scraped",
+      label: "Provider events added",
+      summary: `${addedCount} provider event${addedCount === 1 ? "" : "s"} added for review.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    editedCount ? {
+      type: "provider_event_updated",
+      label: "Provider events updated",
+      summary: `${editedCount} provider event${editedCount === 1 ? "" : "s"} edited.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    approvedEvents.length ? {
+      type: "provider_event_approved",
+      label: "Provider event approved",
+      summary: approvedEvents.slice(0, 3).join(", "),
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+  ].filter(Boolean);
+}
+
+function signalSignature(signal = {}) {
+  return JSON.stringify({
+    signalType: signal.signalType || "news",
+    title: signal.title || "",
+    sourceUrl: signal.sourceUrl || "",
+    status: signal.status || "scraped",
+    observedAt: signal.observedAt || "",
+  });
+}
+
+function buildMarketSignalActivityEntries(provider = {}, patch = {}) {
+  const previousSignals = new Map((provider.managedMarketSignals || []).map((signal) => [signal.id || signal.title, normalizeManagedMarketSignal(signal)]));
+  const nextSignals = patch.managedMarketSignals || [];
+  const admin = adminEmail() || "Unknown admin";
+  const now = new Date().toISOString();
+  let addedCount = 0;
+  let editedCount = 0;
+  const approvedSignals = [];
+
+  for (const signal of nextSignals) {
+    const key = signal.id || signal.title;
+    const previousSignal = previousSignals.get(key);
+
+    if (!previousSignal) {
+      addedCount += 1;
+      if (signal.status === "approved") {
+        approvedSignals.push(signal.title);
+      }
+      continue;
+    }
+
+    if (signalSignature(previousSignal) !== signalSignature(signal)) {
+      editedCount += 1;
+    }
+
+    if (previousSignal.status !== "approved" && signal.status === "approved") {
+      approvedSignals.push(signal.title);
+    }
+  }
+
+  return [
+    addedCount ? {
+      type: "market_signal_scraped",
+      label: "Market signals added",
+      summary: `${addedCount} market signal${addedCount === 1 ? "" : "s"} added for review.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    editedCount ? {
+      type: "market_signal_updated",
+      label: "Market signals updated",
+      summary: `${editedCount} market signal${editedCount === 1 ? "" : "s"} edited.`,
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+    approvedSignals.length ? {
+      type: "market_signal_approved",
+      label: "Market signal approved",
+      summary: approvedSignals.slice(0, 3).join(", "),
+      adminEmail: admin,
+      createdAt: now,
+    } : null,
+  ].filter(Boolean);
+}
+
+function appendActivityLog(provider = {}, entries) {
+  const normalizedEntries = Array.isArray(entries) ? entries.filter(Boolean) : [entries].filter(Boolean);
+
+  return [...normalizedEntries, ...activityLogForProfile(provider)].slice(0, 50);
 }
 
 function openEditProfile(key) {
@@ -1061,8 +2034,13 @@ function openEditProfile(key) {
   setTagPickerValues("technologies", provider.technologies);
   setTagPickerValues("vendor_partnerships", provider.vendorPartnerships);
   renderEditableEntries(elements.profileEditSuccessStories, provider.successStories);
+  renderManagedSuccessStories(elements.profileEditManagedSuccessStories, provider.managedSuccessStories);
   renderEditableEntries(elements.profileEditSolutions, provider.solutions);
   elements.profileEditActivities.value = recentActivitiesToText(provider.recentActivity);
+  renderManagedProviderEvents(elements.profileEditManagedEvents, provider.managedProviderEvents);
+  renderManagedMarketSignals(elements.profileEditManagedSignals, provider.managedMarketSignals);
+  renderOutreachContacts(elements.profileEditOutreachContacts, provider.outreachContacts);
+  renderOutreachMessages(elements.profileEditOutreachMessages, provider.outreachMessages);
   elements.profileEditNotes.value = listToText(provider.reviewNotes);
   const qualityLog = scraperQualityLogForProfile(provider);
   elements.profileEditQualityMissing.value = listToText(qualityLog.missing);
@@ -1497,11 +2475,339 @@ function renderStats() {
   const failed = state.jobs.filter((job) => job.status === "failed").length;
   const review = state.providers.filter(isReviewProvider).length;
   const published = state.providers.filter(isLiveProvider).length;
+  const outreachDrafts = state.providers.reduce((count, provider) => (
+    count + (provider.outreachMessages || []).filter((message) => message.status === "draft").length
+  ), 0);
+  const pendingRequests = [
+    ...state.claimRequests.filter((request) => request.status === "pending"),
+    ...state.providerLeads.filter((lead) => lead.status === "new"),
+  ].length;
 
   elements.queuedCount.textContent = queued;
   elements.reviewCount.textContent = review;
   elements.publishedCount.textContent = published;
   elements.failedCount.textContent = failed;
+  if (elements.outreachDraftCount) {
+    elements.outreachDraftCount.textContent = outreachDrafts;
+  }
+  if (elements.requestCount) {
+    elements.requestCount.textContent = pendingRequests;
+  }
+}
+
+function outreachSummaryForProvider(provider = {}) {
+  const messages = provider.outreachMessages || [];
+  const drafts = messages.filter((message) => message.status === "draft").length;
+  const approved = messages.filter((message) => message.status === "approved").length;
+  const sent = messages.filter((message) => ["sent", "opened", "clicked", "replied"].includes(message.status)).length;
+
+  return { drafts, approved, sent, total: messages.length };
+}
+
+function compactOutreachProviderRow(provider) {
+  const key = providerKey(provider);
+  const summary = outreachSummaryForProvider(provider);
+  const statusText = [
+    summary.drafts ? `${summary.drafts} draft` : "",
+    summary.approved ? `${summary.approved} approved` : "",
+    summary.sent ? `${summary.sent} sent` : "",
+  ].filter(Boolean).join(", ") || "No messages";
+
+  return `
+    <article class="adminTableRow adminCompactRow">
+      <div class="adminCell adminCellPrimary">
+        <span class="adminProviderIdentity">
+          ${providerLogo(provider)}
+          <span>
+            <strong>${escapeHtml(provider.companyName || provider.domain || "Untitled")}</strong>
+            <span>${escapeHtml(provider.domain || "")}</span>
+          </span>
+        </span>
+      </div>
+      <div class="adminCell"><span>${escapeHtml(statusText)}</span></div>
+      <div class="adminCell adminCellAction">${actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(key)}"`)}</div>
+    </article>
+  `;
+}
+
+function requestProviderAction(domain) {
+  const provider = findProviderByDomain(domain);
+
+  if (!provider) {
+    return "";
+  }
+
+  return actionButton("edit", "Provider", `data-edit-provider="${escapeHtml(providerKey(provider))}"`);
+}
+
+function compactRequestRow(item) {
+  const kind = item.requestType ? titleCase(item.requestType) : "Lead";
+  const status = item.status || "pending";
+
+  return `
+    <article class="adminTableRow adminCompactRow">
+      <div class="adminCell adminCellPrimary">
+        <span>
+          <strong>${escapeHtml(item.domain || "Unknown provider")}</strong>
+          <span>${escapeHtml(item.email || "")}</span>
+        </span>
+      </div>
+      <div class="adminCell"><span>${escapeHtml(kind)}</span></div>
+      <div class="adminCell"><span>${escapeHtml(titleCase(status))}</span></div>
+    </article>
+  `;
+}
+
+function claimRequestRow(request = {}) {
+  const isPending = (request.status || "pending") === "pending";
+  const domainMatch = request.metadata?.domainMatch;
+  const emailDomain = request.metadata?.emailDomain || "";
+  const metadataKeys = Object.entries(request.metadata || {})
+    .filter(([key]) => !["domainMatch", "emailDomain"].includes(key))
+    .map(([key, value]) => `${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
+    .slice(0, 3);
+  const verificationText = request.verificationMethod
+    ? request.verificationMethod.replace(/_/g, " ")
+    : (domainMatch === false ? "email domain mismatch" : "manual review");
+  const domainMatchText = domainMatch === true
+    ? "Domain match"
+    : domainMatch === false
+      ? "Domain mismatch"
+      : "Domain not checked";
+  const reviewedText = request.reviewedAt
+    ? `Reviewed ${formatActivityDate(request.reviewedAt)}${request.reviewedBy ? ` by ${request.reviewedBy}` : ""}`
+    : "Not reviewed";
+  const actions = [
+    requestProviderAction(request.domain),
+    isPending ? actionButton("publish", "Approve", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="approved"`) : "",
+    isPending ? actionButton("delete", "Reject", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="rejected"`) : "",
+  ].filter(Boolean).join("");
+
+  return `
+    <article class="adminTableRow adminRequestRow">
+      <div class="adminCell adminCellPrimary">
+        <span>
+          <strong>${escapeHtml(request.domain || "Unknown provider")}</strong>
+          <span>${escapeHtml(request.email || "")}${emailDomain ? ` - ${escapeHtml(emailDomain)}` : ""}</span>
+        </span>
+      </div>
+      <div class="adminCell"><span>${escapeHtml(titleCase(request.requestType || "claim"))}</span></div>
+      <div class="adminCell">
+        <span>
+          ${escapeHtml(titleCase(request.status || "pending"))}
+          <small>${escapeHtml(verificationText)} - ${escapeHtml(domainMatchText)}</small>
+        </span>
+      </div>
+      <div class="adminCell">
+        <span>
+          ${escapeHtml(formatActivityDate(request.createdAt))}
+          <small>${escapeHtml(reviewedText)}</small>
+          ${metadataKeys.length ? `<small>${escapeHtml(metadataKeys.join("; "))}</small>` : ""}
+        </span>
+      </div>
+      <div class="adminCell adminCellAction">${actions}</div>
+    </article>
+  `;
+}
+
+function providerLeadRow(lead = {}) {
+  const status = lead.status || "new";
+  const reviewedText = lead.reviewedAt
+    ? `Reviewed ${formatActivityDate(lead.reviewedAt)}${lead.reviewedBy ? ` by ${lead.reviewedBy}` : ""}`
+    : "Not reviewed";
+  const actions = [
+    requestProviderAction(lead.domain),
+    status !== "reviewed" ? actionButton("process", "Reviewed", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="reviewed"`) : "",
+    status !== "forwarded" ? actionButton("publish", "Forwarded", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="forwarded"`) : "",
+    status !== "closed" ? actionButton("delete", "Closed", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="closed"`) : "",
+  ].filter(Boolean).join("");
+
+  return `
+    <article class="adminTableRow adminLeadRow">
+      <div class="adminCell adminCellPrimary">
+        <span>
+          <strong>${escapeHtml(lead.domain || "Unknown provider")}</strong>
+          <span>${escapeHtml([lead.name, lead.company].filter(Boolean).join(" - ") || lead.email || "")}</span>
+        </span>
+      </div>
+      <div class="adminCell"><span>${escapeHtml(lead.email || "")}</span></div>
+      <div class="adminCell"><span>${escapeHtml(lead.message || "")}</span></div>
+      <div class="adminCell"><span>${escapeHtml(titleCase(status))}<small>${escapeHtml(reviewedText)}</small></span></div>
+      <div class="adminCell"><span>${escapeHtml(formatActivityDate(lead.createdAt))}</span></div>
+      <div class="adminCell adminCellAction">${actions}</div>
+    </article>
+  `;
+}
+
+function renderRequests() {
+  const incoming = [
+    ...state.claimRequests.map((request) => ({ ...request, requestType: request.requestType || "claim" })),
+    ...state.providerLeads.map((lead) => ({ ...lead, requestType: "lead" })),
+  ].sort((left, right) => new Date(right.createdAt || 0) - new Date(left.createdAt || 0));
+
+  if (elements.dashboardRequestList) {
+    elements.dashboardRequestList.innerHTML = incoming.length
+      ? `${tableHeader(["Provider", "Type", "Status"])}${incoming.slice(0, 8).map(compactRequestRow).join("")}`
+      : emptyState("No public requests yet.");
+  }
+
+  if (elements.claimRequestList) {
+    elements.claimRequestList.innerHTML = state.claimRequests.length
+      ? `${tableHeader(["Provider", "Type", "Status", "Created", "Actions"])}${state.claimRequests.map(claimRequestRow).join("")}`
+      : emptyState("No claim or removal requests yet.");
+  }
+
+  if (elements.providerLeadList) {
+    elements.providerLeadList.innerHTML = state.providerLeads.length
+      ? `${tableHeader(["Provider", "Requester", "Message", "Status", "Created", "Actions"])}${state.providerLeads.map(providerLeadRow).join("")}`
+      : emptyState("No brokered leads yet.");
+  }
+}
+
+function metricCard(label, value, detail = "") {
+  return `
+    <article>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </article>
+  `;
+}
+
+function metricBreakdownRow(label, value) {
+  return `
+    <div class="metricBreakdownRow">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function metricsFromObject(values = {}) {
+  const entries = Object.entries(values || {}).sort(([left], [right]) => left.localeCompare(right));
+
+  return entries.length
+    ? entries.map(([key, value]) => metricBreakdownRow(titleCase(key), value)).join("")
+    : emptyState("No metrics yet.");
+}
+
+function signalMetricsMarkup(signalsByTypeAndStatus = {}) {
+  const entries = Object.entries(signalsByTypeAndStatus || {}).sort(([left], [right]) => left.localeCompare(right));
+
+  if (entries.length === 0) {
+    return metricBreakdownRow("Signals", 0);
+  }
+
+  return entries.map(([type, statuses]) => {
+    const total = Object.values(statuses || {}).reduce((sum, value) => sum + value, 0);
+    const detail = Object.entries(statuses || {})
+      .map(([status, value]) => `${titleCase(status)} ${value}`)
+      .join(", ");
+
+    return `
+      <div class="metricBreakdownRow">
+        <span>${escapeHtml(titleCase(type))}<small>${escapeHtml(detail)}</small></span>
+        <strong>${escapeHtml(total)}</strong>
+      </div>
+    `;
+  }).join("");
+}
+
+function activityTimelineRow(entry = {}) {
+  const providerLabel = [entry.providerName, entry.providerDomain].filter(Boolean).join(" - ");
+
+  return `
+    <article class="adminActivityItem">
+      <div>
+        <strong>${escapeHtml(entry.label || titleCase(entry.type || "activity"))}</strong>
+        <span>${escapeHtml(formatActivityDate(entry.createdAt))}</span>
+      </div>
+      <p>${escapeHtml(entry.summary || "")}</p>
+      <small>${escapeHtml(providerLabel || entry.actorEmail || "System")}</small>
+    </article>
+  `;
+}
+
+function readinessWarningMarkup(warning = {}) {
+  return `
+    <article class="adminReadinessWarning ${warning.severity === "error" ? "isError" : ""}">
+      <strong>${escapeHtml(warning.title || "Readiness warning")}</strong>
+      ${warning.detail ? `<p>${escapeHtml(warning.detail)}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderReadinessWarnings() {
+  if (!elements.readinessWarnings) {
+    return;
+  }
+
+  const readiness = state.readiness || {};
+  const warnings = readiness.warnings || [];
+
+  elements.readinessWarnings.hidden = warnings.length === 0;
+  elements.readinessWarnings.innerHTML = warnings.length
+    ? `
+      <div class="adminReadinessHeader">
+        <strong>Sprint 2 readiness needs attention</strong>
+        <span>${readiness.auditHistory?.decision || "Normalized audit tables are the canonical history source."}</span>
+      </div>
+      ${warnings.map(readinessWarningMarkup).join("")}
+    `
+    : "";
+}
+
+function renderMetrics() {
+  const metrics = state.metrics || {};
+  const emailEngagement = metrics.emailEngagement || {};
+
+  if (elements.metricsSummary) {
+    elements.metricsSummary.innerHTML = [
+      metricCard("Approved profiles", metrics.approvedProfiles || 0),
+      metricCard("Outreach pending", metrics.outreachPending || 0),
+      metricCard("Outreach active", metrics.outreachActive || 0),
+      metricCard("Claimed profiles", metrics.claimedProfiles || 0),
+      metricCard("Removal requests", metrics.removalRequests || 0),
+      metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`),
+      metricCard("Approved stories", metrics.approvedSuccessStories || 0),
+      metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0),
+      metricCard("Scrape failures", metrics.scrapeFailures || 0),
+      metricCard("Low confidence", metrics.lowConfidenceProfiles || 0),
+    ].join("");
+  }
+
+  if (elements.profileStatusMetrics) {
+    elements.profileStatusMetrics.innerHTML = metricsFromObject(metrics.profilesByStatus);
+  }
+
+  if (elements.outreachSignalMetrics) {
+    elements.outreachSignalMetrics.innerHTML = `
+      <section>
+        <h3>Outreach Messages</h3>
+        ${metricsFromObject(metrics.outreachMessagesByStatus)}
+      </section>
+      <section>
+        <h3>Email Engagement</h3>
+        ${[
+          metricBreakdownRow("Sent", emailEngagement.sent || 0),
+          metricBreakdownRow("Opened", emailEngagement.opened || 0),
+          metricBreakdownRow("Clicked", emailEngagement.clicked || 0),
+          metricBreakdownRow("Replied", emailEngagement.replied || 0),
+          metricBreakdownRow("Sending Enabled", emailEngagement.enabled ? "Yes" : "No"),
+        ].join("")}
+      </section>
+      <section>
+        <h3>Signals</h3>
+        ${signalMetricsMarkup(metrics.signalsByTypeAndStatus)}
+      </section>
+    `;
+  }
+
+  if (elements.activityTimeline) {
+    elements.activityTimeline.innerHTML = state.activityEvents.length
+      ? state.activityEvents.slice(0, 30).map(activityTimelineRow).join("")
+      : emptyState("No activity events yet.");
+  }
 }
 
 function bindPublishButtons() {
@@ -1571,6 +2877,28 @@ function bindPublishButtons() {
       ));
     });
   });
+
+  document.querySelectorAll("[data-review-claim-request]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(
+        button,
+        "Updating",
+        button.dataset.claimReviewStatus === "approved" ? "Request approved." : "Request rejected.",
+        () => reviewClaimRequest(button.dataset.reviewClaimRequest, button.dataset.claimReviewStatus)
+      );
+    });
+  });
+
+  document.querySelectorAll("[data-update-provider-lead]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(
+        button,
+        "Updating",
+        `Lead marked ${button.dataset.providerLeadStatus}.`,
+        () => updateProviderLeadStatus(button.dataset.updateProviderLead, button.dataset.providerLeadStatus)
+      );
+    });
+  });
 }
 
 function renderLists() {
@@ -1613,6 +2941,23 @@ function renderLists() {
     ? `${tableHeader(["Company", "Status", "Created"])}${state.jobs.slice(0, 5).map(compactJobRow).join("")}`
     : emptyState("No scrape jobs yet.");
 
+  const outreachProviders = state.providers
+    .filter((provider) => outreachSummaryForProvider(provider).total > 0)
+    .sort((left, right) => {
+      const leftSummary = outreachSummaryForProvider(left);
+      const rightSummary = outreachSummaryForProvider(right);
+
+      return rightSummary.drafts - leftSummary.drafts || String(left.companyName || left.domain).localeCompare(String(right.companyName || right.domain));
+    });
+
+  if (elements.dashboardOutreachList) {
+    elements.dashboardOutreachList.innerHTML = outreachProviders.length
+      ? `${tableHeader(["Company", "Messages", "Actions"])}${outreachProviders.slice(0, 8).map(compactOutreachProviderRow).join("")}`
+      : emptyState("No outreach messages yet.");
+  }
+
+  renderRequests();
+
   elements.jobList.innerHTML = state.jobs.length
     ? `${tableHeader(["Company", "Requested by", "Status", "Created", "Actions"])}${visibleJobs.map(jobRow).join("")}`
     : emptyState("No scrape jobs yet.");
@@ -1627,6 +2972,7 @@ function renderLists() {
 
   renderMissingDataReview();
   renderTags();
+  renderMetrics();
 
   renderPagination({
     currentPage: state.jobsPage,
@@ -1687,15 +3033,25 @@ async function refreshAdminState() {
 
   if (payload.configured === false) {
     elements.setupNotice.hidden = false;
+    state.activityEvents = [];
+    state.claimRequests = [];
     state.jobs = [];
+    state.metrics = {};
+    state.providerLeads = [];
     state.providers = [];
+    state.readiness = payload.readiness || null;
     state.tags = [];
   } else if (!response.ok) {
     throw new Error(payload.error || "Failed to load admin state.");
   } else {
     elements.setupNotice.hidden = true;
+    state.activityEvents = payload.activityEvents || [];
+    state.claimRequests = payload.claimRequests || [];
     state.jobs = payload.jobs || [];
+    state.metrics = payload.metrics || {};
+    state.providerLeads = payload.providerLeads || [];
     state.providers = payload.providers || [];
+    state.readiness = payload.readiness || null;
     state.tags = payload.tags || [];
     state.selectedProviders = new Set(
       [...state.selectedProviders].filter((key) => state.providers.some((provider) => providerKey(provider) === key))
@@ -1706,6 +3062,7 @@ async function refreshAdminState() {
   }
 
   renderStats();
+  renderReadinessWarnings();
   renderLists();
 }
 
@@ -2041,6 +3398,71 @@ async function updateProviderStatus(key, status) {
   return true;
 }
 
+async function reviewClaimRequest(id, status) {
+  const response = await fetch("/api/admin-claim-request", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, status }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to review claim request.");
+  }
+
+  await refreshAdminState();
+  setSection("requests");
+  return payload;
+}
+
+async function updateProviderLeadStatus(id, status) {
+  const response = await fetch("/api/admin-provider-lead", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, status }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to update provider lead.");
+  }
+
+  await refreshAdminState();
+  setSection("requests");
+  return payload;
+}
+
+async function downloadAdminExport(type) {
+  const response = await fetch(`/api/admin-export?type=${encodeURIComponent(type)}`, {
+    headers: adminHeaders(),
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    let message = "Failed to export CSV.";
+
+    try {
+      message = JSON.parse(text).error || message;
+    } catch (error) {
+      message = text || message;
+    }
+
+    throw new Error(message);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `${type}.csv`;
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function deleteProvider(key) {
   if (!key || !window.confirm("Delete this provider from the admin list?")) {
     return { cancelled: true };
@@ -2081,13 +3503,52 @@ async function deleteJob(id) {
   return true;
 }
 
+async function generateOutreachMessagesForOpenProfile() {
+  const key = elements.profileEditKey.value;
+
+  if (!key) {
+    return false;
+  }
+
+  const existingMessages = collectOutreachMessages(elements.profileEditOutreachMessages);
+  const overwrite = existingMessages.length === 0
+    ? true
+    : window.confirm("Replace existing outreach messages with newly generated drafts?");
+
+  if (!overwrite) {
+    return { cancelled: true };
+  }
+
+  const response = await fetch("/api/admin-generate-outreach", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id: key, overwrite }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to generate outreach messages.");
+  }
+
+  await refreshAdminState();
+  const provider = findProvider(key);
+  renderOutreachMessages(elements.profileEditOutreachMessages, payload.outreachMessages || provider?.outreachMessages || []);
+  renderProfileActivityLog(provider || payload.provider || {});
+  return true;
+}
+
 async function saveProfileEdit(event) {
   event.preventDefault();
   const submitButton = event.submitter || elements.profileEditForm.querySelector("button[type='submit']");
   const key = elements.profileEditKey.value;
   const provider = findProvider(key) || {};
   const successStories = collectEditableEntries(elements.profileEditSuccessStories);
+  const managedSuccessStories = collectManagedSuccessStories(elements.profileEditManagedSuccessStories);
+  const managedProviderEvents = collectManagedProviderEvents(elements.profileEditManagedEvents);
+  const managedMarketSignals = collectManagedMarketSignals(elements.profileEditManagedSignals);
   const solutions = collectEditableEntries(elements.profileEditSolutions);
+  const outreachContacts = collectOutreachContacts(elements.profileEditOutreachContacts);
+  const outreachMessages = collectOutreachMessages(elements.profileEditOutreachMessages);
   const subscriptionTier = elements.profileEditSubscriptionTier.value;
   const editedProfile = { ...provider, subscriptionTier };
 
@@ -2132,7 +3593,12 @@ async function saveProfileEdit(event) {
     technologies: selectedTagNames("technologies"),
     vendorPartnerships: selectedTagNames("vendor_partnerships"),
     successStories,
+    managedSuccessStories,
+    managedProviderEvents,
+    managedMarketSignals,
     solutions,
+    outreachContacts,
+    outreachMessages,
     recentActivity: textToRecentActivities(elements.profileEditActivities.value),
     reviewNotes: textToList(elements.profileEditNotes.value),
     scraperQualityLog: {
@@ -2144,7 +3610,13 @@ async function saveProfileEdit(event) {
     },
   };
   const activityEntry = buildActivityEntry(provider, patch, status);
-  patch.activityLog = appendActivityLog(provider, activityEntry);
+  patch.activityLog = appendActivityLog(provider, [
+    activityEntry,
+    ...buildOutreachActivityEntries(provider, patch),
+    ...buildSuccessStoryActivityEntries(provider, patch),
+    ...buildProviderEventActivityEntries(provider, patch),
+    ...buildMarketSignalActivityEntries(provider, patch),
+  ]);
 
   elements.profileEditMessage.textContent = "Saving profile...";
   elements.profileEditMessage.classList.remove("error");
@@ -2252,6 +3724,16 @@ function bindEvents() {
   elements.tagApproveVisibleButton?.addEventListener("click", () => {
     runAdminAction(elements.tagApproveVisibleButton, "Approving", "Visible candidate tags approved.", approveVisibleTags);
   });
+  document.querySelectorAll("[data-admin-export]").forEach((button) => {
+    button.addEventListener("click", () => {
+      runAdminAction(
+        button,
+        "Exporting",
+        "CSV export ready.",
+        () => downloadAdminExport(button.dataset.adminExport)
+      );
+    });
+  });
   document.querySelectorAll("[data-tag-picker-select]").forEach((select) => {
     select.addEventListener("change", () => {
       addTagToPicker(select.dataset.tagPickerSelect, select.value);
@@ -2275,7 +3757,15 @@ function bindEvents() {
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));
+  elements.profileEditAddManagedSuccessStory.addEventListener("click", () => addManagedSuccessStory(elements.profileEditManagedSuccessStories));
+  elements.profileEditAddManagedEvent.addEventListener("click", () => addManagedProviderEvent(elements.profileEditManagedEvents));
+  elements.profileEditAddManagedSignal.addEventListener("click", () => addManagedMarketSignal(elements.profileEditManagedSignals));
   elements.profileEditAddSolution.addEventListener("click", () => addEditableEntry(elements.profileEditSolutions));
+  elements.profileEditAddOutreachContact.addEventListener("click", () => addOutreachContact(elements.profileEditOutreachContacts));
+  elements.profileEditGenerateOutreach.addEventListener("click", () => {
+    runAdminAction(elements.profileEditGenerateOutreach, "Generating", "Outreach drafts generated.", generateOutreachMessagesForOpenProfile);
+  });
+  elements.profileEditApproveAllOutreach.addEventListener("click", approveAllDraftOutreachMessages);
   [elements.profileEditSuccessStories, elements.profileEditSolutions].forEach((container) => {
     container.addEventListener("click", (event) => {
       if (!event.target.closest(".structuredEntryRemove")) {
@@ -2294,6 +3784,208 @@ function bindEvents() {
         input.value = "";
       });
     });
+  });
+  elements.profileEditOutreachContacts.addEventListener("change", (event) => {
+    const primaryInput = event.target.closest('[data-contact-field="primaryContact"]');
+
+    if (!primaryInput || !primaryInput.checked) {
+      return;
+    }
+
+    elements.profileEditOutreachContacts
+      .querySelectorAll('[data-contact-field="primaryContact"]')
+      .forEach((input) => {
+        if (input !== primaryInput) {
+          input.checked = false;
+        }
+      });
+  });
+  elements.profileEditOutreachContacts.addEventListener("click", (event) => {
+    if (!event.target.closest(".outreachContactRemove")) {
+      return;
+    }
+
+    const rows = elements.profileEditOutreachContacts.querySelectorAll(".outreachContactRow");
+    const row = event.target.closest(".outreachContactRow");
+
+    if (rows.length > 1) {
+      row.remove();
+      return;
+    }
+
+    row.querySelectorAll("input").forEach((input) => {
+      if (input.type === "checkbox") {
+        input.checked = false;
+      } else {
+        input.value = "";
+      }
+    });
+  });
+  elements.profileEditManagedSuccessStories.addEventListener("click", (event) => {
+    const approveButton = event.target.closest(".managedSuccessStoryApprove");
+    const removeButton = event.target.closest(".managedSuccessStoryRemove");
+    const row = event.target.closest(".managedSuccessStoryRow");
+
+    if (approveButton && row) {
+      approveManagedSuccessStory(row);
+      showToast("Success story marked approved. Save profile to persist.");
+      return;
+    }
+
+    if (!removeButton || !row) {
+      return;
+    }
+
+    const rows = elements.profileEditManagedSuccessStories.querySelectorAll(".managedSuccessStoryRow");
+
+    if (rows.length > 1) {
+      row.remove();
+      return;
+    }
+
+    row.querySelectorAll("input, textarea").forEach((input) => {
+      if (input.type === "checkbox") {
+        input.checked = false;
+      } else {
+        input.value = "";
+      }
+    });
+    row.querySelector('[data-story-field="status"]').value = "draft";
+  });
+  elements.profileEditManagedSuccessStories.addEventListener("change", (event) => {
+    const statusSelect = event.target.closest('[data-story-field="status"]');
+
+    if (!statusSelect || statusSelect.value !== "approved") {
+      return;
+    }
+
+    const row = statusSelect.closest(".managedSuccessStoryRow");
+    const approvedAtInput = row.querySelector('[data-story-field="approvedAt"]');
+
+    if (!approvedAtInput.value) {
+      approveManagedSuccessStory(row);
+    }
+  });
+  elements.profileEditManagedEvents.addEventListener("click", (event) => {
+    const approveButton = event.target.closest(".managedEventApprove");
+    const removeButton = event.target.closest(".managedEventRemove");
+    const row = event.target.closest(".managedEventRow");
+
+    if (approveButton && row) {
+      approveManagedProviderEvent(row);
+      showToast("Provider event marked approved. Save profile to persist.");
+      return;
+    }
+
+    if (!removeButton || !row) {
+      return;
+    }
+
+    const rows = elements.profileEditManagedEvents.querySelectorAll(".managedEventRow");
+
+    if (rows.length > 1) {
+      row.remove();
+      return;
+    }
+
+    row.querySelectorAll("input, textarea").forEach((input) => {
+      if (input.type === "checkbox") {
+        input.checked = false;
+      } else {
+        input.value = "";
+      }
+    });
+    row.querySelector('[data-event-field="status"]').value = "suggested";
+  });
+  elements.profileEditManagedEvents.addEventListener("change", (event) => {
+    const statusSelect = event.target.closest('[data-event-field="status"]');
+
+    if (!statusSelect || statusSelect.value !== "approved") {
+      return;
+    }
+
+    const row = statusSelect.closest(".managedEventRow");
+    const approvedAtInput = row.querySelector('[data-event-field="approvedAt"]');
+
+    if (!approvedAtInput.value) {
+      approveManagedProviderEvent(row);
+    }
+  });
+  elements.profileEditManagedSignals.addEventListener("click", (event) => {
+    const approveButton = event.target.closest(".managedSignalApprove");
+    const removeButton = event.target.closest(".managedSignalRemove");
+    const row = event.target.closest(".managedSignalRow");
+
+    if (approveButton && row) {
+      approveManagedMarketSignal(row);
+      showToast("Market signal marked approved. Save profile to persist.");
+      return;
+    }
+
+    if (!removeButton || !row) {
+      return;
+    }
+
+    const rows = elements.profileEditManagedSignals.querySelectorAll(".managedSignalRow");
+
+    if (rows.length > 1) {
+      row.remove();
+      return;
+    }
+
+    row.querySelectorAll("input, textarea").forEach((input) => {
+      input.value = "";
+    });
+    row.querySelector('[data-signal-field="signalType"]').value = "news";
+    row.querySelector('[data-signal-field="status"]').value = "scraped";
+  });
+  elements.profileEditManagedSignals.addEventListener("change", (event) => {
+    const statusSelect = event.target.closest('[data-signal-field="status"]');
+
+    if (!statusSelect || statusSelect.value !== "approved") {
+      return;
+    }
+
+    const row = statusSelect.closest(".managedSignalRow");
+    const approvedAtInput = row.querySelector('[data-signal-field="approvedAt"]');
+
+    if (!approvedAtInput.value) {
+      approveManagedMarketSignal(row);
+    }
+  });
+  elements.profileEditOutreachMessages.addEventListener("click", (event) => {
+    const copyButton = event.target.closest(".outreachMessageCopy");
+
+    if (copyButton) {
+      copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
+        showToast(error.message || "Copy failed.", "error");
+      });
+      return;
+    }
+
+    const button = event.target.closest(".outreachMessageApprove");
+
+    if (!button) {
+      return;
+    }
+
+    const row = button.closest(".outreachMessageRow");
+    approveOutreachMessage(row);
+    showToast("Message marked approved. Save profile to persist.");
+  });
+  elements.profileEditOutreachMessages.addEventListener("change", (event) => {
+    const statusSelect = event.target.closest('[data-message-field="status"]');
+
+    if (!statusSelect || statusSelect.value !== "approved") {
+      return;
+    }
+
+    const row = statusSelect.closest(".outreachMessageRow");
+    const approvedAtInput = row.querySelector('[data-message-field="approvedAt"]');
+
+    if (!approvedAtInput.value) {
+      approveOutreachMessage(row);
+    }
   });
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
   elements.refreshButton.addEventListener("click", () => {

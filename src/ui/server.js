@@ -9,14 +9,21 @@ const START_PORT = Number.parseInt(process.env.PROFILE_UI_PORT || "3001", 10);
 const PUBLIC_DIR = path.resolve(process.cwd(), "public");
 const API_HANDLERS = {
   "/api/admin-login": require("../../api/admin-login"),
+  "/api/admin-activity": require("../../api/admin-activity"),
   "/api/admin-job": require("../../api/admin-job"),
   "/api/admin-publish": require("../../api/admin-publish"),
   "/api/admin-provider": require("../../api/admin-provider"),
+  "/api/admin-provider-lead": require("../../api/admin-provider-lead"),
   "/api/admin-run-job": require("../../api/admin-run-job"),
   "/api/admin-scrape": require("../../api/admin-scrape"),
   "/api/admin-state": require("../../api/admin-state"),
   "/api/admin-tags": require("../../api/admin-tags"),
+  "/api/admin-claim-request": require("../../api/admin-claim-request"),
+  "/api/admin-export": require("../../api/admin-export"),
+  "/api/claim-request": require("../../api/claim-request"),
+  "/api/admin-readiness": require("../../api/admin-readiness"),
   "/api/logo": require("../../api/logo"),
+  "/api/provider-lead": require("../../api/provider-lead"),
   "/api/tags": require("../../api/tags"),
 };
 

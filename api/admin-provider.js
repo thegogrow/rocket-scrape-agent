@@ -26,7 +26,7 @@ module.exports = async function handler(request, response) {
   }
 
   try {
-    await verifyAdminToken(request.headers.authorization);
+    const admin = await verifyAdminToken(request.headers.authorization);
     const { id, profile = {}, status } = await readJsonBody(request);
 
     if (!id) {
@@ -46,7 +46,7 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    response.status(200).json(await updateProvider(id, profile, status));
+    response.status(200).json(await updateProvider(id, profile, status, { reviewedBy: admin.email }));
   } catch (error) {
     response.status(401).json({ error: error.message });
   }
