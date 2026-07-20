@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/admin-run-job.js": {
+    "api/[...path].js": {
       "maxDuration": 60
     }
   },
@@ -9,10 +9,6 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
-    },
-    {
-      "source": "/api/profiles/:domain",
-      "destination": "/api/profile?domain=:domain"
     }
   ]
 }

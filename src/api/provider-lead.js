@@ -1,5 +1,5 @@
-const { createProviderLead, isSupabaseConfigured } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { createProviderLead, isSupabaseConfigured } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {

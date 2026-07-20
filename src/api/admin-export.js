@@ -1,4 +1,4 @@
-const { listAdminState, verifyAdminToken } = require("../src/ui/supabaseStore");
+const { listAdminState, verifyAdminToken } = require("../ui/supabaseStore");
 
 const EXPORT_TYPES = new Set([
   "reviewed-providers",

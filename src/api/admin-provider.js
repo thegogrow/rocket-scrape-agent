@@ -1,5 +1,5 @@
-const { deleteProvider, updateProvider, verifyAdminToken } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { deleteProvider, updateProvider, verifyAdminToken } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 function hasPremiumProfileAccess(profile = {}) {
   const tier = String(profile.subscriptionTier || profile.subscription_tier || profile.plan || "").toLowerCase();

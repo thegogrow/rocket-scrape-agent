@@ -1,5 +1,5 @@
 const fs = require("fs-extra");
-const { logoFileForDomain, safeDomain } = require("../src/ui/profileData");
+const { logoFileForDomain, safeDomain } = require("../ui/profileData");
 
 async function logoContentType(filePath) {
   const head = (await fs.readFile(filePath)).subarray(0, 128).toString("utf8").trimStart();

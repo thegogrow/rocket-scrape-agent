@@ -1,5 +1,5 @@
-const { logActivityEvent, verifyAdminToken } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { logActivityEvent, verifyAdminToken } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {

@@ -1,5 +1,5 @@
-const { deleteScrapeJob, verifyAdminToken } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { deleteScrapeJob, verifyAdminToken } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "DELETE") {

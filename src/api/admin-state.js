@@ -1,4 +1,4 @@
-const { isSupabaseConfigured, listAdminState, verifyAdminToken } = require("../src/ui/supabaseStore");
+const { isSupabaseConfigured, listAdminState, verifyAdminToken } = require("../ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {

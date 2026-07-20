@@ -1,5 +1,5 @@
-const { listProfiles, listStaticProfiles } = require("../src/ui/profileData");
-const { isSupabaseConfigured, listPublishedProviders } = require("../src/ui/supabaseStore");
+const { listProfiles, listStaticProfiles } = require("../ui/profileData");
+const { isSupabaseConfigured, listPublishedProviders } = require("../ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {

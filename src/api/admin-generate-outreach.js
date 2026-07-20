@@ -2,9 +2,9 @@ const {
   listAdminState,
   updateProvider,
   verifyAdminToken,
-} = require("../src/ui/supabaseStore");
-const { generateOutreachMessages, primaryContactForProvider } = require("../src/llm/outreachMessages");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+} = require("../ui/supabaseStore");
+const { generateOutreachMessages, primaryContactForProvider } = require("../llm/outreachMessages");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 function activityLogForProfile(profile = {}) {
   return Array.isArray(profile.activityLog) ? profile.activityLog : [];

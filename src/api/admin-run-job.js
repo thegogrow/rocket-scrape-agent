@@ -1,8 +1,8 @@
 const fs = require("fs-extra");
 const path = require("path");
-const { runScrapingPipeline } = require("../src/pipeline/runPipeline");
-const { env } = require("../src/config/env");
-const { logoFileForDomain } = require("../src/ui/profileData");
+const { runScrapingPipeline } = require("../pipeline/runPipeline");
+const { env } = require("../config/env");
+const { logoFileForDomain } = require("../ui/profileData");
 const {
   getNextQueuedScrapeJob,
   getScrapeJob,
@@ -10,8 +10,8 @@ const {
   uploadProviderLogo,
   upsertProvider,
   verifyAdminToken,
-} = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+} = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 function imageMetadata(buffer, fallbackPath) {
   const head = buffer.subarray(0, 256).toString("utf8").trimStart();

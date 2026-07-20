@@ -1,5 +1,5 @@
-const { reviewClaimRequest, verifyAdminToken } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { reviewClaimRequest, verifyAdminToken } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "PATCH") {

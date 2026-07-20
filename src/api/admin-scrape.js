@@ -1,5 +1,5 @@
-const { createScrapeJob, verifyAdminToken } = require("../src/ui/supabaseStore");
-const { readJsonBody } = require("../src/ui/readJsonBody");
+const { createScrapeJob, verifyAdminToken } = require("../ui/supabaseStore");
+const { readJsonBody } = require("../ui/readJsonBody");
 
 function normalizeWebsiteUrl(value) {
   const text = String(value || "").trim();

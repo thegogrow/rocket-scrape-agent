@@ -72,16 +72,7 @@ const DEPLOYMENT_ENV_VARS = [
   "OPENROUTER_API_KEY",
 ];
 const DEPLOYMENT_API_ROUTES = [
-  "api/admin-activity.js",
-  "api/admin-claim-request.js",
-  "api/admin-export.js",
-  "api/admin-generate-outreach.js",
-  "api/admin-provider-lead.js",
-  "api/admin-provider.js",
-  "api/admin-readiness.js",
-  "api/admin-state.js",
-  "api/claim-request.js",
-  "api/provider-lead.js",
+  "api/[...path].js",
 ];
 const CANONICAL_AUDIT_HISTORY = {
   canonical: ["activity_events", "reviewer_feedback"],

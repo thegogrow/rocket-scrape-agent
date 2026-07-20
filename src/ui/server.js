@@ -2,30 +2,11 @@ const fs = require("fs-extra");
 const http = require("http");
 const net = require("net");
 const path = require("path");
-const { listProfiles, listStaticProfiles, loadProfile, logoPathForDomain, safeDomain } = require("./profileData");
-const { isSupabaseConfigured, listPublishedProviders } = require("./supabaseStore");
+const { apiHandlerForPath, apiQueryForPath } = require("../api/router");
+const { logoPathForDomain, safeDomain } = require("./profileData");
 
 const START_PORT = Number.parseInt(process.env.PROFILE_UI_PORT || "3001", 10);
 const PUBLIC_DIR = path.resolve(process.cwd(), "public");
-const API_HANDLERS = {
-  "/api/admin-login": require("../../api/admin-login"),
-  "/api/admin-activity": require("../../api/admin-activity"),
-  "/api/admin-job": require("../../api/admin-job"),
-  "/api/admin-publish": require("../../api/admin-publish"),
-  "/api/admin-provider": require("../../api/admin-provider"),
-  "/api/admin-provider-lead": require("../../api/admin-provider-lead"),
-  "/api/admin-run-job": require("../../api/admin-run-job"),
-  "/api/admin-scrape": require("../../api/admin-scrape"),
-  "/api/admin-state": require("../../api/admin-state"),
-  "/api/admin-tags": require("../../api/admin-tags"),
-  "/api/admin-claim-request": require("../../api/admin-claim-request"),
-  "/api/admin-export": require("../../api/admin-export"),
-  "/api/claim-request": require("../../api/claim-request"),
-  "/api/admin-readiness": require("../../api/admin-readiness"),
-  "/api/logo": require("../../api/logo"),
-  "/api/provider-lead": require("../../api/provider-lead"),
-  "/api/tags": require("../../api/tags"),
-};
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -135,44 +116,11 @@ async function handleRequest(request, response) {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
     const requestPath = requestUrl.pathname;
-    const apiHandler = API_HANDLERS[requestPath];
+    const apiHandler = apiHandlerForPath(requestPath);
 
     if (apiHandler) {
-      request.query = Object.fromEntries(requestUrl.searchParams.entries());
+      request.query = apiQueryForPath(requestPath, requestUrl.searchParams);
       await apiHandler(request, createApiResponse(response));
-      return;
-    }
-
-    if (requestPath === "/api/profiles") {
-      let profiles = [];
-
-      if (isSupabaseConfigured()) {
-        profiles = await listPublishedProviders();
-      }
-
-      if (profiles.length === 0) {
-        profiles = await listStaticProfiles();
-      }
-
-      if (profiles.length === 0) {
-        profiles = await listProfiles();
-      }
-
-      sendJson(response, 200, profiles);
-      return;
-    }
-
-    const profileMatch = requestPath.match(/^\/api\/profiles\/([^/]+)$/);
-
-    if (profileMatch) {
-      const domain = safeDomain(profileMatch[1]);
-
-      if (!domain) {
-        sendJson(response, 400, { error: "Invalid domain" });
-        return;
-      }
-
-      sendJson(response, 200, await loadProfile(domain));
       return;
     }
 
