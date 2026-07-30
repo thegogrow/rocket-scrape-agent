@@ -1377,14 +1377,19 @@ function providerFocusCodes(profile) {
 
 function providerActionMarkup(profile) {
   const website = profile.website || (profile.domain ? `https://${profile.domain}` : "");
+  const accessUrl = profileAccessUrl(profile);
 
   return `
     <div class="providerActions">
       <a class="providerPrimaryAction" href="#provider-contact" data-provider-action="contact">Contact provider</a>
-      <a class="providerSecondaryAction" href="#provider-claim" data-provider-action="claim">Claim this profile</a>
+      <a class="providerSecondaryAction" href="${escapeHtml(accessUrl)}">Claim or manage profile</a>
       ${website ? `<a class="providerSecondaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
     </div>
   `;
+}
+
+function profileAccessUrl(profile) {
+  return profile?.domain ? `/profile-access?domain=${encodeURIComponent(profile.domain)}` : "/claim";
 }
 
 function providerClaimStatusMarkup(profile) {
@@ -1401,6 +1406,8 @@ function providerClaimStatusMarkup(profile) {
 }
 
 function providerRequestPanelMarkup(profile) {
+  const accessUrl = profileAccessUrl(profile);
+
   return `
     <section id="provider-contact" class="providerRequestPanel">
       <div>
@@ -1433,22 +1440,11 @@ function providerRequestPanelMarkup(profile) {
     <section id="provider-claim" class="providerRequestPanel compact">
       <div>
         <span class="eyebrow">Profile owner</span>
-        <h3>Claim or request removal</h3>
+        <h3>Claim, verify, or request removal</h3>
         ${providerClaimStatusMarkup(profile)}
-        <p>Approved claimants can manage company information, profile content, and future lead handling. Requests are queued for manual verification and no public profile changes happen automatically.</p>
+        <p>Provider-specific access keeps requests tied to this company. Approved claimants can manage company information, profile content, and future lead handling.</p>
       </div>
-      <form class="providerRequestForm providerClaimForm" data-claim-request-form>
-        <input type="hidden" name="domain" value="${escapeHtml(profile.domain || "")}" />
-        <label>
-          Business email
-          <input name="email" type="email" autocomplete="email" required />
-        </label>
-        <div class="providerClaimActions">
-          <button class="providerSecondaryAction" name="requestType" value="claim" type="submit">Claim profile</button>
-          <button class="providerSecondaryAction danger" name="requestType" value="removal" type="submit">Request removal</button>
-        </div>
-        <p class="providerRequestMessage" data-claim-request-message aria-live="polite"></p>
-      </form>
+      <a class="providerPrimaryAction" href="${escapeHtml(accessUrl)}">Open provider access page</a>
     </section>
   `;
 }
@@ -1755,7 +1751,6 @@ function renderDetail() {
   });
 
   elements.detailContent.querySelector("[data-provider-lead-form]")?.addEventListener("submit", handleProviderLeadSubmit);
-  elements.detailContent.querySelector("[data-claim-request-form]")?.addEventListener("submit", handleClaimRequestSubmit);
 }
 
 async function submitJson(url, payload) {

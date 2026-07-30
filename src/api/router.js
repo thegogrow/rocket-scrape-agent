@@ -41,6 +41,10 @@ function apiQueryForPath(pathname = "", searchParams = new URLSearchParams()) {
 }
 
 function apiHandlerForPath(pathname) {
+  if (!String(pathname || "").startsWith("/api")) {
+    return null;
+  }
+
   return handlers[normalizeApiPath(pathname)] || null;
 }
 

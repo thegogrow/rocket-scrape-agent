@@ -16,7 +16,14 @@ module.exports = async function handler(request, response) {
 
   try {
     if (isSupabaseConfigured()) {
-      const databaseProfiles = await listPublishedProviders();
+      let databaseProfiles = [];
+
+      try {
+        databaseProfiles = await listPublishedProviders();
+      } catch (error) {
+        console.warn(`[profile] Supabase unavailable, using static profile: ${error.message}`);
+      }
+
       const databaseProfile = databaseProfiles.find((profile) => profile.domain === domain);
 
       if (databaseProfile) {

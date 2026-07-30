@@ -78,6 +78,16 @@ const LIFECYCLE_STATUSES = new Set([
   "removal_requested",
   "removed",
 ]);
+const ADMIN_SECTIONS = new Set([
+  "dashboard",
+  "scrape",
+  "review",
+  "data-quality",
+  "tags",
+  "requests",
+  "metrics",
+  "published",
+]);
 const LIVE_PROFILE_STATUSES = new Set([
   "approved",
   "outreach_pending",
@@ -343,16 +353,27 @@ function toggleSidebar() {
   showShell();
 }
 
-function setSection(section) {
-  state.activeSection = section;
+function sectionFromHash() {
+  const section = window.location.hash.replace("#", "");
+
+  return ADMIN_SECTIONS.has(section) ? section : "dashboard";
+}
+
+function setSection(section, options = {}) {
+  const nextSection = ADMIN_SECTIONS.has(section) ? section : "dashboard";
+  state.activeSection = nextSection;
 
   elements.navButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.adminSection === section);
+    button.classList.toggle("active", button.dataset.adminSection === nextSection);
   });
 
   elements.panels.forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.adminPanel === section);
+    panel.classList.toggle("active", panel.dataset.adminPanel === nextSection);
   });
+
+  if (options.updateHash && window.location.hash !== `#${nextSection}`) {
+    window.history.pushState({ adminSection: nextSection }, "", `#${nextSection}`);
+  }
 }
 
 function statusPill(status) {
@@ -1448,10 +1469,17 @@ function outreachMessagesByStep(messages = []) {
   }));
 }
 
+function providerAccessUrlForProvider(provider = {}) {
+  return provider.domain ? `/profile-access?domain=${encodeURIComponent(provider.domain)}` : "/profile-access";
+}
+
 function outreachMessageRowMarkup(message = {}) {
   const normalizedMessage = normalizeOutreachMessage(message);
   const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
   const isLinkedIn = stepDef.channel === "linkedin";
+  const openProvider = findProvider(elements.profileEditKey?.value) || {};
+  const accessUrl = providerAccessUrlForProvider(openProvider);
+  const isClaimInvite = stepDef.messageStep === "claim_profile_invitation";
 
   return `
     <article class="outreachMessageRow" data-message-step="${escapeHtml(stepDef.messageStep)}" data-message-channel="${escapeHtml(stepDef.channel)}">
@@ -1470,6 +1498,12 @@ function outreachMessageRowMarkup(message = {}) {
           <button class="secondaryAction compactAction outreachMessageCopy" type="button">Copy</button>
         </div>
       </div>
+      ${isClaimInvite ? `
+        <div class="outreachAccessLink">
+          <span>Provider access link</span>
+          <a href="${escapeHtml(accessUrl)}" target="_blank" rel="noreferrer">${escapeHtml(accessUrl)}</a>
+        </div>
+      ` : ""}
       <label ${isLinkedIn ? "hidden" : ""}>
         Subject
         <input data-message-field="subject" type="text" value="${escapeHtml(normalizedMessage.subject)}" placeholder="${escapeHtml(stepDef.label)} subject" />
@@ -1554,7 +1588,14 @@ function approveAllDraftOutreachMessages() {
 
 async function copyOutreachMessage(row) {
   const subject = row.querySelector('[data-message-field="subject"]')?.value.trim();
-  const body = row.querySelector('[data-message-field="body"]')?.value.trim();
+  let body = row.querySelector('[data-message-field="body"]')?.value.trim();
+  const provider = findProvider(elements.profileEditKey.value) || {};
+  const accessUrl = providerAccessUrlForProvider(provider);
+
+  if (row.dataset.messageStep === "claim_profile_invitation" && provider.domain && !body.includes(accessUrl)) {
+    body = `${body}\n\nReview, claim, or request removal for your profile here:\n${window.location.origin}${accessUrl}`;
+  }
+
   const text = [subject ? `Subject: ${subject}` : "", body].filter(Boolean).join("\n\n");
 
   if (!text) {
@@ -1576,7 +1617,6 @@ async function copyOutreachMessage(row) {
     textarea.remove();
   }
 
-  const provider = findProvider(elements.profileEditKey.value) || {};
   fetch("/api/admin-activity", {
     method: "POST",
     headers: adminHeaders(),
@@ -4023,15 +4063,18 @@ function bindEvents() {
 
   elements.navButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      setSection(button.dataset.adminSection);
+      setSection(button.dataset.adminSection, { updateHash: true });
     });
+  });
+  window.addEventListener("hashchange", () => {
+    setSection(sectionFromHash());
   });
 }
 
 async function init() {
   bindEvents();
   showShell();
-  setSection("dashboard");
+  setSection(sectionFromHash());
   updatePublishedSortButton();
 
   if (isSignedIn()) {

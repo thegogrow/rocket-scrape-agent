@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claim a Provider Profile</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="appHeader">
+      <div class="brandCluster">
+        <a class="cloudLogo" href="/">Rocket Engineers</a>
+      </div>
+      <nav class="topNav" aria-label="Primary navigation">
+        <a href="/">Providers</a>
+        <a href="/connect">Connect</a>
+        <a href="/claim" class="active">Claim</a>
+        <a href="/remove">Remove</a>
+        <a href="/admin#requests">Admin</a>
+      </nav>
+    </header>
+
+    <main class="workflowPage">
+      <section class="workflowHero">
+        <div>
+          <span class="eyebrow">Profile owner</span>
+          <h1>Claim a provider profile</h1>
+          <p>For security, claim requests must start from a specific provider profile or an admin outreach link.</p>
+        </div>
+        <ol class="workflowSteps">
+          <li>Open your company profile in the provider directory.</li>
+          <li>Use the provider-specific profile access page.</li>
+          <li>An admin approves or rejects the request.</li>
+        </ol>
+      </section>
+
+      <section class="workflowPanel providerAccessUnavailable" data-legacy-access-page="claim">
+        <h2>Provider-specific link required</h2>
+        <p>This page does not allow choosing a company manually. If you received an outreach link, use that link. Otherwise, find your profile in the directory and open the profile access page.</p>
+        <a class="primaryAction" href="/">Find your provider profile</a>
+      </section>
+    </main>
+
+    <script src="/request-flow.js"></script>
+  </body>
+</html>

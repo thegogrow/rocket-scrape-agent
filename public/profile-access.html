@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Provider Profile Access</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="appHeader">
+      <div class="brandCluster">
+        <a class="cloudLogo" href="/">Rocket Engineers</a>
+      </div>
+      <nav class="topNav" aria-label="Primary navigation">
+        <a href="/">Providers</a>
+        <a href="/connect">Connect</a>
+        <a href="/profile-access" class="active">Profile access</a>
+        <a href="/admin#requests">Admin</a>
+      </nav>
+    </header>
+
+    <main class="workflowPage providerAccessPage">
+      <section class="providerAccessHero">
+        <div>
+          <span class="eyebrow">Provider profile access</span>
+          <h1 id="accessCompanyName">Review your Rocket Engineers profile</h1>
+          <p id="accessIntro">This page is linked to one provider profile. It does not let visitors choose or change the company being claimed.</p>
+        </div>
+        <aside class="providerAccessCard" id="accessProfileCard">
+          <span>Provider</span>
+          <strong id="accessDomain">Loading provider...</strong>
+          <small id="accessStatus">Checking profile status</small>
+          <a id="accessProfileLink" href="/" hidden>View public profile</a>
+        </aside>
+      </section>
+
+      <section id="accessUnavailable" class="workflowPanel providerAccessUnavailable" hidden>
+        <h2>Provider-specific link required</h2>
+        <p>This claim and removal flow must be opened from a specific provider profile or an admin outreach draft. This prevents requests from being submitted for the wrong company.</p>
+        <a class="primaryAction" href="/">Find your provider profile</a>
+      </section>
+
+      <section id="accessActions" class="workflowPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Request profile review</h2>
+            <p>Choose one action for the company shown above. Rocket Engineers will review the request manually before making any public changes.</p>
+          </div>
+        </div>
+        <form class="workflowForm providerAccessForm" data-request-flow="access">
+          <input name="domain" type="hidden" />
+          <label>
+            Business email
+            <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+          </label>
+          <label>
+            Message to Rocket Engineers
+            <textarea name="message" rows="4" placeholder="Optional context for the review team"></textarea>
+          </label>
+          <div class="providerAccessActions">
+            <button class="primaryAction" name="requestType" value="claim" type="submit">Claim this profile</button>
+            <button class="secondaryAction danger" name="requestType" value="removal" type="submit">Request removal</button>
+          </div>
+          <p class="workflowMessage" data-request-message aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="providerAccessExplainer">
+        <article>
+          <strong>What claiming gives you</strong>
+          <span>Profile corrections, company information management, and future lead handling after admin approval.</span>
+        </article>
+        <article>
+          <strong>How removal works</strong>
+          <span>A removal request is reviewed manually. No profile is removed automatically from this page.</span>
+        </article>
+        <article>
+          <strong>Why this is provider-specific</strong>
+          <span>The page is tied to one domain from the profile or outreach link, so the requester cannot pick another company.</span>
+        </article>
+      </section>
+    </main>
+
+    <script src="/request-flow.js"></script>
+  </body>
+</html>

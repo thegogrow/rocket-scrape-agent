@@ -97,7 +97,11 @@ function contentTypeFor(filePath) {
 
 async function handleStatic(requestPath, response) {
   const relativePath = requestPath === "/" ? "index.html" : requestPath === "/admin" ? "admin.html" : requestPath.slice(1);
-  const staticPath = path.resolve(PUBLIC_DIR, relativePath);
+  let staticPath = path.resolve(PUBLIC_DIR, relativePath);
+
+  if (!path.extname(staticPath) && !(await fs.pathExists(staticPath))) {
+    staticPath = `${staticPath}.html`;
+  }
 
   if (!staticPath.startsWith(PUBLIC_DIR) || !(await fs.pathExists(staticPath))) {
     sendText(response, 404, "Not found");

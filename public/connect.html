@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect With a Provider</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="appHeader">
+      <div class="brandCluster">
+        <a class="cloudLogo" href="/">Rocket Engineers</a>
+      </div>
+      <nav class="topNav" aria-label="Primary navigation">
+        <a href="/">Providers</a>
+        <a href="/connect" class="active">Connect</a>
+        <a href="/claim">Claim</a>
+        <a href="/remove">Remove</a>
+        <a href="/profile-access">Profile access</a>
+        <a href="/admin#requests">Admin</a>
+      </nav>
+    </header>
+
+    <main class="workflowPage">
+      <section class="workflowHero">
+        <div>
+          <span class="eyebrow">Brokered introduction</span>
+          <h1>Connect with a provider</h1>
+          <p>Use this form to request an introduction. Rocket Engineers reviews the request before any provider contact is made.</p>
+        </div>
+        <ol class="workflowSteps">
+          <li>Choose the provider and enter your details.</li>
+          <li>The lead is saved in the admin queue.</li>
+          <li>An admin marks it reviewed, forwarded, or closed.</li>
+        </ol>
+      </section>
+
+      <section class="workflowPanel">
+        <form class="workflowForm" data-request-flow="lead">
+          <label>
+            Provider domain
+            <input name="domain" list="providerDomainOptions" placeholder="example.com" required />
+          </label>
+          <label>
+            Work email
+            <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+          </label>
+          <label>
+            Name
+            <input name="name" type="text" autocomplete="name" />
+          </label>
+          <label>
+            Company
+            <input name="company" type="text" autocomplete="organization" />
+          </label>
+          <label>
+            What do you need help with?
+            <textarea name="message" rows="5" required></textarea>
+          </label>
+          <button class="primaryAction" type="submit">Request introduction</button>
+          <p class="workflowMessage" data-request-message aria-live="polite"></p>
+        </form>
+        <datalist id="providerDomainOptions"></datalist>
+      </section>
+    </main>
+
+    <script src="/request-flow.js"></script>
+  </body>
+</html>

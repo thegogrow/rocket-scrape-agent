@@ -365,6 +365,105 @@ a:hover {
   gap: 10px;
 }
 
+.workflowPage {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+  display: grid;
+  gap: 18px;
+}
+
+.workflowHero,
+.workflowPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(24, 24, 24, 0.08);
+}
+
+.workflowHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
+  gap: 22px;
+  align-items: start;
+  padding: 28px;
+}
+
+.workflowHero h1,
+.workflowHero p,
+.workflowPanel p {
+  margin: 0;
+}
+
+.workflowHero h1 {
+  margin-top: 8px;
+  color: var(--blue-dark);
+  font-size: 34px;
+  line-height: 1.12;
+}
+
+.workflowHero p,
+.workflowSteps,
+.workflowMessage {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.workflowSteps {
+  margin: 0;
+  padding: 18px 18px 18px 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.workflowSteps li + li {
+  margin-top: 8px;
+}
+
+.workflowPanel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.workflowForm {
+  display: grid;
+  gap: 14px;
+  max-width: 680px;
+}
+
+.workflowForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.workflowForm input,
+.workflowForm textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.workflowForm textarea {
+  padding: 12px;
+  resize: vertical;
+}
+
+.workflowMessage {
+  min-height: 20px;
+  font-weight: 800;
+}
+
+.workflowMessage.error {
+  color: #9b1c1c;
+}
+
 .adminPanel {
   display: grid;
   gap: 16px;
@@ -5016,6 +5115,27 @@ h4,
 
 .outreachMessageControls select {
   min-height: 34px;
+}
+
+.outreachAccessLink {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--admin-line);
+  background: #fff;
+}
+
+.outreachAccessLink span {
+  color: #666;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.outreachAccessLink a {
+  overflow-wrap: anywhere;
+  color: var(--admin-red);
+  font-weight: 800;
 }
 
 .profileActivityLog {

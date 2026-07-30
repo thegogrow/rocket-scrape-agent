@@ -28,6 +28,7 @@ const SYSTEM_PROMPT = [
   "Use only the supplied provider profile and primary contact data.",
   "Keep tone professional, direct, and low-pressure.",
   "Every message should invite the provider to verify or claim their Rocket Engineers profile.",
+  "Use the supplied providerAccessPath in the Claim Profile invitation. Do not create or guess another URL.",
   "Email 1 should introduce the profile and ask for verification.",
   "Email 2 should follow up with a practical reason to verify the listing.",
   "Email 3 should be a brief final reminder.",
@@ -103,6 +104,7 @@ function buildOutreachPayload(provider = {}, contact = primaryContactForProvider
         })),
       status: provider.status || null,
       confidenceScore: provider.confidenceScore ?? provider.confidence_score ?? null,
+      providerAccessPath: provider.domain ? `/profile-access?domain=${encodeURIComponent(provider.domain)}` : null,
     },
     primaryContact: contact
       ? {
