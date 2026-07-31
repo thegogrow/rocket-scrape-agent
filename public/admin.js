@@ -24,6 +24,8 @@ const state = {
   selectedProviders: new Set(),
   visibleReviewKeys: [],
   visiblePublishedKeys: [],
+  allReviewKeys: [],
+  allPublishedKeys: [],
   selectionMode: {
     review: false,
     published: false,
@@ -238,6 +240,7 @@ const elements = {
   profileEditDialog: document.querySelector("#profileEditDialog"),
   profileEditForm: document.querySelector("#profileEditForm"),
   profileEditClose: document.querySelector("#profileEditClose"),
+  profileEditPreviewAccessLink: document.querySelector("#profileEditPreviewAccessLink"),
   profileEditKey: document.querySelector("#profileEditKey"),
   profileEditName: document.querySelector("#profileEditName"),
   profileEditLogo: document.querySelector("#profileEditLogo"),
@@ -556,12 +559,14 @@ function actionButton(kind, label, attrs = "") {
   return `<button class="secondaryAction compactAction iconButtonText" type="button" ${attrs}>${icons[kind] || ""}<span>${escapeHtml(label)}</span></button>`;
 }
 
-function actionLink(kind, label, href) {
+function actionLink(kind, label, href, attrs = "") {
   const icon = kind === "profile"
     ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Z" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>`
-    : "";
+    : kind === "access"
+      ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6" /><path d="M10 14 20 4" /><path d="M18 14v6H4V6h6" /></svg>`
+      : "";
 
-  return `<a class="secondaryAction compactAction iconButtonText" href="${escapeHtml(href)}">${icon}<span>${escapeHtml(label)}</span></a>`;
+  return `<a class="secondaryAction compactAction iconButtonText" href="${escapeHtml(href)}" ${attrs}>${icon}<span>${escapeHtml(label)}</span></a>`;
 }
 
 function providerActions(provider, options = {}) {
@@ -573,6 +578,9 @@ function providerActions(provider, options = {}) {
     includeProfile = true,
     includeRecrawl = true,
   } = options;
+  const accessAction = provider.domain
+    ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
+    : "";
 
   if (includeManage) {
     const key = escapeHtml(provider.id || provider.domain || "");
@@ -590,6 +598,7 @@ function providerActions(provider, options = {}) {
             <span>More</span>
           </summary>
           <div class="adminActionMenuPanel">
+            ${accessAction}
             ${actionButton("recrawl", "Recrawl", `data-recrawl-provider="${key}"`)}
             ${actionButton("unpublish", "Unpublish", `data-unpublish-provider="${key}"`)}
             ${actionButton("delete", "Delete", `data-delete-provider="${key}"`)}
@@ -603,6 +612,7 @@ function providerActions(provider, options = {}) {
     includeProfile && provider.domain
       ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
       : "",
+    accessAction,
     includeEdit
       ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
       : "",
@@ -904,7 +914,7 @@ function normalizeIndustryName(value) {
     return "Software & Technology";
   }
 
-  return "Software & Technology";
+  return null;
 }
 
 function normalizeIndustryList(values, fallbackValues = []) {
@@ -1558,7 +1568,7 @@ function collectOutreachMessages(container) {
         metadata,
       };
     })
-    .filter((message) => message.body);
+    .filter((message) => message.id || message.body);
 }
 
 function approveOutreachMessage(row) {
@@ -2098,6 +2108,12 @@ function openEditProfile(key) {
   }
   elements.profileEditMessage.textContent = "";
   elements.profileEditMessage.classList.remove("error");
+  if (elements.profileEditPreviewAccessLink) {
+    const accessUrl = provider.domain ? providerAccessUrlForProvider(provider) : "";
+    elements.profileEditPreviewAccessLink.href = accessUrl || "#";
+    elements.profileEditPreviewAccessLink.classList.toggle("isDisabled", !accessUrl);
+    elements.profileEditPreviewAccessLink.setAttribute("aria-disabled", String(!accessUrl));
+  }
   elements.profileEditDialog.showModal();
 }
 
@@ -2970,6 +2986,8 @@ function renderLists() {
   );
   state.visibleReviewKeys = visibleReviewProviders.map(providerKey);
   state.visiblePublishedKeys = visiblePublishedProviders.map(providerKey);
+  state.allReviewKeys = reviewProviders.map(providerKey);
+  state.allPublishedKeys = filteredPublishedProviders.map(providerKey);
   elements.reviewProviderList.classList.toggle("adminSelectionMode", state.selectionMode.review);
   elements.publishedProviderList.classList.toggle("adminSelectionMode", state.selectionMode.published);
 
@@ -3288,6 +3306,19 @@ async function recrawlProvider(key, options = {}) {
   return true;
 }
 
+async function publishProviderRaw(id) {
+  const response = await fetch("/api/admin-publish", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, status: "approved" }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to publish provider.");
+  }
+}
+
 async function publishProvider(id) {
   if (!id) {
     return false;
@@ -3299,17 +3330,7 @@ async function publishProvider(id) {
     throw new Error("Open this profile and mark reviewer feedback as Looks good before publishing. It is below the 75% confidence guardrail.");
   }
 
-  const response = await fetch("/api/admin-publish", {
-    method: "POST",
-    headers: adminHeaders(),
-    body: JSON.stringify({ id, status: "approved" }),
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.error || "Failed to publish provider.");
-  }
-
+  await publishProviderRaw(id);
   await refreshAdminState();
   return true;
 }
@@ -3320,9 +3341,15 @@ function selectedKeysForScope(scope) {
   return visibleKeys.filter((key) => state.selectedProviders.has(key));
 }
 
+function selectedKeysForFullScope(scope) {
+  const allKeys = scope === "review" ? state.allReviewKeys : state.allPublishedKeys;
+
+  return allKeys.filter((key) => state.selectedProviders.has(key));
+}
+
 function updateBulkControls() {
-  const reviewSelected = selectedKeysForScope("review");
-  const publishedSelected = selectedKeysForScope("published");
+  const reviewSelected = selectedKeysForFullScope("review");
+  const publishedSelected = selectedKeysForFullScope("published");
   const reviewAllSelected = state.visibleReviewKeys.length > 0 && state.visibleReviewKeys.every((key) => state.selectedProviders.has(key));
   const publishedAllSelected = state.visiblePublishedKeys.length > 0 && state.visiblePublishedKeys.every((key) => state.selectedProviders.has(key));
 
@@ -3375,44 +3402,69 @@ function togglePageSelection(scope, checked) {
 async function applyBulkAction(scope) {
   const actionSelect = scope === "review" ? elements.reviewBulkAction : elements.publishedBulkAction;
   const action = actionSelect.value;
-  const selectedKeys = selectedKeysForScope(scope);
+  const selectedKeys = selectedKeysForFullScope(scope);
 
   if (!action || selectedKeys.length === 0) {
     return false;
   }
 
-  if (action === "recrawl") {
-    for (const key of selectedKeys) {
-      const provider = findProvider(key);
+  const failures = [];
+  let succeeded = 0;
 
-      if (provider) {
+  for (const key of selectedKeys) {
+    try {
+      if (action === "recrawl") {
+        const provider = findProvider(key);
+
+        if (!provider) {
+          throw new Error("Provider no longer available.");
+        }
+
         await queueRecrawlJob(provider);
+      } else if (action === "publish") {
+        const provider = findProvider(key);
+
+        if (provider && isBelowConfidenceGuardrail(provider) && scraperQualityLogForProfile(provider).feedback !== "up") {
+          throw new Error("Below the 75% confidence guardrail; mark reviewer feedback as Looks good first.");
+        }
+
+        await publishProviderRaw(key);
+      } else if (action === "unpublish") {
+        await updateProviderStatusRaw(key, "in_review");
       }
-    }
 
-    selectedKeys.forEach((key) => state.selectedProviders.delete(key));
-    actionSelect.value = "";
-    await refreshAdminState();
-    setSection("scrape");
-    return true;
-  }
-
-  if (action === "publish") {
-    for (const key of selectedKeys) {
-      await publishProvider(key);
-    }
-  }
-
-  if (action === "unpublish") {
-    for (const key of selectedKeys) {
-    await updateProviderStatus(key, "in_review");
+      succeeded += 1;
+    } catch (error) {
+      failures.push({ key, message: error.message || "Failed." });
     }
   }
 
   selectedKeys.forEach((key) => state.selectedProviders.delete(key));
   actionSelect.value = "";
-  renderLists();
-  return true;
+  await refreshAdminState();
+
+  if (action === "recrawl" && succeeded > 0) {
+    setSection("scrape");
+  }
+
+  const summary = failures.length
+    ? `${succeeded} of ${selectedKeys.length} succeeded, ${failures.length} failed: ${failures[0].message}${failures.length > 1 ? ` (+${failures.length - 1} more)` : ""}`
+    : `${succeeded} provider${succeeded === 1 ? "" : "s"} updated.`;
+
+  showToast(summary, failures.length ? "error" : "success");
+}
+
+async function updateProviderStatusRaw(id, status) {
+  const response = await fetch("/api/admin-provider", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id, status }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to update provider.");
+  }
 }
 
 async function updateProviderStatus(key, status) {
@@ -3420,17 +3472,7 @@ async function updateProviderStatus(key, status) {
     return false;
   }
 
-  const response = await fetch("/api/admin-provider", {
-    method: "PATCH",
-    headers: adminHeaders(),
-    body: JSON.stringify({ id: key, status }),
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.error || "Failed to update provider.");
-  }
-
+  await updateProviderStatusRaw(key, status);
   await refreshAdminState();
   if (!LIVE_PROFILE_STATUSES.has(normalizeLifecycleStatus(status))) {
     setSection("review");
@@ -3744,10 +3786,10 @@ function bindEvents() {
     select.addEventListener("change", updateBulkControls);
   });
   elements.reviewBulkApply.addEventListener("click", () => {
-    runAdminAction(elements.reviewBulkApply, "Applying", "Bulk action complete.", () => applyBulkAction("review"));
+    runAdminAction(elements.reviewBulkApply, "Applying", null, () => applyBulkAction("review"));
   });
   elements.publishedBulkApply.addEventListener("click", () => {
-    runAdminAction(elements.publishedBulkApply, "Applying", "Bulk action complete.", () => applyBulkAction("published"));
+    runAdminAction(elements.publishedBulkApply, "Applying", null, () => applyBulkAction("published"));
   });
   elements.tagSearchFilter?.addEventListener("input", () => {
     state.tagFilters.search = elements.tagSearchFilter.value;

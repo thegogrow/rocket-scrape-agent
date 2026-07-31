@@ -1,4 +1,4 @@
-const { createScrapeJob, verifyAdminToken } = require("../ui/supabaseStore");
+const { createScrapeJob, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 function normalizeWebsiteUrl(value) {
@@ -31,7 +31,7 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json(await createScrapeJob({ url: normalizedUrl, companyName, requestedBy: admin.email, allowExisting }));
   } catch (error) {
-    const status = /already exists/i.test(error.message) ? 409 : 401;
+    const status = /already exists/i.test(error.message) ? 409 : statusForError(error);
     response.status(status).json({ error: error.message });
   }
 };

@@ -1,4 +1,4 @@
-const { updateProviderLeadStatus, verifyAdminToken } = require("../ui/supabaseStore");
+const { updateProviderLeadStatus, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
@@ -21,6 +21,6 @@ module.exports = async function handler(request, response) {
       reviewedBy: admin.email,
     }));
   } catch (error) {
-    response.status(400).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

@@ -400,7 +400,7 @@ function normalizeIndustryName(value) {
     return "Software & Technology";
   }
 
-  return "Software & Technology";
+  return null;
 }
 
 function normalizeIndustries(values, fallbackValues = []) {

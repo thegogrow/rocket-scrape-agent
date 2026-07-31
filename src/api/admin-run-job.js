@@ -6,6 +6,7 @@ const { logoFileForDomain } = require("../ui/profileData");
 const {
   getNextQueuedScrapeJob,
   getScrapeJob,
+  statusForError,
   updateScrapeJob,
   uploadProviderLogo,
   upsertProvider,
@@ -134,6 +135,6 @@ module.exports = async function handler(request, response) {
       }
     }
 
-    response.status(500).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

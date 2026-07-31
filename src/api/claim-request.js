@@ -19,7 +19,8 @@ module.exports = async function handler(request, response) {
       email: body.email,
       requestType: body.requestType,
       metadata: {
-        source: "public_profile",
+        source: body.metadata?.source || "public_profile",
+        message: body.metadata?.message || "",
         notify: "rocket_engineers_admin_queue",
         userAgent: request.headers["user-agent"] || "",
       },

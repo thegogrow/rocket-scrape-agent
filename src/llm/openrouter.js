@@ -66,6 +66,7 @@ function createClient() {
   return new OpenAI({
     apiKey: env.openRouter.apiKey,
     baseURL: env.openRouter.baseUrl || "https://openrouter.ai/api/v1",
+    timeout: 30000,
   });
 }
 

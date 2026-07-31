@@ -1,4 +1,4 @@
-const { deleteScrapeJob, verifyAdminToken } = require("../ui/supabaseStore");
+const { deleteScrapeJob, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
@@ -18,6 +18,6 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json(await deleteScrapeJob(id));
   } catch (error) {
-    response.status(401).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

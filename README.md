@@ -148,6 +148,7 @@ The `/api/admin-*` routes verify Supabase Auth tokens and use the service role k
 - `SUPABASE_ANON_KEY`: Supabase anon key used for admin sign-in verification.
 - `SUPABASE_SERVICE_ROLE_KEY`: Server-only key used by Vercel API routes.
 - `ADMIN_EMAILS`: Comma-separated admin emails allowed to access the Admin tab.
+- `PUBLIC_BASE_URL`: Absolute site URL used when building outreach links (e.g. the claim/removal profile-access link). Defaults to `https://$VERCEL_URL` on Vercel or `http://localhost:3001` locally; set this to your real custom domain in production.
 
 Run `npm run readiness:sprint2` before deployment to verify Supabase schema, required API route files, and deployment environment variables.
 

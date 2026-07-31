@@ -24,6 +24,14 @@ function getRequiredEnv(name, options = {}) {
   return getEnv(name, { ...options, required: true });
 }
 
+function defaultPublicBaseUrl() {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return `http://localhost:${getEnv("PROFILE_UI_PORT", { defaultValue: "3001" })}`;
+}
+
 function defaultOutputDir() {
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     return path.join("/tmp", "rocket-scrape-output");
@@ -46,6 +54,7 @@ function resolveOutputDir() {
 
 const env = Object.freeze({
   nodeEnv: getEnv("NODE_ENV", { defaultValue: "development" }),
+  publicBaseUrl: getEnv("PUBLIC_BASE_URL", { defaultValue: defaultPublicBaseUrl() }).replace(/\/$/, ""),
   firecrawl: {
     apiKey: getEnv("FIRECRAWL_API_KEY"),
     baseUrl: getEnv("FIRECRAWL_BASE_URL", {

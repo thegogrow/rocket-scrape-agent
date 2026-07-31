@@ -4,7 +4,6 @@ const domainOptions = document.querySelector("#providerDomainOptions");
 const legacyAccessPage = document.querySelector("[data-legacy-access-page]");
 const accessElements = {
   actions: document.querySelector("#accessActions"),
-  unavailable: document.querySelector("#accessUnavailable"),
   companyName: document.querySelector("#accessCompanyName"),
   domain: document.querySelector("#accessDomain"),
   status: document.querySelector("#accessStatus"),
@@ -18,12 +17,19 @@ function setMessage(text, isError = false) {
 }
 
 function normalizeDomain(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/^www\./i, "")
-    .replace(/\/.*$/, "")
-    .toLowerCase();
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return "";
+  }
+
+  try {
+    return new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`).hostname
+      .replace(/^www\./i, "")
+      .toLowerCase();
+  } catch (error) {
+    return text.replace(/^www\./i, "").toLowerCase();
+  }
 }
 
 function titleCase(value) {
@@ -97,7 +103,7 @@ async function loadProviderOptions() {
       .slice(0, 250);
 
     domainOptions.innerHTML = domains
-      .map((domain) => `<option value="${domain}"></option>`)
+      .map((domain) => `<option value="${escapeHtml(domain)}"></option>`)
       .join("");
   } catch (error) {
     // The form remains usable with manual domain entry.
@@ -114,7 +120,6 @@ async function loadProviderAccess() {
 
   if (!requestedDomain) {
     accessElements.actions.hidden = true;
-    accessElements.unavailable.hidden = false;
     accessElements.domain.textContent = "Provider not selected";
     accessElements.status.textContent = "Open this page from a provider profile or outreach link.";
     return;

@@ -1,4 +1,4 @@
-const { listAdminState, verifyAdminToken } = require("../ui/supabaseStore");
+const { listAdminState, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 
 const EXPORT_TYPES = new Set([
   "reviewed-providers",
@@ -176,6 +176,6 @@ module.exports = async function handler(request, response) {
     response.setHeader("Content-Disposition", `attachment; filename="${definition.filename}"`);
     response.status(200).send(toCsv(definition.rows, definition.columns));
   } catch (error) {
-    response.status(400).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

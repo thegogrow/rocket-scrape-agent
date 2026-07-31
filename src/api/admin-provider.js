@@ -1,4 +1,4 @@
-const { deleteProvider, updateProvider, verifyAdminToken } = require("../ui/supabaseStore");
+const { deleteProvider, statusForError, updateProvider, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 function hasPremiumProfileAccess(profile = {}) {
@@ -48,6 +48,6 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json(await updateProvider(id, profile, status, { reviewedBy: admin.email }));
   } catch (error) {
-    response.status(401).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

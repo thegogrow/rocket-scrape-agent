@@ -4,7 +4,6 @@ const state = {
   filtered: [],
   selectedDomain: null,
   profileMode: false,
-  activeDetailTab: "overview",
   sortMode: "recommended",
   filters: {
     country: [],
@@ -420,21 +419,6 @@ function logoMarkup(profile, large = false) {
   return `<div class="${className}"><img src="${escapeHtml(logoUrl)}" alt="${label} logo" onerror="this.parentElement.textContent='${fallback}'" /></div>`;
 }
 
-function starRatingMarkup(score) {
-  const normalizedScore = Math.max(0, Math.min(100, Number.parseInt(score, 10) || 0));
-  const starFill = `${normalizedScore}%`;
-
-  return `
-    <span class="confidenceRating" aria-label="${normalizedScore}% confidence">
-      <span class="starRating" style="--rating: ${starFill}">
-        <span class="starBase" aria-hidden="true">★★★★★</span>
-        <span class="starFill" aria-hidden="true">★★★★★</span>
-      </span>
-      <span class="confidencePercent">${normalizedScore}%</span>
-    </span>
-  `;
-}
-
 function chips(values, emptyLabel = "None found", warn = false) {
   const list = Array.isArray(values) ? values.filter(Boolean) : [];
 
@@ -599,7 +583,7 @@ function normalizeIndustryName(value) {
     return "Software & Technology";
   }
 
-  return "Software & Technology";
+  return null;
 }
 
 function normalizeIndustryList(values, fallbackValues = []) {
@@ -981,7 +965,7 @@ function cardMarkup(profile) {
           <span class="cardMeta">${escapeHtml(locationText || profile.domain)}</span>
         </span>
       </span>
-      <span class="cardText">${escapeHtml(description).slice(0, 180)}</span>
+      <span class="cardText">${escapeHtml(String(description ?? "").slice(0, 180))}</span>
       <span class="cardTags">${chips(tags, "No tags found")}</span>
       <span class="cardStats">
         <span><strong>${partnerCount}</strong> partners</span>
@@ -1024,7 +1008,6 @@ function openProviderDetail(domain, options = {}) {
   }
 
   state.selectedDomain = domain;
-  state.activeDetailTab = "overview";
   state.profileMode = true;
 
   if (pushHistory) {
@@ -1058,14 +1041,6 @@ function closeProviderDetail(options = {}) {
   }
 }
 
-function linkMarkup(url, label) {
-  if (!url) {
-    return "";
-  }
-
-  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
-}
-
 function profileLinkSetMarkup(profile) {
   const links = [
     { label: "Website", url: profile.website },
@@ -1082,275 +1057,12 @@ function profileLinkSetMarkup(profile) {
     .join("");
 }
 
-function isAdminVisitor() {
-  return Boolean(
-    window.localStorage.getItem("rocketEngineersAdminToken") &&
-      window.localStorage.getItem("rocketEngineersAdminEmail")
-  );
-}
-
-function visibleDetailTabs(adminVisible) {
-  return [
-    { key: "overview", label: "Overview" },
-    { key: "partnerships", label: "Partnerships" },
-    ...(adminVisible
-      ? [
-          { key: "activity", label: "Recent Activity" },
-          { key: "quality", label: "Data Quality" },
-          { key: "outreach", label: "Outreach Status" },
-        ]
-      : []),
-  ];
-}
-
-function detailTabsMarkup(adminVisible) {
-  return visibleDetailTabs(adminVisible)
-    .map(
-      (tab) =>
-        `<button type="button" data-detail-tab="${tab.key}" class="${state.activeDetailTab === tab.key ? "active" : ""}">${escapeHtml(tab.label)}</button>`
-    )
-    .join("");
-}
-
-function activityMarkup(profile) {
-  const activity = Array.isArray(profile.recentActivity) ? profile.recentActivity : [];
-
-  if (activity.length === 0) {
-    return `<div class="activityItem">No recent activity found.</div>`;
-  }
-
-  return activity
-    .map((item) => {
-      const meta = [item.date, item.sourceType, item.source ? linkMarkup(item.source, "source") : null]
-        .filter(Boolean)
-        .join(" · ");
-
-      return `
-        <div class="activityItem">
-          <div>${escapeHtml(item.title)}</div>
-          <div class="activityMeta">${meta || "No date or source available"}</div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function activityChannelItems(profile, channel) {
-  const activity = Array.isArray(profile.recentActivity) ? profile.recentActivity : [];
-
-  return activity.filter((item) => {
-    const text = [item.sourceType, item.source, item.title].filter(Boolean).join(" ").toLowerCase();
-
-    if (channel === "linkedin") {
-      return text.includes("linkedin");
-    }
-
-    if (channel === "github") {
-      return text.includes("github");
-    }
-
-    return /blog|article|news|press|webinar|podcast|publication|report|case[ _-]?study|whitepaper/.test(text);
-  });
-}
-
-function activityChannelsMarkup(profile) {
-  const channels = [
-    { key: "linkedin", label: "Activity on LinkedIn" },
-    { key: "blog", label: "Activity on Blog" },
-    { key: "github", label: "Activity on GitHub" },
-  ];
-
-  return channels
-    .map((channel) => {
-      const items = activityChannelItems(profile, channel.key);
-      const content =
-        items.length > 0
-          ? activityMarkup({ recentActivity: items })
-          : `<div class="activityItem">No ${channel.label.toLowerCase()} found.</div>`;
-
-      return `
-        <section class="activityChannel">
-          <h4>${escapeHtml(channel.label)}</h4>
-          <div class="activity">${content}</div>
-        </section>
-      `;
-    })
-    .join("");
-}
-
 function caseStudyItems(profile) {
   const activity = Array.isArray(profile.recentActivity) ? profile.recentActivity : [];
 
   return activity.filter((item) =>
     /case[ _-]?study|success story|customer story/i.test([item.sourceType, item.title].filter(Boolean).join(" "))
   );
-}
-
-function editableEntryLink(entry, fallbackLabel) {
-  const url = entry?.link || entry?.url || entry?.source || "";
-
-  if (!url) {
-    return "";
-  }
-
-  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(fallbackLabel)}</a>`;
-}
-
-function editableEntriesMarkup(entries, fallbackItems = []) {
-  const structuredEntries = Array.isArray(entries) ? entries.filter(Boolean) : [];
-
-  if (structuredEntries.length > 0) {
-    return structuredEntries
-      .map((entry) => {
-        if (typeof entry === "string") {
-          return `<article class="editableEntry"><h4>${escapeHtml(entry)}</h4></article>`;
-        }
-
-        const title = entry.title || entry.name || "Untitled";
-        const text = entry.shortText || entry.text || entry.summary || entry.description || "";
-
-        return `
-          <article class="editableEntry">
-            <h4>${escapeHtml(title)}</h4>
-            ${text ? `<p>${escapeHtml(text)}</p>` : ""}
-            ${editableEntryLink(entry, "Open link")}
-          </article>
-        `;
-      })
-      .join("");
-  }
-
-  if (fallbackItems.length > 0) {
-    return activityMarkup({ recentActivity: fallbackItems });
-  }
-
-  return "";
-}
-
-function successStoriesMarkup(profile) {
-  return editableEntriesMarkup(
-    profile.successStories,
-    caseStudyItems(profile)
-  );
-}
-
-function solutionsMarkup(profile) {
-  return editableEntriesMarkup(profile.solutions);
-}
-
-function qualityClass(score) {
-  const normalizedScore = Math.max(0, Math.min(100, Number.parseInt(score, 10) || 0));
-
-  if (normalizedScore >= 80) {
-    return "green";
-  }
-
-  if (normalizedScore >= 60) {
-    return "orange";
-  }
-
-  return "red";
-}
-
-function evidenceStatusMarkup(label, available, quality = "red") {
-  return `
-    <div class="evidenceItem quality-${quality}">
-      <span>${escapeHtml(label)}</span>
-      <strong class="${available ? "available" : "missing"}">${available ? "Available" : "Missing"}</strong>
-    </div>
-  `;
-}
-
-function evidenceSummaryMarkup(profile) {
-  const quality = qualityClass(profile.confidenceScore);
-
-  return `
-    <div class="evidenceGrid sourceQualityGrid">
-      ${evidenceStatusMarkup("Website content first", Boolean(profile.files?.sourceBundle || profile.description), quality)}
-      ${evidenceStatusMarkup("Logo source", Boolean(profile.logoUrl || profile.files?.logo), quality)}
-      ${evidenceStatusMarkup("Company enrichment", Boolean(profile.files?.enrichment), quality)}
-      ${evidenceStatusMarkup("GitHub support only", Boolean(profile.githubUrl || profile.files?.github), quality)}
-    </div>
-  `;
-}
-
-function dataQualityMarkup(profile) {
-  const notes = Array.isArray(profile.reviewNotes) ? profile.reviewNotes : [];
-
-  if (notes.length === 0) {
-    return `<div class="noteItem">No data quality issues flagged.</div>`;
-  }
-
-  return notes.map((note) => `<div class="noteItem">${escapeHtml(note)}</div>`).join("");
-}
-
-function overviewPanelMarkup(profile, industries) {
-  const successStories = successStoriesMarkup(profile);
-  const solutions = solutionsMarkup(profile);
-
-  return `
-    <section data-detail-panel="overview" class="detailPanel ${state.activeDetailTab === "overview" ? "active" : ""}">
-      <section class="section firstSection">
-        <h3>Company Introduction</h3>
-        <p class="description">${escapeHtml(profile.description || "No company introduction available.")}</p>
-      </section>
-
-      ${
-        successStories
-          ? `<section class="section">
-              <h3>Success Stories</h3>
-              <div class="editableEntryList">${successStories}</div>
-            </section>`
-          : ""
-      }
-
-      ${
-        solutions
-          ? `<section class="section">
-              <h3>Solutions</h3>
-              <div class="editableEntryList">${solutions}</div>
-            </section>`
-          : ""
-      }
-    </section>
-  `;
-}
-
-function partnershipsPanelMarkup(profile) {
-  return `
-    <section data-detail-panel="partnerships" class="detailPanel ${state.activeDetailTab === "partnerships" ? "active" : ""}">
-      <h3>Partnerships</h3>
-      <div class="chips">${chipButtons(profile.vendorPartnerships, "vendor", "No explicit vendor partnerships found", true)}</div>
-    </section>
-  `;
-}
-
-function qualityPanelMarkup(profile) {
-  const normalizedScore = Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0));
-  const quality = qualityClass(normalizedScore);
-
-  return `
-    <section data-detail-panel="quality" class="detailPanel ${state.activeDetailTab === "quality" ? "active" : ""}">
-      <h3>Data Quality</h3>
-      <div class="qualitySummary quality-${quality}">
-        <div>
-          <span>Scoring</span>
-          ${starRatingMarkup(normalizedScore)}
-        </div>
-        <strong>${normalizedScore}%</strong>
-      </div>
-
-      <section class="section">
-        <h3>Sources Checked</h3>
-        ${evidenceSummaryMarkup(profile)}
-      </section>
-
-      <section class="section">
-        <h3>Review Notes</h3>
-        <div class="notes">${dataQualityMarkup(profile)}</div>
-      </section>
-    </section>
-  `;
 }
 
 function providerLocationText(profile) {
@@ -1377,37 +1089,16 @@ function providerFocusCodes(profile) {
 
 function providerActionMarkup(profile) {
   const website = profile.website || (profile.domain ? `https://${profile.domain}` : "");
-  const accessUrl = profileAccessUrl(profile);
 
   return `
     <div class="providerActions">
       <a class="providerPrimaryAction" href="#provider-contact" data-provider-action="contact">Contact provider</a>
-      <a class="providerSecondaryAction" href="${escapeHtml(accessUrl)}">Claim or manage profile</a>
       ${website ? `<a class="providerSecondaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
     </div>
   `;
 }
 
-function profileAccessUrl(profile) {
-  return profile?.domain ? `/profile-access?domain=${encodeURIComponent(profile.domain)}` : "/claim";
-}
-
-function providerClaimStatusMarkup(profile) {
-  const claimed = Boolean(profile.claimed);
-
-  return `
-    <div class="providerClaimStatus">
-      <strong>${claimed ? "Claimed and verified" : "Unclaimed profile"}</strong>
-      <span>${claimed
-        ? "This profile has been verified by Rocket Engineers."
-        : "A verified company representative can request profile ownership."}</span>
-    </div>
-  `;
-}
-
 function providerRequestPanelMarkup(profile) {
-  const accessUrl = profileAccessUrl(profile);
-
   return `
     <section id="provider-contact" class="providerRequestPanel">
       <div>
@@ -1436,15 +1127,6 @@ function providerRequestPanelMarkup(profile) {
         <button class="providerPrimaryAction" type="submit">Request introduction</button>
         <p class="providerRequestMessage" data-provider-lead-message aria-live="polite"></p>
       </form>
-    </section>
-    <section id="provider-claim" class="providerRequestPanel compact">
-      <div>
-        <span class="eyebrow">Profile owner</span>
-        <h3>Claim, verify, or request removal</h3>
-        ${providerClaimStatusMarkup(profile)}
-        <p>Provider-specific access keeps requests tied to this company. Approved claimants can manage company information, profile content, and future lead handling.</p>
-      </div>
-      <a class="providerPrimaryAction" href="${escapeHtml(accessUrl)}">Open provider access page</a>
     </section>
   `;
 }
@@ -1592,13 +1274,6 @@ function renderDetail() {
     return;
   }
 
-  const adminVisible = isAdminVisitor();
-  const allowedTabs = visibleDetailTabs(adminVisible).map((tab) => tab.key);
-
-  if (!allowedTabs.includes(state.activeDetailTab)) {
-    state.activeDetailTab = "overview";
-  }
-
   document.body.classList.add("profileMode");
   elements.detailContent.closest(".detail").hidden = false;
   elements.detailContent.className = "detailContent";
@@ -1665,47 +1340,9 @@ function renderDetail() {
           </aside>
         </section>
         ${providerRequestPanelMarkup(profile)}
-
-        ${
-          adminVisible
-            ? `
-              <nav class="detailTabs" aria-label="Profile sections">
-                ${detailTabsMarkup(adminVisible)}
-              </nav>
-              ${overviewPanelMarkup(profile, industries)}
-              ${partnershipsPanelMarkup(profile)}
-            `
-            : ""
-        }
-        ${
-          adminVisible
-            ? `
-              <section data-detail-panel="activity" class="detailPanel ${state.activeDetailTab === "activity" ? "active" : ""}">
-                <h3>Recent Activity</h3>
-                ${activityChannelsMarkup(profile)}
-              </section>
-              ${qualityPanelMarkup(profile)}
-              <section data-detail-panel="outreach" class="detailPanel ${state.activeDetailTab === "outreach" ? "active" : ""}">
-                <h3>Outreach Status</h3>
-                <div class="noteItem">TBD.</div>
-              </section>
-            `
-            : ""
-        }
-        <section class="providerIntroFooter">
-          <span>Interested but not sure? Rocket Engineers can broker the introduction.</span>
-          <a href="#provider-contact" data-provider-action="contact">Request an introduction -></a>
-        </section>
       </div>
     </div>
   `;
-
-  elements.detailContent.querySelectorAll("[data-detail-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeDetailTab = button.dataset.detailTab;
-      renderDetail();
-    });
-  });
 
   elements.detailContent.querySelectorAll("[data-tag-type]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1716,12 +1353,7 @@ function renderDetail() {
   initializeChipDisclosures();
 
   elements.detailContent.querySelector(".backButton").addEventListener("click", () => {
-    if (new URLSearchParams(window.location.search).has("provider")) {
-      window.history.back();
-      return;
-    }
-
-    closeProviderDetail();
+    closeProviderDetail({ pushHistory: true });
   });
 
   elements.detailContent.querySelectorAll("[data-profile-page]").forEach((link) => {
@@ -1947,7 +1579,7 @@ function miniProviderMarkup(domain, name) {
   `;
 }
 
-function staticShell(title, kicker, copy, meta = "") {
+function staticShell(title, kicker, copy, meta = "", extra = "") {
   return `
     <div class="staticShell">
       <section class="staticHero">
@@ -1955,6 +1587,7 @@ function staticShell(title, kicker, copy, meta = "") {
           <span class="eyebrow">${escapeHtml(kicker)}</span>
           <h1>${escapeHtml(title)}<span>.</span></h1>
           <p>${escapeHtml(copy)}</p>
+          ${extra}
         </div>
         ${meta ? `<aside>${meta}</aside>` : ""}
       </section>
@@ -1974,7 +1607,7 @@ function bindStaticProviderLinks(root) {
 function renderStoriesPage() {
   elements.storiesPage.innerHTML = `
     ${staticShell(
-      "Success stories",
+      "Success Stories",
       "Customer proof",
       "Customer proof examples for the marketplace, using the same Rocket Engineers visual language.",
       `<strong>${STATIC_STORIES.length}</strong><span>featured stories</span><strong>Static</strong><span>preview content</span>`
@@ -2123,28 +1756,122 @@ function renderSignalsPage() {
   `;
 }
 
+function homeStatsMarkup() {
+  const countries = new Set(state.profiles.map((profile) => profile.country).filter(Boolean)).size;
+
+  return `
+    <strong>${state.profiles.length}</strong><span>public providers</span>
+    <strong>${countries}</strong><span>countries covered</span>
+    <strong>5</strong><span>marketplace sections</span>
+  `;
+}
+
+function homeFeaturedLogosMarkup() {
+  const featured = state.profiles.filter((profile) => profile.logoUrl).slice(0, 12);
+  const list = featured.length > 0 ? featured : state.profiles.slice(0, 12);
+
+  if (list.length === 0) {
+    return "";
+  }
+
+  const track = list.concat(list)
+    .map((profile, index) => `
+      <button class="featuredLogoItem" type="button" data-static-provider="${escapeHtml(profile.domain)}" ${index >= list.length ? 'aria-hidden="true" tabindex="-1"' : ""}>
+        ${logoMarkup(profile)}
+        <span>${escapeHtml(profile.companyName || profile.domain)}</span>
+      </button>
+    `).join("");
+
+  return `
+    <section class="staticShell workflowPanel logoMarqueeSection">
+      <div class="panelHeader">
+        <div>
+          <span class="eyebrow">In the directory</span>
+          <h2>Providers you can browse today</h2>
+        </div>
+      </div>
+      <div class="logoMarquee">
+        <div class="logoMarqueeTrack">${track}</div>
+      </div>
+    </section>
+  `;
+}
+
 function renderStaticPages() {
+  const heroCta = `
+    <div class="providerAccessActions heroCtaRow">
+      <button class="primaryAction" type="button" data-home-page="providers">Browse providers</button>
+      <a class="secondaryAction" href="#explore">See what's inside</a>
+    </div>
+  `;
+  const exploreCards = [
+    [
+      "Provider index",
+      "Search and filter live provider profiles by country, services, technologies, partnerships, and industries.",
+      "providers",
+      '<path d="m21 21-4.3-4.3" /><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />',
+    ],
+    [
+      "Success Stories",
+      "Browse static customer proof while the content model is being built out.",
+      "stories",
+      '<path d="m12 2 2.9 6.5 7.1.7-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7-5.4-4.7 7.1-.7Z" />',
+    ],
+    [
+      "Events",
+      "Preview provider webinars, meetups, and technical sessions.",
+      "events",
+      '<path d="M4 5h16v16H4Z" /><path d="M4 10h16" /><path d="M8 3v4" /><path d="M16 3v4" />',
+    ],
+    [
+      "Signals Pro",
+      "Preview the premium intelligence feed for provider GTM teams.",
+      "signals",
+      '<path d="M3 12h4l3 8 4-16 3 8h4" />',
+    ],
+  ];
+
   elements.homePage.innerHTML = `
     ${staticShell(
       "Rocket Engineers",
       "Provider marketplace",
       "Find cloud, DevOps, platform engineering, security, and software partners from live profile evidence.",
-      `<strong>${state.profiles.length}</strong><span>public providers</span><strong>5</strong><span>marketplace sections</span>`
+      homeStatsMarkup(),
+      heroCta
     )}
-    <div class="staticShell staticGrid threeColumnStatic">
-      ${[
-        ["Provider index", "Search and filter live provider profiles by country, services, technologies, partnerships, and industries.", "providers"],
-        ["Success stories", "Browse static customer proof while the content model is being built out.", "stories"],
-        ["Events", "Preview provider webinars, meetups, and technical sessions.", "events"],
-        ["Signals Pro", "Preview the premium intelligence feed for provider GTM teams.", "signals"]
-      ].map(([title, copy, page]) => `
-        <button class="workspaceCard homeNavCard" type="button" data-home-page="${escapeHtml(page)}">
-          <span class="eyebrow">Open</span>
-          <h2>${escapeHtml(title)}</h2>
-          <p>${escapeHtml(copy)}</p>
-        </button>
-      `).join("")}
-    </div>
+
+    ${homeFeaturedLogosMarkup()}
+
+    <section id="explore" class="staticShell homeExploreSection">
+      <div class="panelHeader">
+        <div>
+          <span class="eyebrow">Explore</span>
+          <h2>Everything in the marketplace</h2>
+        </div>
+      </div>
+      <div class="homeExploreGrid">
+        ${exploreCards.map(([title, copy, page, iconPath]) => `
+          <button class="homeExploreCard" type="button" data-home-page="${escapeHtml(page)}">
+            <span class="homeExploreIcon" aria-hidden="true"><svg viewBox="0 0 24 24">${iconPath}</svg></span>
+            <span class="homeExploreTitleRow">
+              <h3>${escapeHtml(title)}</h3>
+              ${page === "signals" ? '<span class="navBadge">Pro</span>' : ""}
+            </span>
+            <p>${escapeHtml(copy)}</p>
+            <span class="homeExploreArrow" aria-hidden="true">Open &rarr;</span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+
+    <section class="homeClosingCta">
+      <div>
+        <span class="eyebrow">Ready when you are</span>
+        <h2>Find your next engineering partner</h2>
+        <p>Search 200+ reviewed provider profiles and request an introduction in minutes.</p>
+      </div>
+      <button class="primaryAction" type="button" data-home-page="providers">Browse all providers</button>
+    </section>
   `;
   elements.homePage.querySelectorAll("[data-home-page]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2152,6 +1879,7 @@ function renderStaticPages() {
       window.history.pushState({ page: button.dataset.homePage }, "", button.dataset.homePage === "providers" ? providerListUrl() : `#${button.dataset.homePage}`);
     });
   });
+  bindStaticProviderLinks(elements.homePage);
   renderStoriesPage();
   renderEventsPage();
   renderSignalsPage();

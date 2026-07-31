@@ -1,4 +1,4 @@
-const { logActivityEvent, verifyAdminToken } = require("../ui/supabaseStore");
+const { logActivityEvent, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
@@ -21,6 +21,6 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json({ ok: true, activity: row });
   } catch (error) {
-    response.status(400).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

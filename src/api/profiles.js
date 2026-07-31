@@ -9,7 +9,7 @@ module.exports = async function handler(request, response) {
 
   try {
     if (isSupabaseConfigured()) {
-      let databaseProfiles = [];
+      let databaseProfiles = null;
 
       try {
         databaseProfiles = await listPublishedProviders();
@@ -17,7 +17,7 @@ module.exports = async function handler(request, response) {
         console.warn(`[profiles] Supabase unavailable, using static profiles: ${error.message}`);
       }
 
-      if (databaseProfiles.length > 0) {
+      if (databaseProfiles !== null) {
         response.setHeader("Cache-Control", "no-store");
         response.status(200).json(databaseProfiles);
         return;

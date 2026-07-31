@@ -1,5 +1,6 @@
 const {
   listAdminState,
+  statusForError,
   updateProvider,
   verifyAdminToken,
 } = require("../ui/supabaseStore");
@@ -64,6 +65,6 @@ module.exports = async function handler(request, response) {
       outreachMessages: updatedProvider.outreachMessages || outreachMessages,
     });
   } catch (error) {
-    response.status(500).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

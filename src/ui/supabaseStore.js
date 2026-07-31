@@ -155,6 +155,38 @@ function automaticStatusForConfidence(status, profile = {}) {
   return normalizedStatus;
 }
 
+async function latestReviewerFeedbackIsUp(id) {
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/reviewer_feedback?select=feedback&provider_id=eq.${encodeURIComponent(id)}&order=created_at.desc&limit=1`
+    );
+
+    return rows[0]?.feedback === "up";
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function assertConfidenceGuardrail(id, status, confidenceScore, { incomingFeedback } = {}) {
+  const normalizedStatus = normalizeLifecycleStatus(status);
+
+  if (!PUBLIC_PROVIDER_STATUSES.includes(normalizedStatus) || confidenceScore >= CONFIDENCE_GUARDRAIL_SCORE) {
+    return;
+  }
+
+  if (incomingFeedback === "up" || (await latestReviewerFeedbackIsUp(id))) {
+    return;
+  }
+
+  throw new Error(
+    `Confidence is ${confidenceScore}%, below the ${CONFIDENCE_GUARDRAIL_SCORE}% guardrail. Record reviewer feedback (thumbs up) or improve the profile before publishing.`
+  );
+}
+
 function supabaseConfig() {
   return {
     url: process.env.SUPABASE_URL || "",
@@ -214,7 +246,18 @@ async function supabaseFetch(path, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Supabase request failed: ${response.status}`);
+    let parsed = null;
+
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (parseError) {
+      parsed = null;
+    }
+
+    const error = new Error(parsed?.message || text || `Supabase request failed: ${response.status}`);
+    error.code = parsed?.code || null;
+    error.details = parsed?.details || null;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -631,7 +674,7 @@ async function listClaimRequests() {
 
     return rows.map(rowToClaimRequest);
   } catch (error) {
-    if (/claim_requests|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -645,7 +688,7 @@ async function listProviderLeads() {
 
     return rows.map(rowToProviderLead);
   } catch (error) {
-    if (/provider_leads|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -706,7 +749,7 @@ async function listApprovedSuccessStories(providerIds = []) {
 
     return rows.map(rowToSuccessStory);
   } catch (error) {
-    if (/success_stories|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -728,7 +771,7 @@ async function listApprovedUpcomingProviderEvents(providerIds = []) {
 
     return rows.map(rowToProviderEvent);
   } catch (error) {
-    if (/provider_events|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -742,7 +785,7 @@ async function listSuccessStories() {
 
     return rows.map(rowToSuccessStory);
   } catch (error) {
-    if (/success_stories|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -807,7 +850,7 @@ async function listProviderEvents() {
 
     return rows.map(rowToProviderEvent);
   } catch (error) {
-    if (/provider_events|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -882,7 +925,7 @@ async function listMarketSignals() {
 
     return rows.map(rowToMarketSignal);
   } catch (error) {
-    if (/market_signals|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -904,7 +947,7 @@ async function listApprovedMarketSignals(providerIds = []) {
 
     return rows.map(rowToMarketSignal);
   } catch (error) {
-    if (/market_signals|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -981,7 +1024,7 @@ async function listActivityEvents() {
 
     return rows.map(rowToActivityEvent);
   } catch (error) {
-    if (/activity_events|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -995,7 +1038,7 @@ async function listReviewerFeedback() {
 
     return rows.map(rowToReviewerFeedback);
   } catch (error) {
-    if (/reviewer_feedback|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return [];
     }
 
@@ -1407,7 +1450,7 @@ async function logActivityEvent({
 
     return rows[0] || null;
   } catch (error) {
-    if (/activity_events|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return null;
     }
 
@@ -1451,7 +1494,7 @@ async function logReviewerFeedback(providerId, {
 
     return rows[0] || null;
   } catch (error) {
-    if (/reviewer_feedback|relation|PGRST205|42P01/i.test(error.message)) {
+    if (isMissingTableError(error)) {
       return null;
     }
 
@@ -1478,6 +1521,11 @@ async function reviewClaimRequest(id, { status, reviewedBy } = {}) {
   const provider = current.provider_id
     ? (await supabaseFetch(`/rest/v1/providers?select=*&id=eq.${encodeURIComponent(current.provider_id)}&limit=1`))[0]
     : await findProviderByDomain(current.domain);
+
+  if (provider && normalizedStatus === "approved" && current.request_type !== "removal") {
+    await assertConfidenceGuardrail(provider.id, "claimed", Number.parseInt(provider.confidence_score, 10) || 0);
+  }
+
   const reviewedAt = new Date().toISOString();
   const rows = await supabaseFetch(`/rest/v1/claim_requests?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -1709,6 +1757,14 @@ function tagRowToClient(row = {}) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function isMissingTableError(error) {
+  if (error?.code === "42P01" || error?.code === "PGRST205") {
+    return true;
+  }
+
+  return /relation ".*?" does not exist|PGRST205/i.test(String(error?.message || ""));
 }
 
 function isMissingTagTaxonomyTable(error) {
@@ -1998,12 +2054,18 @@ async function signInWithPassword(email, password) {
   };
 }
 
+class AdminAuthError extends Error {}
+
+function statusForError(error) {
+  return error instanceof AdminAuthError ? 401 : 400;
+}
+
 async function verifyAdminToken(authHeader) {
   const config = supabaseConfig();
   const token = String(authHeader || "").replace(/^Bearer\s+/i, "");
 
   if (!config.url || !config.anonKey || !token) {
-    throw new Error("Unauthorized");
+    throw new AdminAuthError("Unauthorized");
   }
 
   const response = await fetch(`${normalizeSupabaseUrl(config.url)}/auth/v1/user`, {
@@ -2014,14 +2076,14 @@ async function verifyAdminToken(authHeader) {
   });
 
   if (!response.ok) {
-    throw new Error("Unauthorized");
+    throw new AdminAuthError("Unauthorized");
   }
 
   const user = await response.json();
   const email = String(user.email || "").toLowerCase();
 
   if (!config.adminEmails.includes(email)) {
-    throw new Error("Unauthorized");
+    throw new AdminAuthError("Unauthorized");
   }
 
   return { email, id: user.id };
@@ -2231,6 +2293,16 @@ async function uploadProviderLogo({ domain, filename, contentType, body }) {
 
 async function publishProvider(id, status = "approved") {
   const normalizedStatus = normalizeLifecycleStatus(status, "approved");
+  const currentRows = await supabaseFetch(
+    `/rest/v1/providers?select=confidence_score&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+
+  if (!currentRows.length) {
+    throw new Error("Provider not found.");
+  }
+
+  await assertConfidenceGuardrail(id, normalizedStatus, Number.parseInt(currentRows[0].confidence_score, 10) || 0);
+
   const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
@@ -2245,9 +2317,19 @@ async function publishProvider(id, status = "approved") {
 async function updateProvider(id, profilePatch = {}, status, { reviewedBy } = {}) {
   const normalizedStatus = status ? normalizeLifecycleStatus(status) : null;
   const previousRows = await supabaseFetch(
-    `/rest/v1/providers?select=id,status&id=eq.${encodeURIComponent(id)}&limit=1`
+    `/rest/v1/providers?select=id,status,confidence_score&id=eq.${encodeURIComponent(id)}&limit=1`
   );
   const previousStatus = normalizeLifecycleStatus(previousRows[0]?.status || "", "scraped");
+
+  if (normalizedStatus && normalizedStatus !== previousStatus) {
+    await assertConfidenceGuardrail(
+      id,
+      normalizedStatus,
+      Number.parseInt(previousRows[0]?.confidence_score, 10) || 0,
+      { incomingFeedback: profilePatch.scraperQualityLog?.feedback }
+    );
+  }
+
   const rowPatch = {
     ...(profilePatch.companyName !== undefined ? { company_name: profilePatch.companyName } : {}),
     ...(profilePatch.logoUrl !== undefined ? { logo_url: profilePatch.logoUrl } : {}),
@@ -2322,7 +2404,7 @@ async function updateProvider(id, profilePatch = {}, status, { reviewedBy } = {}
     });
   }
 
-  await syncExistingTagsFromProviders([rows[0]]);
+  await syncCandidateTagsFromProfile(provider);
 
   return provider;
 }
@@ -2344,6 +2426,8 @@ async function deleteScrapeJob(id) {
 }
 
 module.exports = {
+  AdminAuthError,
+  statusForError,
   createClaimRequest,
   createProviderLead,
   createScrapeJob,

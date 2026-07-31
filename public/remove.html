@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Request Profile Removal</title>
+    <title>Request Profile Removal — Rocket Engineers</title>
+    <meta name="description" content="Removal requests are tied to a specific Rocket Engineers provider profile. Open the link from your outreach email or provider listing to continue." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -13,32 +17,69 @@
       </div>
       <nav class="topNav" aria-label="Primary navigation">
         <a href="/">Providers</a>
-        <a href="/connect">Connect</a>
-        <a href="/claim">Claim</a>
-        <a href="/remove" class="active">Remove</a>
-        <a href="/admin#requests">Admin</a>
       </nav>
     </header>
 
-    <main class="workflowPage">
-      <section class="workflowHero">
+    <main class="workflowPage providerAccessPage">
+      <section class="providerAccessHero">
         <div>
           <span class="eyebrow">Profile owner</span>
           <h1>Request profile removal</h1>
-          <p>For security, removal requests must start from a specific provider profile or an admin outreach link.</p>
+          <p>Rocket Engineers is a directory of vetted cloud, DevOps, and platform engineering providers across the DACH region. Removal requests must start from a specific provider profile or outreach link, not this general page.</p>
+          <ul class="trustBadgeRow">
+            <li>Reviewed by a person, not automatic</li>
+            <li>No cost to be listed</li>
+            <li>You control what goes public</li>
+          </ul>
         </div>
-        <ol class="workflowSteps">
-          <li>Open the exact provider profile that should be reviewed.</li>
-          <li>Use the provider-specific profile access page.</li>
-          <li>If approved, the provider can be moved to removal status.</li>
-        </ol>
+        <aside class="providerAccessCard">
+          <span>Why a link is required</span>
+          <strong>Provider-specific access</strong>
+          <small>This keeps removal requests tied to the correct company and prevents anyone else from requesting removal on your behalf.</small>
+        </aside>
+      </section>
+
+      <section class="workflowPanel aboutPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Who is Rocket Engineers?</h2>
+            <p>Some context, since this may be the first time you've heard from us.</p>
+          </div>
+        </div>
+        <div class="aboutGrid">
+          <article class="aboutCard">
+            <span class="aboutCardIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 20h16" /><path d="M6 20V10l6-6 6 6v10" /><path d="M10 20v-6h4v6" /></svg>
+            </span>
+            <strong>What we are</strong>
+            <p>Rocket Engineers is a directory that helps companies find vetted cloud, DevOps, and platform engineering partners across Switzerland, Germany, and the wider DACH region.</p>
+          </article>
+          <article class="aboutCard">
+            <span class="aboutCardIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3" /><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
+            </span>
+            <strong>Why you're listed</strong>
+            <p>Our team builds an initial profile from information already public on your company website, GitHub, and similar sources. Nothing here was submitted by us to a third party or made up.</p>
+          </article>
+          <article class="aboutCard">
+            <span class="aboutCardIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
+            </span>
+            <strong>What happens after a request</strong>
+            <p>A Rocket Engineers reviewer confirms the request came from the company before anything is taken down. Nothing changes publicly without a person approving it first.</p>
+          </article>
+        </div>
       </section>
 
       <section class="workflowPanel providerAccessUnavailable" data-legacy-access-page="removal">
         <h2>Provider-specific link required</h2>
-        <p>This page does not allow choosing a company manually. If you received an outreach link, use that link. Otherwise, find the profile in the directory and open the profile access page.</p>
+        <p>This page does not allow choosing a company manually. If you received an outreach link, use that link. Otherwise, find the profile in the directory and open the profile access page from there.</p>
         <a class="primaryAction" href="/">Find provider profile</a>
       </section>
+
+      <footer class="workflowFooter">
+        <p>Questions this page didn't answer? Reply to the outreach email you received, or find your listing in the directory to reach the review team.</p>
+      </footer>
     </main>
 
     <script src="/request-flow.js"></script>

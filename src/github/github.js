@@ -143,18 +143,23 @@ async function findGitHubOrganization({ companyName, website }) {
 }
 
 async function fetchOrganizationRepos(login) {
-  const data = await githubRequest({
-    method: "get",
-    url: `/orgs/${encodeURIComponent(login)}/repos`,
-    params: {
-      sort: "updated",
-      direction: "desc",
-      per_page: REPO_LIMIT,
-      type: "public",
-    },
-  });
+  try {
+    const data = await githubRequest({
+      method: "get",
+      url: `/orgs/${encodeURIComponent(login)}/repos`,
+      params: {
+        sort: "updated",
+        direction: "desc",
+        per_page: REPO_LIMIT,
+        type: "public",
+      },
+    });
 
-  return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.warn(`[github] Failed to fetch repos for ${login}: ${error.message}`);
+    return [];
+  }
 }
 
 async function fetchRepoLanguages(owner, repo) {

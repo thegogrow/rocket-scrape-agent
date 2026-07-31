@@ -16,7 +16,7 @@ module.exports = async function handler(request, response) {
 
   try {
     if (isSupabaseConfigured()) {
-      let databaseProfiles = [];
+      let databaseProfiles = null;
 
       try {
         databaseProfiles = await listPublishedProviders();
@@ -24,11 +24,17 @@ module.exports = async function handler(request, response) {
         console.warn(`[profile] Supabase unavailable, using static profile: ${error.message}`);
       }
 
-      const databaseProfile = databaseProfiles.find((profile) => profile.domain === domain);
+      if (databaseProfiles !== null) {
+        const databaseProfile = databaseProfiles.find((profile) => profile.domain === domain);
 
-      if (databaseProfile) {
+        if (databaseProfile) {
+          response.setHeader("Cache-Control", "no-store");
+          response.status(200).json(databaseProfile);
+          return;
+        }
+
         response.setHeader("Cache-Control", "no-store");
-        response.status(200).json(databaseProfile);
+        response.status(404).json({ error: "Profile not found." });
         return;
       }
     }

@@ -1,4 +1,4 @@
-const { getOperationalReadiness, isSupabaseConfigured, verifyAdminToken } = require("../ui/supabaseStore");
+const { getOperationalReadiness, isSupabaseConfigured, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -13,6 +13,6 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json(await getOperationalReadiness());
   } catch (error) {
-    response.status(401).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

@@ -1,4 +1,4 @@
-const { isSupabaseConfigured, listAdminState, verifyAdminToken } = require("../ui/supabaseStore");
+const { isSupabaseConfigured, listAdminState, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -22,6 +22,6 @@ module.exports = async function handler(request, response) {
       ...(await listAdminState()),
     });
   } catch (error) {
-    response.status(401).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };

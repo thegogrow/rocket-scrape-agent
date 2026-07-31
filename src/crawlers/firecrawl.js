@@ -3,7 +3,11 @@ const { env } = require("../config/env");
 
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const POLL_INTERVAL_MS = 5000;
-const MAX_POLL_ATTEMPTS = 3;
+// The primary crawl (up to 5 pages) realistically needs more time to finish than a
+// single poll window allows; the fallback crawl is a 1-page request that should
+// either complete quickly or not be worth waiting as long for.
+const PRIMARY_MAX_POLL_ATTEMPTS = 6;
+const FALLBACK_MAX_POLL_ATTEMPTS = 2;
 const CREATE_CRAWL_TIMEOUT_MS = 15000;
 const STATUS_TIMEOUT_MS = 5000;
 const PAGE_FETCH_TIMEOUT_MS = 30000;
@@ -247,11 +251,14 @@ async function scrapeWebsite(url) {
   };
 }
 
+const MAX_PAGINATION_CHUNKS = 20;
+
 async function collectAllCrawlData(initialStatus) {
   const pages = [...(Array.isArray(initialStatus.data) ? initialStatus.data : [])];
   let nextUrl = initialStatus.next;
+  let chunkCount = 0;
 
-  while (nextUrl) {
+  while (nextUrl && chunkCount < MAX_PAGINATION_CHUNKS) {
     const nextChunk = await fetchNextPage(nextUrl);
 
     if (Array.isArray(nextChunk.data)) {
@@ -259,12 +266,13 @@ async function collectAllCrawlData(initialStatus) {
     }
 
     nextUrl = nextChunk.next || null;
+    chunkCount += 1;
   }
 
   return pages;
 }
 
-async function executeCrawl(url, crawlOptions) {
+async function executeCrawl(url, crawlOptions, maxPollAttempts = PRIMARY_MAX_POLL_ATTEMPTS) {
   const crawlJob = await startCrawl(url, crawlOptions);
   const crawlId = crawlJob?.id;
 
@@ -274,11 +282,11 @@ async function executeCrawl(url, crawlOptions) {
 
   let statusResponse = null;
 
-  for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxPollAttempts; attempt += 1) {
     try {
       statusResponse = await fetchCrawlStatus(crawlId);
     } catch (error) {
-      if (attempt >= MAX_POLL_ATTEMPTS) {
+      if (attempt >= maxPollAttempts || !isRetryableError(error)) {
         throw error;
       }
 
@@ -370,7 +378,7 @@ async function crawlWebsite(url) {
       }
 
       try {
-        crawlExecution = await executeCrawl(normalizedUrl, FALLBACK_CRAWL_OPTIONS);
+        crawlExecution = await executeCrawl(normalizedUrl, FALLBACK_CRAWL_OPTIONS, FALLBACK_MAX_POLL_ATTEMPTS);
       } catch (fallbackError) {
         return await scrapeWebsite(normalizedUrl);
       }

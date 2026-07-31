@@ -1,4 +1,4 @@
-const { updateTagTaxonomy, verifyAdminToken } = require("../ui/supabaseStore");
+const { updateTagTaxonomy, statusForError, verifyAdminToken } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 module.exports = async function handler(request, response) {
@@ -13,6 +13,6 @@ module.exports = async function handler(request, response) {
 
     response.status(200).json(await updateTagTaxonomy(payload));
   } catch (error) {
-    response.status(400).json({ error: error.message });
+    response.status(statusForError(error)).json({ error: error.message });
   }
 };
