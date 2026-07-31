@@ -56,6 +56,7 @@ function exportDefinition(type, state) {
     return {
       filename: "reviewed-providers.csv",
       rows: reviewedProviders(state),
+      dateField: (row) => row.updatedAt,
       columns: [
         { label: "Company", value: (row) => row.companyName },
         { label: "Domain", value: (row) => row.domain },
@@ -71,6 +72,7 @@ function exportDefinition(type, state) {
     return {
       filename: "outreach-queue.csv",
       rows: outreachQueue(state),
+      dateField: (row) => row.message.approvedAt,
       columns: [
         { label: "Company", value: (row) => row.provider.companyName },
         { label: "Domain", value: (row) => row.provider.domain },
@@ -88,6 +90,7 @@ function exportDefinition(type, state) {
     return {
       filename: "claim-requests.csv",
       rows: state.claimRequests || [],
+      dateField: (row) => row.createdAt,
       columns: [
         { label: "Domain", value: (row) => row.domain },
         { label: "Email", value: (row) => row.email },
@@ -105,6 +108,7 @@ function exportDefinition(type, state) {
     return {
       filename: "provider-leads.csv",
       rows: state.providerLeads || [],
+      dateField: (row) => row.createdAt,
       columns: [
         { label: "Domain", value: (row) => row.domain },
         { label: "Name", value: (row) => row.name },
@@ -123,6 +127,7 @@ function exportDefinition(type, state) {
     return {
       filename: "provider-events.csv",
       rows: managedEvents(state),
+      dateField: (row) => row.event.approvedAt,
       columns: [
         { label: "Company", value: (row) => row.provider.companyName },
         { label: "Domain", value: (row) => row.provider.domain },
@@ -140,6 +145,7 @@ function exportDefinition(type, state) {
   return {
     filename: "market-signals.csv",
     rows: managedSignals(state),
+    dateField: (row) => row.signal.approvedAt,
     columns: [
       { label: "Company", value: (row) => row.provider.companyName },
       { label: "Domain", value: (row) => row.provider.domain },
@@ -152,6 +158,33 @@ function exportDefinition(type, state) {
       { label: "Approved At", value: (row) => row.signal.approvedAt },
     ],
   };
+}
+
+function filterRowsByDateRange(rows, dateField, from, to) {
+  if (!from && !to) {
+    return rows;
+  }
+
+  const fromTime = from ? new Date(from).getTime() : null;
+  const toTime = to ? new Date(`${to}T23:59:59.999Z`).getTime() : null;
+
+  return rows.filter((row) => {
+    const rowTime = new Date(dateField(row)).getTime();
+
+    if (Number.isNaN(rowTime)) {
+      return false;
+    }
+
+    if (fromTime !== null && rowTime < fromTime) {
+      return false;
+    }
+
+    if (toTime !== null && rowTime > toTime) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 module.exports = async function handler(request, response) {
@@ -171,10 +204,11 @@ module.exports = async function handler(request, response) {
 
     const state = await listAdminState();
     const definition = exportDefinition(type, state);
+    const rows = filterRowsByDateRange(definition.rows, definition.dateField, request.query?.from, request.query?.to);
 
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
     response.setHeader("Content-Disposition", `attachment; filename="${definition.filename}"`);
-    response.status(200).send(toCsv(definition.rows, definition.columns));
+    response.status(200).send(toCsv(rows, definition.columns));
   } catch (error) {
     response.status(statusForError(error)).json({ error: error.message });
   }

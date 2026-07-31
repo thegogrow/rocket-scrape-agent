@@ -1325,6 +1325,11 @@ a:hover {
   grid-template-columns: minmax(220px, 1.05fr) minmax(300px, 1.35fr) minmax(96px, 0.28fr) minmax(300px, 0.9fr);
 }
 
+.adminOutreachTable .adminTableHeader,
+.adminOutreachTable .adminTableRow {
+  grid-template-columns: minmax(160px, 0.75fr) minmax(90px, 0.4fr) minmax(90px, 0.4fr) minmax(220px, 1.4fr) minmax(120px, 0.45fr);
+}
+
 .adminMissingDataTable .adminTableHeader span:nth-child(3),
 .adminMissingDataTable .adminMissingDataRow .adminCell:nth-child(3) {
   justify-items: center;
@@ -1534,16 +1539,29 @@ a:hover {
 .metricsSummaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
+  gap: 0;
+  border-top: 1px solid var(--admin-line-strong);
+  border-left: 1px solid var(--admin-line-strong);
 }
 
 .metricsSummaryGrid article {
   display: grid;
-  gap: 8px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 10px;
   min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--admin-line);
+  min-height: 108px;
+  padding: 18px;
+  border: 0;
+  border-right: 1px solid var(--admin-line-strong);
+  border-bottom: 1px solid var(--admin-line-strong);
   background: #fff;
+}
+
+.metricsSummaryGrid article svg {
+  width: 18px;
+  height: 18px;
+  color: var(--admin-red);
 }
 
 .metricsSummaryGrid span,
@@ -1551,12 +1569,26 @@ a:hover {
   color: #666;
   font-size: 12px;
   font-weight: 800;
+  text-transform: uppercase;
+}
+
+.metricsSummaryGrid strong,
+.metricsSummaryGrid small {
+  grid-column: 1 / -1;
 }
 
 .metricsSummaryGrid strong {
   color: #111;
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1;
+}
+
+.metricsSummaryGrid article.metricCardAttention {
+  background: var(--admin-soft-red);
+}
+
+.metricsSummaryGrid article.metricCardAttention strong {
+  color: var(--admin-red);
 }
 
 .metricBreakdownList {
@@ -5232,6 +5264,20 @@ h4,
   color: var(--admin-red-dark);
 }
 
+.adminSampleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  padding: 5px 10px;
+  border: 1px dashed var(--admin-line-strong);
+  border-radius: 999px;
+  color: #777;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .statusPill {
   min-height: 26px;
   padding: 5px 10px;
@@ -5278,7 +5324,7 @@ h4,
 
 .tagSummaryGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--admin-line);
   border-left: 1px solid var(--admin-line);
 }

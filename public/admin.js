@@ -44,6 +44,7 @@ const state = {
     search: "",
     status: "",
   },
+  showSampleRequests: false,
 };
 
 const SVG_LOGO_DOMAINS = new Set([
@@ -263,6 +264,10 @@ const elements = {
   tagCategoryFilter: document.querySelector("#tagCategoryFilter"),
   tagStatusFilter: document.querySelector("#tagStatusFilter"),
   tagList: document.querySelector("#tagList"),
+  requestsSampleToggle: document.querySelector("#requestsSampleToggle"),
+  requestsSampleNotice: document.querySelector("#requestsSampleNotice"),
+  exportFromFilter: document.querySelector("#exportFromFilter"),
+  exportToFilter: document.querySelector("#exportToFilter"),
   publishedPrevButton: document.querySelector("#publishedPrevButton"),
   publishedNextButton: document.querySelector("#publishedNextButton"),
   publishedPageInfo: document.querySelector("#publishedPageInfo"),
@@ -641,14 +646,15 @@ function providerActions(provider, options = {}) {
     includeProfile = true,
     includeRecrawl = true,
     includeUnpublish = includeManage,
+    includeOutreach = true,
   } = options;
   const key = escapeHtml(provider.id || provider.domain || "");
 
   const actionsByKind = {
     edit: includeEdit ? actionButton("edit", "Edit", `data-edit-provider="${key}"`) : "",
     publish: includePublish && provider.id ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`) : "",
-    profile: includeProfile && provider.domain ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`) : "",
-    outreach: provider.domain ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"') : "",
+    profile: includeProfile && provider.domain ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`, 'target="_blank" rel="noopener"') : "",
+    outreach: includeOutreach && provider.domain ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"') : "",
     recrawl: includeRecrawl ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${key}"`) : "",
     unpublish: includeUnpublish ? actionButton("unpublish", "Unpublish", `data-unpublish-provider="${key}"`) : "",
     delete: includeDelete ? actionButton("delete", "Delete", `data-delete-provider="${key}"`) : "",
@@ -668,6 +674,7 @@ function providerRow(provider, options = {}) {
     includePublish: includeAction,
     includeManage: compact,
     includeProfile: compact,
+    includeOutreach: compact,
   });
 
   return `
@@ -2309,7 +2316,7 @@ function missingDataRow(provider) {
       </div>
       <div class="adminCell adminIssueCell">${issueChips(issues)}</div>
       <div class="adminCell"><span>${escapeHtml(confidenceLabel(provider))}</span></div>
-      <div class="adminCell adminCellAction">${key ? providerActions(provider, { includeEdit: true, includeRecrawl: true, includeProfile: true }) : ""}</div>
+      <div class="adminCell adminCellAction">${key ? providerActions(provider, { includeEdit: true, includeRecrawl: true, includeProfile: true, includeOutreach: false }) : ""}</div>
     </article>
   `;
 }
@@ -2695,7 +2702,7 @@ function outreachProviderRow(provider) {
     summary.approved ? `${summary.approved} approved` : "",
     summary.sent ? `${summary.sent} sent` : "",
   ].filter(Boolean).join(", ") || "No messages yet";
-  const actions = providerActions(provider, { includeEdit: true, includeProfile: isLiveProvider(provider) });
+  const actions = providerActions(provider, { includeEdit: false, includeProfile: false, includeRecrawl: false });
 
   return `
     <article class="adminTableRow adminOutreachRow">
@@ -2728,10 +2735,10 @@ function renderOutreach() {
 
   if (elements.outreachSummaryGrid) {
     elements.outreachSummaryGrid.innerHTML = [
-      metricCard("Needs contacts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_contacts").length),
-      metricCard("Needs drafts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_drafts").length),
-      metricCard("Drafts to review", queue.filter((provider) => outreachStageForProvider(provider) === "draft").length),
-      metricCard("Approved, not sent", queue.filter((provider) => outreachStageForProvider(provider) === "approved").length),
+      metricCard("Needs contacts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_contacts").length, "", "warning"),
+      metricCard("Needs drafts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_drafts").length, "", "mail"),
+      metricCard("Drafts to review", queue.filter((provider) => outreachStageForProvider(provider) === "draft").length, "", "mail"),
+      metricCard("Approved, not sent", queue.filter((provider) => outreachStageForProvider(provider) === "approved").length, "", "check"),
     ].join("");
   }
 
@@ -2796,7 +2803,9 @@ function compactRequestRow(item) {
   `;
 }
 
-function claimRequestRow(request = {}) {
+const SAMPLE_BADGE = `<span class="adminSampleBadge">Sample</span>`;
+
+function claimRequestRow(request = {}, isSample = false) {
   const isPending = (request.status || "pending") === "pending";
   const domainMatch = request.metadata?.domainMatch;
   const emailDomain = request.metadata?.emailDomain || "";
@@ -2815,7 +2824,7 @@ function claimRequestRow(request = {}) {
   const reviewedText = request.reviewedAt
     ? `Reviewed ${formatActivityDate(request.reviewedAt)}${request.reviewedBy ? ` by ${request.reviewedBy}` : ""}`
     : "Not reviewed";
-  const actions = renderActionCell([
+  const actions = isSample ? SAMPLE_BADGE : renderActionCell([
     requestProviderAction(request.domain),
     isPending ? actionButton("publish", "Approve", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="approved"`) : "",
     isPending ? actionButton("delete", "Reject", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="rejected"`) : "",
@@ -2848,12 +2857,12 @@ function claimRequestRow(request = {}) {
   `;
 }
 
-function providerLeadRow(lead = {}) {
+function providerLeadRow(lead = {}, isSample = false) {
   const status = lead.status || "new";
   const reviewedText = lead.reviewedAt
     ? `Reviewed ${formatActivityDate(lead.reviewedAt)}${lead.reviewedBy ? ` by ${lead.reviewedBy}` : ""}`
     : "Not reviewed";
-  const actions = renderActionCell([
+  const actions = isSample ? SAMPLE_BADGE : renderActionCell([
     requestProviderAction(lead.domain),
     status !== "reviewed" ? actionButton("process", "Reviewed", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="reviewed"`) : "",
     status !== "forwarded" ? actionButton("publish", "Forwarded", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="forwarded"`) : "",
@@ -2877,6 +2886,56 @@ function providerLeadRow(lead = {}) {
   `;
 }
 
+const SAMPLE_CLAIM_REQUESTS = [
+  {
+    id: "sample-claim-1",
+    domain: "adfinis.com",
+    email: "jane.owner@adfinis.com",
+    requestType: "claim",
+    status: "pending",
+    verificationMethod: "email_domain_match",
+    metadata: { domainMatch: true, emailDomain: "adfinis.com" },
+    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: "sample-claim-2",
+    domain: "vshn.ch",
+    email: "owner@vshn.ch",
+    requestType: "removal",
+    status: "approved",
+    verificationMethod: "manual_review",
+    metadata: { domainMatch: false, emailDomain: "vshn.ch" },
+    reviewedBy: "admin@rocketengineers.com",
+    reviewedAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+  },
+];
+
+const SAMPLE_PROVIDER_LEADS = [
+  {
+    id: "sample-lead-1",
+    domain: "ti8m.com",
+    name: "Alex Muller",
+    company: "Acme Robotics",
+    email: "alex@acmerobotics.com",
+    message: "Looking for a Swiss cloud partner for a Kubernetes migration starting next quarter.",
+    status: "new",
+    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sample-lead-2",
+    domain: "puzzle.ch",
+    name: "Sam Rivera",
+    company: "Northwind Freight",
+    email: "sam@northwindfreight.io",
+    message: "Interested in a brokered introduction for a DevOps engagement.",
+    status: "reviewed",
+    reviewedBy: "admin@rocketengineers.com",
+    reviewedAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+  },
+];
+
 function renderRequests() {
   const incoming = [
     ...state.claimRequests.map((request) => ({ ...request, requestType: request.requestType || "claim" })),
@@ -2889,22 +2948,41 @@ function renderRequests() {
       : emptyState("No public requests yet.");
   }
 
+  if (elements.requestsSampleNotice) {
+    elements.requestsSampleNotice.hidden = !state.showSampleRequests;
+  }
+
   if (elements.claimRequestList) {
-    elements.claimRequestList.innerHTML = state.claimRequests.length
-      ? `${tableHeader(["Provider", "Type", "Status", "Created", "Actions"])}${state.claimRequests.map(claimRequestRow).join("")}`
+    const claimRequests = state.showSampleRequests ? SAMPLE_CLAIM_REQUESTS : state.claimRequests;
+
+    elements.claimRequestList.innerHTML = claimRequests.length
+      ? `${tableHeader(["Provider", "Type", "Status", "Created", "Actions"])}${claimRequests.map((request) => claimRequestRow(request, state.showSampleRequests)).join("")}`
       : emptyState("No claim or removal requests yet.");
   }
 
   if (elements.providerLeadList) {
-    elements.providerLeadList.innerHTML = state.providerLeads.length
-      ? `${tableHeader(["Provider", "Requester", "Message", "Status", "Created", "Actions"])}${state.providerLeads.map(providerLeadRow).join("")}`
+    const providerLeads = state.showSampleRequests ? SAMPLE_PROVIDER_LEADS : state.providerLeads;
+
+    elements.providerLeadList.innerHTML = providerLeads.length
+      ? `${tableHeader(["Provider", "Requester", "Message", "Status", "Created", "Actions"])}${providerLeads.map((lead) => providerLeadRow(lead, state.showSampleRequests)).join("")}`
       : emptyState("No brokered leads yet.");
   }
 }
 
-function metricCard(label, value, detail = "") {
+const METRIC_ICONS = {
+  check: `<path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" />`,
+  warning: `<path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" />`,
+  mail: `<path d="M4 5h16v10H7l-3 3V5Zm4 4v2h8V9H8Z" />`,
+  doc: `<path d="M5 4h14v16H5V4Zm4 4h6v2H9V8Zm0 4h6v2H9v-2Z" />`,
+  calendar: `<path d="M5 5h14v3H5V5Zm0 5h14v3H5v-3Zm0 5h9v3H5v-3Z" />`,
+};
+
+function metricCard(label, value, detail = "", icon = "") {
+  const isAttention = ["warning"].includes(icon);
+
   return `
-    <article>
+    <article class="${isAttention ? "metricCardAttention" : ""}">
+      ${icon ? `<svg viewBox="0 0 24 24" aria-hidden="true">${METRIC_ICONS[icon] || ""}</svg>` : ""}
       <span>${escapeHtml(label)}</span>
       <strong>${escapeHtml(value)}</strong>
       ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
@@ -3051,31 +3129,31 @@ function renderMetrics() {
       {
         title: "Pipeline Health",
         cards: [
-          metricCard("Approved profiles", metrics.approvedProfiles || 0),
-          metricCard("Scrape failures", metrics.scrapeFailures || 0),
-          metricCard("Low confidence", metrics.lowConfidenceProfiles || 0),
+          metricCard("Approved profiles", metrics.approvedProfiles || 0, "", "check"),
+          metricCard("Scrape failures", metrics.scrapeFailures || 0, "", "warning"),
+          metricCard("Low confidence", metrics.lowConfidenceProfiles || 0, "", "warning"),
         ],
       },
       {
         title: "Outreach",
         cards: [
-          metricCard("Outreach pending", metrics.outreachPending || 0),
-          metricCard("Outreach active", metrics.outreachActive || 0),
+          metricCard("Outreach pending", metrics.outreachPending || 0, "", "mail"),
+          metricCard("Outreach active", metrics.outreachActive || 0, "", "mail"),
         ],
       },
       {
         title: "Claims & Leads",
         cards: [
-          metricCard("Claimed profiles", metrics.claimedProfiles || 0),
-          metricCard("Removal requests", metrics.removalRequests || 0),
-          metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`),
+          metricCard("Claimed profiles", metrics.claimedProfiles || 0, "", "doc"),
+          metricCard("Removal requests", metrics.removalRequests || 0, "", "warning"),
+          metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`, "doc"),
         ],
       },
       {
         title: "Content",
         cards: [
-          metricCard("Approved stories", metrics.approvedSuccessStories || 0),
-          metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0),
+          metricCard("Approved stories", metrics.approvedSuccessStories || 0, "", "check"),
+          metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0, "", "calendar"),
         ],
       },
     ];
@@ -3621,7 +3699,7 @@ function updateBulkControls() {
   if (elements.reviewSelectPage) {
     elements.reviewBulkActionBar.hidden = !state.selectionMode.review;
     elements.reviewSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.review));
-    elements.reviewSelectModeButton.lastChild.textContent = state.selectionMode.review ? "Done" : "Select";
+    elements.reviewSelectModeButton.querySelector("span").textContent = state.selectionMode.review ? "Done" : "Select";
     elements.reviewSelectPage.checked = reviewAllSelected;
     elements.reviewSelectPage.indeterminate = !reviewAllSelected && reviewSelected.length > 0;
     elements.reviewBulkCount.textContent = `${reviewSelected.length} selected`;
@@ -3631,7 +3709,7 @@ function updateBulkControls() {
   if (elements.publishedSelectPage) {
     elements.publishedBulkActionBar.hidden = !state.selectionMode.published;
     elements.publishedSelectModeButton.setAttribute("aria-pressed", String(state.selectionMode.published));
-    elements.publishedSelectModeButton.lastChild.textContent = state.selectionMode.published ? "Done" : "Select";
+    elements.publishedSelectModeButton.querySelector("span").textContent = state.selectionMode.published ? "Done" : "Select";
     elements.publishedSelectPage.checked = publishedAllSelected;
     elements.publishedSelectPage.indeterminate = !publishedAllSelected && publishedSelected.length > 0;
     elements.publishedBulkCount.textContent = `${publishedSelected.length} selected`;
@@ -3779,8 +3857,18 @@ async function updateProviderLeadStatus(id, status) {
   return payload;
 }
 
-async function downloadAdminExport(type) {
-  const response = await fetch(`/api/admin-export?type=${encodeURIComponent(type)}`, {
+async function downloadAdminExport(type, { from = "", to = "" } = {}) {
+  const params = new URLSearchParams({ type });
+
+  if (from) {
+    params.set("from", from);
+  }
+
+  if (to) {
+    params.set("to", to);
+  }
+
+  const response = await fetch(`/api/admin-export?${params.toString()}`, {
     headers: adminHeaders(),
   });
   const text = await response.text();
@@ -4024,7 +4112,7 @@ function updatePublishedSortButton() {
     "aria-label",
     isAscending ? "Flip list to descending order" : "Flip list to ascending order"
   );
-  elements.publishedFlipButton.lastChild.textContent = label;
+  elements.publishedFlipButton.querySelector("span").textContent = label;
 }
 
 function bindEvents() {
@@ -4071,6 +4159,12 @@ function bindEvents() {
   elements.tagApproveVisibleButton?.addEventListener("click", () => {
     runAdminAction(elements.tagApproveVisibleButton, "Approving", "Visible candidate tags approved.", approveVisibleTags);
   });
+  elements.requestsSampleToggle?.addEventListener("click", () => {
+    state.showSampleRequests = !state.showSampleRequests;
+    elements.requestsSampleToggle.setAttribute("aria-pressed", String(state.showSampleRequests));
+    elements.requestsSampleToggle.querySelector("span").textContent = state.showSampleRequests ? "Hide sample data" : "Preview sample data";
+    renderRequests();
+  });
   elements.outreachSearchFilter?.addEventListener("input", () => {
     state.outreachFilters.search = elements.outreachSearchFilter.value;
     renderOutreach();
@@ -4097,7 +4191,10 @@ function bindEvents() {
         button,
         "Exporting",
         "CSV export ready.",
-        () => downloadAdminExport(button.dataset.adminExport)
+        () => downloadAdminExport(button.dataset.adminExport, {
+          from: elements.exportFromFilter?.value || "",
+          to: elements.exportToFilter?.value || "",
+        })
       );
     });
   });

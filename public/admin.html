@@ -400,6 +400,33 @@
             </form>
             <div id="tagList" class="adminTable adminTagsTable"></div>
           </section>
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Exports</h2>
+                <p>Download operational CSV reports for manual review and handoff.</p>
+              </div>
+            </div>
+            <form class="adminFilterBar" onsubmit="return false">
+              <label>
+                From
+                <input id="exportFromFilter" type="date" />
+              </label>
+              <label>
+                To
+                <input id="exportToFilter" type="date" />
+              </label>
+            </form>
+            <span class="fieldHelp">Leave both blank to export everything. The date range applies to each report's own date field (e.g. created, approved, or last updated).</span>
+            <div class="adminExportActions">
+              <button class="secondaryAction compactAction" type="button" data-admin-export="reviewed-providers">Reviewed Providers</button>
+              <button class="secondaryAction compactAction" type="button" data-admin-export="outreach-queue">Outreach Queue</button>
+              <button class="secondaryAction compactAction" type="button" data-admin-export="claim-requests">Claim Requests</button>
+              <button class="secondaryAction compactAction" type="button" data-admin-export="leads">Leads</button>
+              <button class="secondaryAction compactAction" type="button" data-admin-export="events">Events</button>
+              <button class="secondaryAction compactAction" type="button" data-admin-export="signals">Signals</button>
+            </div>
+          </section>
         </section>
 
         <section class="adminSection" data-admin-panel="requests">
@@ -409,7 +436,12 @@
                 <h2>Claim & Removal Requests</h2>
                 <p>Profile-owner requests queued for manual verification.</p>
               </div>
+              <button id="requestsSampleToggle" class="secondaryAction iconButtonText" type="button" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" /></svg>
+                <span>Preview sample data</span>
+              </button>
             </div>
+            <div id="requestsSampleNotice" class="adminNotice" hidden>Showing sample data so you can see the layout with requests present. This isn't real data - turn off the preview to go back to your live queue.</div>
             <div id="claimRequestList" class="adminTable adminRequestsTable"></div>
           </section>
           <section class="adminPanel">
@@ -432,22 +464,6 @@
               </div>
             </div>
             <div id="metricsSummary" class="metricsSummaryGrid"></div>
-          </section>
-          <section class="adminPanel">
-            <div class="panelHeader">
-              <div>
-                <h2>Exports</h2>
-                <p>Download operational CSV reports for manual review and handoff.</p>
-              </div>
-            </div>
-            <div class="adminExportActions">
-              <button class="secondaryAction compactAction" type="button" data-admin-export="reviewed-providers">Reviewed Providers</button>
-              <button class="secondaryAction compactAction" type="button" data-admin-export="outreach-queue">Outreach Queue</button>
-              <button class="secondaryAction compactAction" type="button" data-admin-export="claim-requests">Claim Requests</button>
-              <button class="secondaryAction compactAction" type="button" data-admin-export="leads">Leads</button>
-              <button class="secondaryAction compactAction" type="button" data-admin-export="events">Events</button>
-              <button class="secondaryAction compactAction" type="button" data-admin-export="signals">Signals</button>
-            </div>
           </section>
           <div class="adminTwoColumn">
             <section class="adminPanel">
