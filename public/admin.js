@@ -2717,10 +2717,7 @@ function outreachProviderRow(provider) {
       </div>
       <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
       <div class="adminCell"><span>${escapeHtml(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</span></div>
-      <div class="adminCell">
-        <span>${escapeHtml(outreachStageLabel(stage))}</span>
-        <span>${escapeHtml(messageText)}</span>
-      </div>
+      <div class="adminCell"><span title="${escapeHtml(`${outreachStageLabel(stage)} - ${messageText}`)}">${escapeHtml(outreachStageLabel(stage))} - ${escapeHtml(messageText)}</span></div>
       <div class="adminCell adminCellAction">${actions}</div>
     </article>
   `;
@@ -3125,45 +3122,18 @@ function renderMetrics() {
   const emailEngagement = metrics.emailEngagement || {};
 
   if (elements.metricsSummary) {
-    const summaryGroups = [
-      {
-        title: "Pipeline Health",
-        cards: [
-          metricCard("Approved profiles", metrics.approvedProfiles || 0, "", "check"),
-          metricCard("Scrape failures", metrics.scrapeFailures || 0, "", "warning"),
-          metricCard("Low confidence", metrics.lowConfidenceProfiles || 0, "", "warning"),
-        ],
-      },
-      {
-        title: "Outreach",
-        cards: [
-          metricCard("Outreach pending", metrics.outreachPending || 0, "", "mail"),
-          metricCard("Outreach active", metrics.outreachActive || 0, "", "mail"),
-        ],
-      },
-      {
-        title: "Claims & Leads",
-        cards: [
-          metricCard("Claimed profiles", metrics.claimedProfiles || 0, "", "doc"),
-          metricCard("Removal requests", metrics.removalRequests || 0, "", "warning"),
-          metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`, "doc"),
-        ],
-      },
-      {
-        title: "Content",
-        cards: [
-          metricCard("Approved stories", metrics.approvedSuccessStories || 0, "", "check"),
-          metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0, "", "calendar"),
-        ],
-      },
-    ];
-
-    elements.metricsSummary.innerHTML = summaryGroups.map((group) => `
-      <section class="metricsSummaryGroup">
-        <h3>${escapeHtml(group.title)}</h3>
-        <div class="metricsSummaryGrid">${group.cards.join("")}</div>
-      </section>
-    `).join("");
+    elements.metricsSummary.innerHTML = [
+      metricCard("Approved profiles", metrics.approvedProfiles || 0, "", "check"),
+      metricCard("Outreach pending", metrics.outreachPending || 0, "", "mail"),
+      metricCard("Outreach active", metrics.outreachActive || 0, "", "mail"),
+      metricCard("Claimed profiles", metrics.claimedProfiles || 0, "", "doc"),
+      metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`, "doc"),
+      metricCard("Approved stories", metrics.approvedSuccessStories || 0, "", "check"),
+      metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0, "", "calendar"),
+      metricCard("Scrape failures", metrics.scrapeFailures || 0, "", "warning"),
+      metricCard("Low confidence", metrics.lowConfidenceProfiles || 0, "", "warning"),
+      metricCard("Removal requests", metrics.removalRequests || 0, "", "warning"),
+    ].join("");
   }
 
   if (elements.profileStatusMetrics) {
