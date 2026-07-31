@@ -2,7 +2,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const { env } = require("../config/env");
 
-const REPORT_PATH = path.resolve(process.cwd(), "docs", "week1-review.md");
+const REPORT_PATH = path.resolve(process.cwd(), "docs", "archive", "week1-review.md");
 const PROFILE_FIELDS = [
   "companyName",
   "website",

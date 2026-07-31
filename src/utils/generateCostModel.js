@@ -5,7 +5,7 @@ const { buildUserPrompt } = require("../llm/openrouter");
 const { getDomainFromUrl } = require("./url");
 
 const URL_FILE = path.resolve(process.cwd(), "data", "week3-additional-company-urls.json");
-const REPORT_FILE = path.resolve(process.cwd(), "docs", "week3-cost-model.md");
+const REPORT_FILE = path.resolve(process.cwd(), "docs", "archive", "week3-cost-model.md");
 const DEFAULT_INPUT_TOKENS = 9000;
 const DEFAULT_OUTPUT_TOKENS = 900;
 const CHARS_PER_TOKEN = 4;

@@ -5,7 +5,7 @@ const { env } = require("../config/env");
 const { getDomainFromUrl } = require("./url");
 
 const MAPPING_FILE = path.resolve(process.cwd(), "data", "re-company-mapping.json");
-const OUTPUT_FILE = path.resolve(process.cwd(), "docs", "week2-comparison.csv");
+const OUTPUT_FILE = path.resolve(process.cwd(), "docs", "archive", "week2-comparison.csv");
 const FIELDS_TO_COMPARE = [
   "companyName",
   "website",

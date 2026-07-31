@@ -64,12 +64,12 @@ Node.js pipeline for crawling Rocket Engineers provider websites, storing raw cr
 
 - `npm start`: Load company URLs and run the pipeline.
 - `npm run dev`: Run the entrypoint in watch mode.
-- `npm run review:week1`: Generate `docs/week1-review.md` from `output/`.
+- `npm run review:week1`: Generate `docs/archive/week1-review.md` from `output/`.
 - `npm run pipeline:week3`: Run the pipeline for `data/week3-additional-company-urls.json`.
 - `npm run pipeline:week4`: Run the pipeline for `data/week4-additional-company-urls.json`.
 - `npm run compare:model`: Compare the current OpenRouter model with DeepSeek V3.1 for Task 4.7.
-- `npm run report:week3`: Generate `docs/week3-quality-report.md` and `docs/week3-quality-review.csv`.
-- `npm run cost:week3`: Generate `docs/week3-cost-model.md`.
+- `npm run report:week3`: Generate `docs/archive/week3-quality-report.md` and `docs/archive/week3-quality-review.csv`.
+- `npm run cost:week3`: Generate `docs/archive/week3-cost-model.md`.
 - `npm run demo`: Run a deterministic replay demo that emits profile JSON and logo output.
 - `npm run demo:live`: Run a live demo through the pipeline for a supplied URL.
 - `npm run export:ui`: Export generated providers from `output/` into deployable static UI data.
@@ -121,13 +121,13 @@ The `/api/admin-*` routes verify Supabase Auth tokens and use the service role k
 
 ## Week 1 Documents
 
-- `docs/week1-research.md`: Research notes on Firecrawl, GitHub API, Apollo, and Clearbit.
-- `docs/week1-review.md`: Review report generated from current output data.
-- `docs/week3-quality-report.md`: Week 3 before/after quality summary, per-field review scoring, and logo success rate.
-- `docs/week3-cost-model.md`: Firecrawl, Apollo/Clearbit, Brandfetch, and OpenRouter cost model for 1,000 and 5,000 profiles.
-- `docs/final-report.md`: Final project report with architecture, quality, cost, scale, limitations, and next steps.
-- `docs/demo-script.md`: 15-minute demo runbook.
-- `docs/sprint2-operations.md`: Sprint 2 readiness checks, audit-history decision, and Admin CSV exports.
+- `docs/archive/week1-research.md`: Research notes on Firecrawl, GitHub API, Apollo, and Clearbit.
+- `docs/archive/week1-review.md`: Review report generated from current output data.
+- `docs/archive/week3-quality-report.md`: Week 3 before/after quality summary, per-field review scoring, and logo success rate.
+- `docs/archive/week3-cost-model.md`: Firecrawl, Apollo/Clearbit, Brandfetch, and OpenRouter cost model for 1,000 and 5,000 profiles.
+- `docs/archive/final-report.md`: Final project report with architecture, quality, cost, scale, limitations, and next steps.
+- `docs/archive/demo-script.md`: 15-minute demo runbook.
+- `docs/archive/sprint2-operations.md`: Sprint 2 readiness checks, audit-history decision, and Admin CSV exports.
 
 ## Environment Variables
 

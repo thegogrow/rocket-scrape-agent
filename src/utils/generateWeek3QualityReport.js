@@ -4,9 +4,9 @@ const { env } = require("../config/env");
 const { getDomainFromUrl } = require("./url");
 
 const URL_FILE = path.resolve(process.cwd(), "data", "week3-additional-company-urls.json");
-const WEEK2_COMPARISON_FILE = path.resolve(process.cwd(), "docs", "week2-comparison.csv");
-const REPORT_FILE = path.resolve(process.cwd(), "docs", "week3-quality-report.md");
-const REVIEW_CSV_FILE = path.resolve(process.cwd(), "docs", "week3-quality-review.csv");
+const WEEK2_COMPARISON_FILE = path.resolve(process.cwd(), "docs", "archive", "week2-comparison.csv");
+const REPORT_FILE = path.resolve(process.cwd(), "docs", "archive", "week3-quality-report.md");
+const REVIEW_CSV_FILE = path.resolve(process.cwd(), "docs", "archive", "week3-quality-review.csv");
 const SAMPLE_SIZE = 20;
 const PROFILE_FIELDS = [
   "companyName",

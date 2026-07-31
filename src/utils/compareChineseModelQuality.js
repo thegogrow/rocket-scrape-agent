@@ -20,8 +20,8 @@ const PRICING = {
   "anthropic/claude-sonnet-4": { input: 3, output: 15 },
   "deepseek/deepseek-chat-v3.1": { input: 0.21, output: 0.79 },
 };
-const REPORT_PATH = path.resolve(process.cwd(), "docs", "model-comparison-4.7.md");
-const JSON_PATH = path.resolve(process.cwd(), "docs", "model-comparison-4.7.json");
+const REPORT_PATH = path.resolve(process.cwd(), "docs", "archive", "model-comparison-4.7.md");
+const JSON_PATH = path.resolve(process.cwd(), "docs", "archive", "model-comparison-4.7.json");
 
 function estimateTokens(value) {
   return Math.ceil(String(value || "").length / CHARS_PER_TOKEN);
