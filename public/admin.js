@@ -35,6 +35,15 @@ const state = {
     category: "",
     status: "",
   },
+  activityFilters: {
+    search: "",
+    group: "",
+    sort: "desc",
+  },
+  outreachFilters: {
+    search: "",
+    status: "",
+  },
 };
 
 const SVG_LOGO_DOMAINS = new Set([
@@ -84,6 +93,7 @@ const ADMIN_SECTIONS = new Set([
   "dashboard",
   "scrape",
   "review",
+  "outreach",
   "data-quality",
   "tags",
   "requests",
@@ -98,6 +108,19 @@ const LIVE_PROFILE_STATUSES = new Set([
   "unclaimed",
 ]);
 const CONFIDENCE_GUARDRAIL_SCORE = 75;
+const ACTIVITY_GROUPS = [
+  { key: "review", label: "Profile Review", test: (type) => type.startsWith("profile_") || type === "reviewer_feedback" },
+  { key: "outreach", label: "Outreach", test: (type) => type.startsWith("outreach_") },
+  { key: "content", label: "Success Stories", test: (type) => type.startsWith("success_story_") },
+  { key: "events", label: "Events", test: (type) => type.startsWith("provider_event_") },
+  { key: "signals", label: "Market Signals", test: (type) => type.startsWith("market_signal_") },
+  { key: "claims", label: "Claims & Removals", test: (type) => type === "claim_requested" || type === "removal_requested" },
+  { key: "leads", label: "Leads", test: (type) => type === "lead_submitted" },
+];
+
+function activityGroupForType(type = "") {
+  return ACTIVITY_GROUPS.find((group) => group.test(type)) || { key: "other", label: "Other" };
+}
 const PROVIDER_EVENT_STATUSES = new Set(["suggested", "approved", "expired", "archived"]);
 const MARKET_SIGNAL_TYPES = new Set(["hiring", "news", "leadership", "tender", "technology", "partnership"]);
 const MARKET_SIGNAL_STATUSES = new Set(["scraped", "reviewed", "approved", "archived"]);
@@ -220,6 +243,10 @@ const elements = {
   publishedBulkApply: document.querySelector("#publishedBulkApply"),
   publishedBulkCount: document.querySelector("#publishedBulkCount"),
   publishedProviderList: document.querySelector("#publishedProviderList"),
+  outreachSummaryGrid: document.querySelector("#outreachSummaryGrid"),
+  outreachSearchFilter: document.querySelector("#outreachSearchFilter"),
+  outreachStatusFilter: document.querySelector("#outreachStatusFilter"),
+  outreachProviderList: document.querySelector("#outreachProviderList"),
   missingDataList: document.querySelector("#missingDataList"),
   claimRequestList: document.querySelector("#claimRequestList"),
   providerLeadList: document.querySelector("#providerLeadList"),
@@ -227,6 +254,9 @@ const elements = {
   profileStatusMetrics: document.querySelector("#profileStatusMetrics"),
   outreachSignalMetrics: document.querySelector("#outreachSignalMetrics"),
   activityTimeline: document.querySelector("#activityTimeline"),
+  activitySearchFilter: document.querySelector("#activitySearchFilter"),
+  activityGroupFilter: document.querySelector("#activityGroupFilter"),
+  activitySortButton: document.querySelector("#activitySortButton"),
   tagApproveVisibleButton: document.querySelector("#tagApproveVisibleButton"),
   tagSummary: document.querySelector("#tagSummary"),
   tagSearchFilter: document.querySelector("#tagSearchFilter"),
@@ -569,6 +599,39 @@ function actionLink(kind, label, href, attrs = "") {
   return `<a class="secondaryAction compactAction iconButtonText" href="${escapeHtml(href)}" ${attrs}>${icon}<span>${escapeHtml(label)}</span></a>`;
 }
 
+// Standard action-cell renderer used across every admin table (Provider Review,
+// Missing Data, Tags, Requests, Live Providers, ...). Actions are always passed
+// in the same priority order so the same action never jumps position between
+// pages; only the first 2 that fit stay visible, the rest collapse into "More".
+function renderActionCell(actions = []) {
+  const items = actions.filter(Boolean);
+
+  if (items.length <= 3) {
+    return `<div class="adminPublishedActions">${items.join("")}</div>`;
+  }
+
+  const primary = items.slice(0, 2);
+  const overflow = items.slice(2);
+
+  return `
+    <div class="adminPublishedActions">
+      ${primary.join("")}
+      <details class="adminActionMenu">
+        <summary aria-label="More actions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+          <span>More</span>
+        </summary>
+        <div class="adminActionMenuPanel">${overflow.join("")}</div>
+      </details>
+    </div>
+  `;
+}
+
+// Fixed priority order for provider-row actions. Whether an action shows up as
+// a visible button or inside "More" depends only on how many higher-priority
+// actions are present in that row - never on which page it's rendered on.
+const PROVIDER_ACTION_ORDER = ["edit", "publish", "profile", "outreach", "recrawl", "unpublish", "delete"];
+
 function providerActions(provider, options = {}) {
   const {
     includeEdit = false,
@@ -577,57 +640,21 @@ function providerActions(provider, options = {}) {
     includeManage = false,
     includeProfile = true,
     includeRecrawl = true,
+    includeUnpublish = includeManage,
   } = options;
-  const accessAction = provider.domain
-    ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
-    : "";
+  const key = escapeHtml(provider.id || provider.domain || "");
 
-  if (includeManage) {
-    const key = escapeHtml(provider.id || provider.domain || "");
-    const profileAction = provider.domain
-      ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
-      : "";
+  const actionsByKind = {
+    edit: includeEdit ? actionButton("edit", "Edit", `data-edit-provider="${key}"`) : "",
+    publish: includePublish && provider.id ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`) : "",
+    profile: includeProfile && provider.domain ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`) : "",
+    outreach: provider.domain ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"') : "",
+    recrawl: includeRecrawl ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${key}"`) : "",
+    unpublish: includeUnpublish ? actionButton("unpublish", "Unpublish", `data-unpublish-provider="${key}"`) : "",
+    delete: includeDelete ? actionButton("delete", "Delete", `data-delete-provider="${key}"`) : "",
+  };
 
-    return `
-      <div class="adminPublishedActions">
-        ${actionButton("edit", "Edit", `data-edit-provider="${key}"`)}
-        ${profileAction}
-        <details class="adminActionMenu">
-          <summary aria-label="More provider actions">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-            <span>More</span>
-          </summary>
-          <div class="adminActionMenuPanel">
-            ${accessAction}
-            ${actionButton("recrawl", "Recrawl", `data-recrawl-provider="${key}"`)}
-            ${actionButton("unpublish", "Unpublish", `data-unpublish-provider="${key}"`)}
-            ${actionButton("delete", "Delete", `data-delete-provider="${key}"`)}
-          </div>
-        </details>
-      </div>
-    `;
-  }
-
-  const actions = [
-    includeProfile && provider.domain
-      ? actionLink("profile", "Profile", `/?provider=${encodeURIComponent(provider.domain)}`)
-      : "",
-    accessAction,
-    includeEdit
-      ? actionButton("edit", "Edit", `data-edit-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-    includeRecrawl && !includeManage
-      ? actionButton("recrawl", "Recrawl", `data-recrawl-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-    includePublish && provider.id
-      ? actionButton("publish", "Publish", `data-publish-provider="${escapeHtml(provider.id)}"`)
-      : "",
-    includeDelete
-      ? actionButton("delete", "Delete", `data-delete-provider="${escapeHtml(provider.id || provider.domain || "")}"`)
-      : "",
-  ].filter(Boolean);
-
-  return actions.length ? actions.join("") : "";
+  return renderActionCell(PROVIDER_ACTION_ORDER.map((kind) => actionsByKind[kind]));
 }
 
 function providerRow(provider, options = {}) {
@@ -636,8 +663,8 @@ function providerRow(provider, options = {}) {
   const checked = state.selectedProviders.has(key) ? " checked" : "";
   const attentionClass = isBelowConfidenceGuardrail(provider) ? " adminLowConfidenceRow" : "";
   const action = providerActions(provider, {
-    includeDelete: includeAction,
-    includeEdit: includeAction,
+    includeDelete: includeAction || compact,
+    includeEdit: includeAction || compact,
     includePublish: includeAction,
     includeManage: compact,
     includeProfile: compact,
@@ -2384,19 +2411,24 @@ function tagRow(tag) {
     .join("");
   const usageCount = tagUsageCount(tag);
   const canMerge = approvedTags.length > 0;
-  const approveAction = tag.status !== "approved"
+  const isCandidate = tag.status !== "approved";
+  const approveAction = isCandidate
     ? actionButton("publish", "Approve", `data-approve-tag="${escapeHtml(tag.id)}"`)
     : "";
+  const actions = renderActionCell([
+    approveAction,
+    actionButton("edit", "Save Rename", `data-save-tag="${escapeHtml(tag.id)}"`),
+    actionButton("unpublish", "Merge", `data-merge-tag="${escapeHtml(tag.id)}"${canMerge ? "" : " disabled"}`),
+  ]);
 
   return `
-    <article class="adminTableRow adminTagRow">
+    <article class="adminTableRow adminTagRow${isCandidate ? " adminTagCandidateRow" : ""}">
       <div class="adminCell adminCellPrimary">
         <strong>${escapeHtml(tag.name)}</strong>
-        <span>${escapeHtml(tagCategoryLabel(tag.category))} · used by ${escapeHtml(usageCount)} provider${usageCount === 1 ? "" : "s"}</span>
+        <span>Used by ${escapeHtml(usageCount)} provider${usageCount === 1 ? "" : "s"}</span>
       </div>
       <div class="adminCell adminTagMetaCell">
         ${tagStatusPill(tag)}
-        <span class="adminCellLabel">${escapeHtml(tagCategoryLabel(tag.category))}</span>
       </div>
       <label class="adminCell adminTagInlineField">
         <span class="adminCellLabel">Rename</span>
@@ -2405,16 +2437,23 @@ function tagRow(tag) {
       <label class="adminCell adminTagInlineField">
         <span class="adminCellLabel">Merge Into Approved Tag</span>
         <select data-tag-merge-target="${escapeHtml(tag.id)}" aria-label="Merge target"${canMerge ? "" : " disabled"}>
-          <option value="">Merge into...</option>
+          <option value="">${canMerge ? "Merge into..." : "No approved tags yet"}</option>
           ${mergeOptions}
         </select>
       </label>
-      <div class="adminCell adminCellAction">
-        ${approveAction}
-        ${actionButton("edit", "Save Rename", `data-save-tag="${escapeHtml(tag.id)}"`)}
-        ${actionButton("unpublish", "Merge", `data-merge-tag="${escapeHtml(tag.id)}"${canMerge ? "" : " disabled"}`)}
-      </div>
+      <div class="adminCell adminCellAction">${actions}</div>
     </article>
+  `;
+}
+
+function tagGroupHeader(category, tags) {
+  const candidateCount = tags.filter((tag) => tag.status === "candidate").length;
+
+  return `
+    <div class="adminTagGroupHeader">
+      <span class="adminTagGroupTitle">${escapeHtml(tagCategoryLabel(category))}</span>
+      <span class="adminTagGroupCount">${escapeHtml(tags.length)} tag${tags.length === 1 ? "" : "s"}${candidateCount ? ` · ${escapeHtml(candidateCount)} needs review` : ""}</span>
+    </div>
   `;
 }
 
@@ -2430,10 +2469,29 @@ function renderTags() {
     elements.tagApproveVisibleButton.disabled = !tags.some((tag) => tag.status === "candidate");
   }
 
-  elements.tagList.innerHTML = tags.length
-    ? `${tableHeader(["Tag", "Status", "Rename", "Merge Target", "Actions"])}${tags.map(tagRow).join("")}`
-    : emptyState("No tags match the current filters.");
+  if (!tags.length) {
+    elements.tagList.innerHTML = emptyState("No tags match the current filters.");
+    bindTagButtons();
+    return;
+  }
 
+  const header = tableHeader(["Tag", "Status", "Rename", "Merge Target", "Actions"]);
+
+  if (state.tagFilters.category) {
+    elements.tagList.innerHTML = `${header}${tags.map(tagRow).join("")}`;
+    bindTagButtons();
+    return;
+  }
+
+  const groupedBody = ["services", "industries", "technologies", "vendor_partnerships"]
+    .map((category) => {
+      const groupTags = tags.filter((tag) => tag.category === category);
+
+      return groupTags.length ? `${tagGroupHeader(category, groupTags)}${groupTags.map(tagRow).join("")}` : "";
+    })
+    .join("");
+
+  elements.tagList.innerHTML = `${header}${groupedBody}`;
   bindTagButtons();
 }
 
@@ -2560,6 +2618,130 @@ function outreachSummaryForProvider(provider = {}) {
   return { drafts, approved, sent, total: messages.length };
 }
 
+function outreachStageForProvider(provider = {}) {
+  const contacts = provider.outreachContacts || [];
+  const summary = outreachSummaryForProvider(provider);
+
+  if (contacts.length === 0) {
+    return "needs_contacts";
+  }
+
+  if (summary.total === 0) {
+    return "needs_drafts";
+  }
+
+  if (summary.drafts > 0) {
+    return "draft";
+  }
+
+  if (summary.approved > 0) {
+    return "approved";
+  }
+
+  return "sent";
+}
+
+function outreachRowsForQueue() {
+  return state.providers.filter((provider) => (
+    isLiveProvider(provider) || (provider.outreachContacts || []).length > 0 || outreachSummaryForProvider(provider).total > 0
+  ));
+}
+
+function filteredOutreachProviders() {
+  const search = state.outreachFilters.search.trim().toLowerCase();
+  const status = state.outreachFilters.status;
+
+  return outreachRowsForQueue()
+    .filter((provider) => {
+      if (status && outreachStageForProvider(provider) !== status) {
+        return false;
+      }
+
+      if (search) {
+        const haystack = `${provider.companyName || ""} ${provider.domain || ""}`.toLowerCase();
+
+        if (!haystack.includes(search)) {
+          return false;
+        }
+      }
+
+      return true;
+    })
+    .sort((left, right) => {
+      const leftSummary = outreachSummaryForProvider(left);
+      const rightSummary = outreachSummaryForProvider(right);
+
+      return rightSummary.drafts - leftSummary.drafts
+        || String(left.companyName || left.domain).localeCompare(String(right.companyName || right.domain));
+    });
+}
+
+function outreachStageLabel(stage) {
+  return {
+    needs_contacts: "Needs contacts",
+    needs_drafts: "Needs drafts",
+    draft: "Drafts to review",
+    approved: "Approved, not sent",
+    sent: "Sent",
+  }[stage] || titleCase(stage);
+}
+
+function outreachProviderRow(provider) {
+  const contacts = provider.outreachContacts || [];
+  const summary = outreachSummaryForProvider(provider);
+  const stage = outreachStageForProvider(provider);
+  const messageText = [
+    summary.drafts ? `${summary.drafts} draft${summary.drafts === 1 ? "" : "s"}` : "",
+    summary.approved ? `${summary.approved} approved` : "",
+    summary.sent ? `${summary.sent} sent` : "",
+  ].filter(Boolean).join(", ") || "No messages yet";
+  const actions = providerActions(provider, { includeEdit: true, includeProfile: isLiveProvider(provider) });
+
+  return `
+    <article class="adminTableRow adminOutreachRow">
+      <div class="adminCell adminCellPrimary">
+        <span class="adminProviderIdentity">
+          ${providerLogo(provider)}
+          <span>
+            <strong>${escapeHtml(provider.companyName || provider.domain || "Unnamed provider")}</strong>
+            <span>${escapeHtml(provider.domain || "")}</span>
+          </span>
+        </span>
+      </div>
+      <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
+      <div class="adminCell"><span>${escapeHtml(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</span></div>
+      <div class="adminCell">
+        <span>${escapeHtml(outreachStageLabel(stage))}</span>
+        <span>${escapeHtml(messageText)}</span>
+      </div>
+      <div class="adminCell adminCellAction">${actions}</div>
+    </article>
+  `;
+}
+
+function renderOutreach() {
+  if (!elements.outreachProviderList) {
+    return;
+  }
+
+  const queue = outreachRowsForQueue();
+
+  if (elements.outreachSummaryGrid) {
+    elements.outreachSummaryGrid.innerHTML = [
+      metricCard("Needs contacts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_contacts").length),
+      metricCard("Needs drafts", queue.filter((provider) => outreachStageForProvider(provider) === "needs_drafts").length),
+      metricCard("Drafts to review", queue.filter((provider) => outreachStageForProvider(provider) === "draft").length),
+      metricCard("Approved, not sent", queue.filter((provider) => outreachStageForProvider(provider) === "approved").length),
+    ].join("");
+  }
+
+  const providers = filteredOutreachProviders();
+
+  elements.outreachProviderList.innerHTML = providers.length
+    ? `${tableHeader(["Company", "Status", "Contacts", "Messages", "Actions"])}${providers.map(outreachProviderRow).join("")}`
+    : emptyState("No providers match the current outreach filters.");
+}
+
 function compactOutreachProviderRow(provider) {
   const key = providerKey(provider);
   const summary = outreachSummaryForProvider(provider);
@@ -2633,11 +2815,11 @@ function claimRequestRow(request = {}) {
   const reviewedText = request.reviewedAt
     ? `Reviewed ${formatActivityDate(request.reviewedAt)}${request.reviewedBy ? ` by ${request.reviewedBy}` : ""}`
     : "Not reviewed";
-  const actions = [
+  const actions = renderActionCell([
     requestProviderAction(request.domain),
     isPending ? actionButton("publish", "Approve", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="approved"`) : "",
     isPending ? actionButton("delete", "Reject", `data-review-claim-request="${escapeHtml(request.id)}" data-claim-review-status="rejected"`) : "",
-  ].filter(Boolean).join("");
+  ]);
 
   return `
     <article class="adminTableRow adminRequestRow">
@@ -2671,12 +2853,12 @@ function providerLeadRow(lead = {}) {
   const reviewedText = lead.reviewedAt
     ? `Reviewed ${formatActivityDate(lead.reviewedAt)}${lead.reviewedBy ? ` by ${lead.reviewedBy}` : ""}`
     : "Not reviewed";
-  const actions = [
+  const actions = renderActionCell([
     requestProviderAction(lead.domain),
     status !== "reviewed" ? actionButton("process", "Reviewed", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="reviewed"`) : "",
     status !== "forwarded" ? actionButton("publish", "Forwarded", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="forwarded"`) : "",
     status !== "closed" ? actionButton("delete", "Closed", `data-update-provider-lead="${escapeHtml(lead.id)}" data-provider-lead-status="closed"`) : "",
-  ].filter(Boolean).join("");
+  ]);
 
   return `
     <article class="adminTableRow adminLeadRow">
@@ -2771,17 +2953,64 @@ function signalMetricsMarkup(signalsByTypeAndStatus = {}) {
 
 function activityTimelineRow(entry = {}) {
   const providerLabel = [entry.providerName, entry.providerDomain].filter(Boolean).join(" - ");
+  const group = activityGroupForType(entry.type || "");
 
   return `
     <article class="adminActivityItem">
       <div>
+        <span class="adminActivityGroup adminActivityGroup-${escapeHtml(group.key)}">${escapeHtml(group.label)}</span>
         <strong>${escapeHtml(entry.label || titleCase(entry.type || "activity"))}</strong>
-        <span>${escapeHtml(formatActivityDate(entry.createdAt))}</span>
+        <span class="adminActivityDate">${escapeHtml(formatActivityDate(entry.createdAt))}</span>
       </div>
       <p>${escapeHtml(entry.summary || "")}</p>
       <small>${escapeHtml(providerLabel || entry.actorEmail || "System")}</small>
     </article>
   `;
+}
+
+function filteredActivityEvents() {
+  const search = state.activityFilters.search.trim().toLowerCase();
+  const group = state.activityFilters.group;
+
+  const filtered = state.activityEvents.filter((entry) => {
+    if (group && activityGroupForType(entry.type || "").key !== group) {
+      return false;
+    }
+
+    if (search) {
+      const providerLabel = [entry.providerName, entry.providerDomain].filter(Boolean).join(" ");
+      const haystack = `${entry.label || ""} ${entry.summary || ""} ${providerLabel} ${entry.actorEmail || ""}`.toLowerCase();
+
+      if (!haystack.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  return filtered.sort((left, right) => {
+    const direction = state.activityFilters.sort === "asc" ? 1 : -1;
+
+    return (new Date(left.createdAt) - new Date(right.createdAt)) * direction;
+  });
+}
+
+function renderActivityGroupOptions() {
+  if (!elements.activityGroupFilter) {
+    return;
+  }
+
+  const previousValue = state.activityFilters.group;
+  const presentGroupKeys = new Set(state.activityEvents.map((entry) => activityGroupForType(entry.type || "").key));
+  const availableGroups = ACTIVITY_GROUPS.filter((group) => presentGroupKeys.has(group.key));
+
+  elements.activityGroupFilter.innerHTML = [
+    `<option value="">All activity</option>`,
+    ...availableGroups.map((group) => `<option value="${escapeHtml(group.key)}">${escapeHtml(group.label)}</option>`),
+  ].join("");
+  elements.activityGroupFilter.value = availableGroups.some((group) => group.key === previousValue) ? previousValue : "";
+  state.activityFilters.group = elements.activityGroupFilter.value;
 }
 
 function readinessWarningMarkup(warning = {}) {
@@ -2818,18 +3047,45 @@ function renderMetrics() {
   const emailEngagement = metrics.emailEngagement || {};
 
   if (elements.metricsSummary) {
-    elements.metricsSummary.innerHTML = [
-      metricCard("Approved profiles", metrics.approvedProfiles || 0),
-      metricCard("Outreach pending", metrics.outreachPending || 0),
-      metricCard("Outreach active", metrics.outreachActive || 0),
-      metricCard("Claimed profiles", metrics.claimedProfiles || 0),
-      metricCard("Removal requests", metrics.removalRequests || 0),
-      metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`),
-      metricCard("Approved stories", metrics.approvedSuccessStories || 0),
-      metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0),
-      metricCard("Scrape failures", metrics.scrapeFailures || 0),
-      metricCard("Low confidence", metrics.lowConfidenceProfiles || 0),
-    ].join("");
+    const summaryGroups = [
+      {
+        title: "Pipeline Health",
+        cards: [
+          metricCard("Approved profiles", metrics.approvedProfiles || 0),
+          metricCard("Scrape failures", metrics.scrapeFailures || 0),
+          metricCard("Low confidence", metrics.lowConfidenceProfiles || 0),
+        ],
+      },
+      {
+        title: "Outreach",
+        cards: [
+          metricCard("Outreach pending", metrics.outreachPending || 0),
+          metricCard("Outreach active", metrics.outreachActive || 0),
+        ],
+      },
+      {
+        title: "Claims & Leads",
+        cards: [
+          metricCard("Claimed profiles", metrics.claimedProfiles || 0),
+          metricCard("Removal requests", metrics.removalRequests || 0),
+          metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`),
+        ],
+      },
+      {
+        title: "Content",
+        cards: [
+          metricCard("Approved stories", metrics.approvedSuccessStories || 0),
+          metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0),
+        ],
+      },
+    ];
+
+    elements.metricsSummary.innerHTML = summaryGroups.map((group) => `
+      <section class="metricsSummaryGroup">
+        <h3>${escapeHtml(group.title)}</h3>
+        <div class="metricsSummaryGrid">${group.cards.join("")}</div>
+      </section>
+    `).join("");
   }
 
   if (elements.profileStatusMetrics) {
@@ -2860,9 +3116,17 @@ function renderMetrics() {
   }
 
   if (elements.activityTimeline) {
-    elements.activityTimeline.innerHTML = state.activityEvents.length
-      ? state.activityEvents.slice(0, 30).map(activityTimelineRow).join("")
-      : emptyState("No activity events yet.");
+    renderActivityGroupOptions();
+
+    if (elements.activitySortButton) {
+      elements.activitySortButton.querySelector("span").textContent = state.activityFilters.sort === "asc" ? "Oldest first" : "Newest first";
+    }
+
+    const filtered = filteredActivityEvents();
+
+    elements.activityTimeline.innerHTML = filtered.length
+      ? filtered.slice(0, 30).map(activityTimelineRow).join("")
+      : emptyState("No activity events match the current filters.");
   }
 }
 
@@ -3021,13 +3285,14 @@ function renderLists() {
     : emptyState("No scrape jobs yet.");
 
   elements.reviewProviderList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
+    ? `${tableHeader(["", "Company", "Country", "Status", "Confidence", "Actions"])}${visibleReviewProviders.map((provider) => providerRow(provider, { includeAction: true })).join("")}`
     : emptyState("No profiles need review.");
 
   elements.publishedProviderList.innerHTML = filteredPublishedProviders.length
-    ? `${tableHeader(["Select", "Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
+    ? `${tableHeader(["", "Company", "Country", "Status", "Confidence", "Actions"])}${visiblePublishedProviders.map((provider) => providerRow(provider, { compact: true })).join("")}`
     : emptyState("No published providers match the current filters.");
 
+  renderOutreach();
   renderMissingDataReview();
   renderTags();
   renderMetrics();
@@ -3805,6 +4070,26 @@ function bindEvents() {
   });
   elements.tagApproveVisibleButton?.addEventListener("click", () => {
     runAdminAction(elements.tagApproveVisibleButton, "Approving", "Visible candidate tags approved.", approveVisibleTags);
+  });
+  elements.outreachSearchFilter?.addEventListener("input", () => {
+    state.outreachFilters.search = elements.outreachSearchFilter.value;
+    renderOutreach();
+  });
+  elements.outreachStatusFilter?.addEventListener("change", () => {
+    state.outreachFilters.status = elements.outreachStatusFilter.value;
+    renderOutreach();
+  });
+  elements.activitySearchFilter?.addEventListener("input", () => {
+    state.activityFilters.search = elements.activitySearchFilter.value;
+    renderMetrics();
+  });
+  elements.activityGroupFilter?.addEventListener("change", () => {
+    state.activityFilters.group = elements.activityGroupFilter.value;
+    renderMetrics();
+  });
+  elements.activitySortButton?.addEventListener("click", () => {
+    state.activityFilters.sort = state.activityFilters.sort === "asc" ? "desc" : "asc";
+    renderMetrics();
   });
   document.querySelectorAll("[data-admin-export]").forEach((button) => {
     button.addEventListener("click", () => {

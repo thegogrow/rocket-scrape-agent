@@ -1801,7 +1801,6 @@ function renderStaticPages() {
   const heroCta = `
     <div class="providerAccessActions heroCtaRow">
       <button class="primaryAction" type="button" data-home-page="providers">Browse providers</button>
-      <a class="secondaryAction" href="#explore">See what's inside</a>
     </div>
   `;
   const exploreCards = [

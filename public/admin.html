@@ -49,6 +49,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5V4Zm3 4h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h5v-2H8v2Z" /></svg>
             <span>Provider Review</span>
           </button>
+          <button type="button" data-admin-section="outreach" title="Outreach">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H7l-3 3V5Zm4 4v2h8V9H8Z" /></svg>
+            <span>Outreach</span>
+          </button>
           <button type="button" data-admin-section="data-quality" title="Missing Data">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v9h-2V5Zm0 11h2v3h-2v-3Z" /></svg>
             <span>Missing Data</span>
@@ -264,6 +268,87 @@
           </section>
         </section>
 
+        <section class="adminSection" data-admin-panel="outreach">
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Outreach</h2>
+                <p>Approved providers with outreach contacts or drafted messages. Review and approve copy here - sending stays manual.</p>
+              </div>
+            </div>
+            <div id="outreachSummaryGrid" class="metricsSummaryGrid"></div>
+          </section>
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Outreach Queue</h2>
+                <p>Sorted by draft activity so providers waiting on a decision surface first.</p>
+              </div>
+            </div>
+            <form class="adminFilterBar" onsubmit="return false">
+              <label>
+                Search
+                <input id="outreachSearchFilter" type="search" placeholder="Search provider name" />
+              </label>
+              <label>
+                Status
+                <select id="outreachStatusFilter">
+                  <option value="">Any outreach status</option>
+                  <option value="needs_contacts">Needs contacts</option>
+                  <option value="needs_drafts">Needs drafts</option>
+                  <option value="draft">Has drafts to review</option>
+                  <option value="approved">Approved, not sent</option>
+                </select>
+              </label>
+            </form>
+            <div id="outreachProviderList" class="adminTable adminOutreachTable"></div>
+          </section>
+          <section class="adminPanel">
+            <div class="panelHeader">
+              <div>
+                <h2>Automation Options</h2>
+                <p>Sending is not enabled in this product today. Notes below if automated sending is approved later.</p>
+              </div>
+            </div>
+            <div class="outreachAutomationGrid">
+              <article class="outreachAutomationCard">
+                <h3>Apollo.io</h3>
+                <p>Has a documented API to push our approved contacts into an existing Apollo sequence (<code>POST /emailer_campaigns/{id}/add_contact_ids</code>), so Apollo would handle sending, deliverability, and step timing while we keep drafting and approving copy here.</p>
+                <ul>
+                  <li>Requires the Organization plan (~$119/seat/mo) - API access is not included on lower tiers.</li>
+                  <li>Contacts must exist in Apollo's own contact database before they can be enrolled in a sequence.</li>
+                  <li>Sequence steps and templates are built in Apollo's UI, not fully controllable via API.</li>
+                </ul>
+              </article>
+              <article class="outreachAutomationCard">
+                <h3>Instantly.ai</h3>
+                <p>Flat-fee sending infrastructure built for high-volume, low-touch cold email with unlimited sending mailboxes and built-in warmup/deliverability tooling.</p>
+                <ul>
+                  <li>Best fit if outreach volume grows past what a handful of mailboxes can send safely.</li>
+                  <li>Lighter on CRM-style contact management than Apollo - would still lean on this admin as the source of truth.</li>
+                </ul>
+              </article>
+              <article class="outreachAutomationCard">
+                <h3>Smartlead</h3>
+                <p>API-first cold email platform aimed at technical teams that want fine-grained control over multi-mailbox sending infrastructure.</p>
+                <ul>
+                  <li>Lower base pricing than Apollo or Lemlist; adds a per-client fee if we ever ran outreach for others.</li>
+                  <li>No built-in contact/lead sourcing - we would keep providing contacts from here.</li>
+                </ul>
+              </article>
+              <article class="outreachAutomationCard">
+                <h3>Lemlist</h3>
+                <p>Multichannel sequences (email + LinkedIn + calls) with strong personalization, at a higher per-seat cost.</p>
+                <ul>
+                  <li>Worth it only if outreach expands beyond email to LinkedIn touches.</li>
+                  <li>Per-seat pricing (~$69/user/mo) makes it the most expensive of the three for a small team.</li>
+                </ul>
+              </article>
+            </div>
+            <p class="fieldHelp">Recommendation: if/when automated sending is approved, Apollo's sequence API is the closest fit since it can consume the contacts and approved drafts already tracked in this admin without changing our review workflow. Any integration would still need API keys, a sending domain, and a compliance/opt-out review before it ships.</p>
+          </section>
+        </section>
+
         <section class="adminSection" data-admin-panel="data-quality">
           <section class="adminPanel">
             <div class="panelHeader">
@@ -391,6 +476,22 @@
                 <p>Recent lifecycle, outreach, claim, removal, content, event, lead, and signal activity.</p>
               </div>
             </div>
+            <form class="adminFilterBar" onsubmit="return false">
+              <label>
+                Search
+                <input id="activitySearchFilter" type="search" placeholder="Find by provider, person, or summary" />
+              </label>
+              <label>
+                Type
+                <select id="activityGroupFilter">
+                  <option value="">All activity</option>
+                </select>
+              </label>
+              <button id="activitySortButton" class="secondaryAction iconButtonText" type="button" aria-label="Flip activity order">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v14" /><path d="m3 14 4 4 4-4" /><path d="M17 20V6" /><path d="m13 10 4-4 4 4" /></svg>
+                <span>Newest first</span>
+              </button>
+            </form>
             <div id="activityTimeline" class="adminActivityTimeline"></div>
           </section>
         </section>
