@@ -1,6 +1,7 @@
-# Rocket Engineers Scrape Agent — Project Documentation (Week 1–9)
+# Rocket Engineers Scrape Agent — Project Documentation (Week 1–10)
 
 Prepared: 2026-07-31
+Updated: 2026-08-06
 Prepared for: Phil (client)
 
 A week-by-week record of what was built, from the first Firecrawl crawl through the current state of the Sprint 2 admin, outreach, and claim workflow.
@@ -82,6 +83,20 @@ A week-by-week record of what was built, from the first Firecrawl crawl through 
 - Added a readiness-check script (`npm run readiness:sprint2`) that verifies required environment variables, expected API route files, and Supabase schema before a demo or deployment.
 - Added `success_stories`, `provider_events`, and `market_signals` tables with their own admin approval workflow, for case studies and per-provider event/signal tracking.
 
+### Week 10 — Outreach Cycle: Send-From-Admin, Automated Follow-Up
+
+- Added outreach cycle tracking: the `outreach_cycles` table (one row per provider — stage `not_started → cycle_1_sent → cycle_2_sent → cycle_3_sent → closed`, resolution, pause flag, last-sent/next-due dates) and `outreach_messages.cycle_number`, so the admin can see which follow-up stage every company is on instead of inferring it from raw message rows.
+- Replaced the unauthenticated `?domain=company.com` claim/removal link with opaque, expiring tokens: the `outreach_links` table (`src/api/resolve-outreach-link.js`, updated `public/request-flow.js` and `public/profile-access.html`), covering both the shared claim/removal access page and a one-click opt-out link.
+- Added Resend email integration (`src/email/resend.js`) with a dry-run safety switch (`OUTREACH_DRY_RUN`, defaults on) that redirects all sends to a test inbox until deliberately turned off.
+- Built the send-from-admin path: a **Send** action calls `src/api/send-outreach.js`, which delivers the email via Resend, marks the message sent, and advances the provider's cycle. The send/advance-cycle logic is shared (`src/email/sendOutreachMessage.js`) with the automated follow-up job.
+- Built the automated daily follow-up job (`src/api/outreach-followup.js`, triggered by a Supabase `pg_cron`/`pg_net` job defined in `docs/supabase-schema.sql`): finds providers whose next action is due, sends Email 2 then Email 3 on schedule, and closes out non-responders after Email 3 — no manual daily checking required.
+- Wired claim requests, removal requests, and opt-out clicks to automatically stop a provider's outreach cycle the moment any of them comes in, plus a manual **Mark as Replied** control (`src/api/admin-outreach-cycle.js`) for real replies, and a per-provider pause toggle.
+- Generated emails now get an opt-out footer appended automatically, reusing the same token-link system as claim/removal.
+- Added an email draft **Preview** in the admin that renders subject/body as the email will actually look (mirrors the paragraph formatting used in `src/email/resend.js`), and replaced the old "Edit Drafts" path (which opened the entire profile editor) with a dedicated outreach compose popup styled like an email client — To/Subject/body, status pill, and a contextual **Approve & Save / Save Changes / Send Email** action, including an inline **Generate Drafts** fallback when no drafts exist yet.
+- Removed the speculative "Automation Options" panel (Apollo/Instantly/Smartlead/Lemlist comparison) from the admin outreach tab, and reworked the Outreach Queue table layout (dropped the Contacts column, added a Cycle status column, fixed an action-button overlap/hover-contrast bug introduced by the new controls).
+- Fixed a bug where saving outreach messages from the admin silently cleared `cycle_number` on already-sent emails, because the client-side collect/normalize helpers never round-tripped that field.
+- Sending account setup (Resend/Postmark signup, DNS, activating the cron job) and the first real batch send are tracked as go-live setup work in `docs/weekly-plan.md` Week 11 — Week 10 is the code/schema side only.
+
 ---
 
 ## Reference Index
@@ -100,3 +115,4 @@ A week-by-week record of what was built, from the first Firecrawl crawl through 
 | Model comparison | `docs/archive/model-comparison-4.7.md` |
 | Sprint 2 operations | `docs/archive/sprint2-operations.md` |
 | Supabase schema | `docs/supabase-schema.sql` |
+| Week 10 outreach cycle + go-live setup | `docs/weekly-plan.md` (Week 10/11), `src/email/`, `src/api/send-outreach.js`, `src/api/outreach-followup.js` |
