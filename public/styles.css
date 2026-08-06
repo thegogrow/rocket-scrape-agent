@@ -1327,7 +1327,7 @@ a:hover {
 
 .adminOutreachTable .adminTableHeader,
 .adminOutreachTable .adminTableRow {
-  grid-template-columns: minmax(160px, 0.65fr) minmax(130px, 0.4fr) minmax(160px, 0.7fr) minmax(210px, 0.75fr) minmax(300px, 1.1fr);
+  grid-template-columns: minmax(150px, 0.75fr) minmax(100px, 0.35fr) minmax(150px, 0.75fr) minmax(160px, 0.6fr) minmax(200px, 0.6fr);
 }
 
 .adminOutreachTable .adminPublishedActions {
