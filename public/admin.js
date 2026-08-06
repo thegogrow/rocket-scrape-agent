@@ -646,6 +646,33 @@ function renderActionCell(actions = []) {
   `;
 }
 
+// Same shape as renderActionCell but collapses to "More" above 2 items
+// instead of 3 - the Outreach Queue row has a narrower Actions column and
+// needs to guarantee a single line rather than favor showing more buttons.
+function renderOutreachActionCell(actions = []) {
+  const items = actions.filter(Boolean);
+
+  if (items.length <= 2) {
+    return `<div class="adminPublishedActions">${items.join("")}</div>`;
+  }
+
+  const primary = items.slice(0, 2);
+  const overflow = items.slice(2);
+
+  return `
+    <div class="adminPublishedActions">
+      ${primary.join("")}
+      <details class="adminActionMenu">
+        <summary aria-label="More actions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+          <span>More</span>
+        </summary>
+        <div class="adminActionMenuPanel">${overflow.join("")}</div>
+      </details>
+    </div>
+  `;
+}
+
 // Fixed priority order for provider-row actions. Whether an action shows up as
 // a visible button or inside "More" depends only on how many higher-priority
 // actions are present in that row - never on which page it's rendered on.
@@ -2865,7 +2892,7 @@ function outreachProviderRow(provider) {
     ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
     : "";
   const cycleActive = Boolean(cycle && cycle.stage !== "not_started" && !cycle.resolution);
-  const actions = renderActionCell([
+  const actions = renderOutreachActionCell([
     editDraftsButton,
     outreachPageLink,
     sendableMessage
