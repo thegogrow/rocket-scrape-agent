@@ -81,51 +81,64 @@ Weeks 1–9 are the completed record, condensed from `docs/project-documentation
 
 ---
 
-## Week 10 — Outreach Cycle: Send-From-Admin, Automated Follow-Up, First Batch
-*Starts Jul 30, 2026 —*
+## Week 10 — Outreach Cycle: Send-From-Admin, Automated Follow-Up (Built)
+*Jul 30, 2026 onward*
 
-All of Part A, C, and most of Part B are now built (code + schema). What's left is the account/DNS setup only a human can do (6, 7), and the operational batch work in Part D, which needs the sending account from 6/7 in place first.
+Everything below is code + schema, and it's done. The `outreach_cycles`/`outreach_links` tables are live in Supabase (confirmed). What's left — the sending account, DNS, activating the cron job, and the first real batch — needs a live sending account before any of it can run, so it moves to Week 11 rather than sitting here half-blocked.
 
 **Part A — Tracking + Link Prerequisites:**
 
-1. Add the `outreach_cycles` table (one row per provider: stage, last sent, next due date, resolution) — tracks which cycle stage each company is on, since nothing does today. **Deliverable:** schema migration in `docs/supabase-schema.sql`. **Status:** Done.
-2. Add `cycle_number` to `outreach_messages` so a real send is tied to a stage instead of sitting as one of five static drafts. **Deliverable:** schema migration. **Status:** Done.
-3. Add the `outreach_links` table (opaque token, provider, purpose, expiry, used-at) — purpose covers `access` (used by both the claim and removal forms on one shared page) and `opt_out`, so unsubscribe reuses the same system instead of needing its own build. **Deliverable:** schema migration. **Status:** Done.
+1. Add the `outreach_cycles` table (one row per provider: stage, last sent, next due date, resolution) — tracks which cycle stage each company is on, since nothing does today. **Deliverable:** schema migration in `docs/supabase-schema.sql`. **Status:** Done, applied to Supabase.
+2. Add `cycle_number` to `outreach_messages` so a real send is tied to a stage instead of sitting as one of five static drafts. **Deliverable:** schema migration. **Status:** Done, applied to Supabase.
+3. Add the `outreach_links` table (opaque token, provider, purpose, expiry, used-at) — purpose covers `access` (used by both the claim and removal forms on one shared page) and `opt_out`, so unsubscribe reuses the same system instead of needing its own build. **Deliverable:** schema migration. **Status:** Done, applied to Supabase.
 4. Replace `?domain=` with `?token=` on `profile-access.html` (and the `claim.html`/`remove.html` redirects into it); generate a token whenever an outreach message with a link is created. **Deliverable:** `src/ui/supabaseStore.js` (`outreach_links` functions), `public/request-flow.js`, `src/api/resolve-outreach-link.js`. **Status:** Done.
 5. Add a cycle-status badge (stage + next due date) directly in the existing admin Outreach Queue row — no separate "due today" panel needed. **Deliverable:** cycle status visible in Outreach Queue. **Status:** Done.
 
-**Part B — Sending Infrastructure (email management inside the admin):**
+**Part B — Sending Infrastructure (code side):**
 
-6. Pick a sending provider (Resend or Postmark) and create the account. **Deliverable:** provider account + API key. **Status:** Not started — needs you to sign up and set `RESEND_API_KEY`/`RESEND_FROM_EMAIL`; the code (`src/email/resend.js`) is ready and waiting on the key.
-7. Set up a dedicated sending subdomain with SPF/DKIM/DMARC. **Deliverable:** verified sending domain. **Status:** Not started — DNS records only you can add.
-8. Build the `send-outreach` endpoint and a **Send** button on the approved draft in the Outreach Queue — sends via the provider's API, sets `outreach_messages.status = "sent"`, creates the `outreach_cycles` row. **Deliverable:** `src/api/send-outreach.js`, Send button in admin. **Status:** Done.
-9. Treat a click on the token link (claim/remove/opt-out) as the engagement signal — skip building pixel-based open tracking, since it's unreliable in modern mail clients anyway. **Deliverable:** design decision recorded, no `opened` tracking built. **Status:** Done.
-10. Wire claim, removal, and opt-out requests to automatically set `resolution` and stop the provider's cycle the moment any of them comes in. **Deliverable:** cycle auto-stops on claim/remove/opt-out. **Status:** Done.
-11. Add a **"Mark as Replied"** manual button in the admin — since automatic inbound reply-detection is deferred (see Week 12+), a human seeing a real reply in their inbox clicks this once to stop the cycle. **Deliverable:** manual reply-stop control (`src/api/admin-outreach-cycle.js`). **Status:** Done.
+1. Build the `send-outreach` endpoint and a **Send** button on the approved draft in the Outreach Queue — sends via the provider's API, sets `outreach_messages.status = "sent"`, creates the `outreach_cycles` row. **Deliverable:** `src/api/send-outreach.js`, Send button in admin. **Status:** Done.
+2. Treat a click on the token link (claim/remove/opt-out) as the engagement signal — skip building pixel-based open tracking, since it's unreliable in modern mail clients anyway. **Deliverable:** design decision recorded, no `opened` tracking built. **Status:** Done.
+3. Wire claim, removal, and opt-out requests to automatically set `resolution` and stop the provider's cycle the moment any of them comes in. **Deliverable:** cycle auto-stops on claim/remove/opt-out. **Status:** Done.
+4. Add a **"Mark as Replied"** manual button in the admin — since automatic inbound reply-detection is deferred (see Week 13+), a human seeing a real reply in their inbox clicks this once to stop the cycle. **Deliverable:** manual reply-stop control (`src/api/admin-outreach-cycle.js`). **Status:** Done.
 
-**Part C — Automated Follow-Up Engine:**
+**Part C — Automated Follow-Up Engine (code side):**
 
-12. Build the daily follow-up job as a Supabase `pg_cron` scheduled task (not a separate always-on process) — finds providers whose `next_action_due_at` has passed and who aren't resolved, sends the next email in sequence (Email 2, then Email 3), and advances the cycle. **Deliverable:** `src/api/outreach-followup.js`, `pg_cron`/`pg_net` job in `docs/supabase-schema.sql`. **Status:** Code done; the SQL job still needs a one-time run in the Supabase SQL editor with your deployed URL and `OUTREACH_CRON_SECRET` filled in (see the comment block above it in the schema file).
-13. Add a manual "pause" toggle per provider as a safeguard before the job fires on it. **Deliverable:** pause control in admin. **Status:** Done.
+1. Build the daily follow-up job as a Supabase `pg_cron` scheduled task (not a separate always-on process) — finds providers whose `next_action_due_at` has passed and who aren't resolved, sends the next email in sequence (Email 2, then Email 3), and advances the cycle. **Deliverable:** `src/api/outreach-followup.js`, `pg_cron`/`pg_net` job in `docs/supabase-schema.sql`. **Status:** Code done; activating it (enabling the `pg_cron`/`pg_net` extensions, filling in your deployed URL and `OUTREACH_CRON_SECRET`, running the job once) is a Week 11 setup task.
+2. Add a manual "pause" toggle per provider as a safeguard before the job fires on it. **Deliverable:** pause control in admin. **Status:** Done.
 
-**Part D — Select, Test, and Send the First Real Batch:**
+## Week 11 — Go-Live Setup + First Real Batch
+*Next up*
 
-14. Select 20–30 approved profiles most likely to respond (smallest, most active, or companies met at events). **Deliverable:** named batch list. **Status:** Not started — your call on which companies.
-15. Source/confirm a primary outreach contact per profile in the admin (name, email, LinkedIn) where missing. **Deliverable:** contacts complete for the batch. **Status:** Not started.
-16. Generate and review Email 1 drafts for the batch; edit for accuracy and tone; approve. **Deliverable:** approved Email 1 per profile. **Status:** Not started — admin UI for this already existed before Week 10.
-17. Add a dry-run/test-mode flag that redirects all sends to a test inbox regardless of the real recipient. **Deliverable:** safe end-to-end testing without touching real companies. **Status:** Done — `OUTREACH_DRY_RUN` defaults to `true` in `.env.example`, so sends redirect to `OUTREACH_TEST_INBOX_EMAIL` until deliberately turned off.
-18. Run the full cycle against yourself in test mode: Email 1 → simulate no reply → confirm the follow-up job fires Email 2 → click "Mark as Replied" → confirm the cycle stops. **Deliverable:** verified working cycle. **Status:** Not started — needs 6/7 done first so there's something to actually send with.
-19. Only after that passes: send Email 1 to the real batch via the admin Send button. **Deliverable:** first real outreach sent, cycle tracking live. **Status:** Not started.
+Nothing left here is more building — it's account setup, config, and the first operational pass, gathered in one place so it's a single checklist instead of scattered "needs you" notes.
 
-## Week 11 — Results Report, Decision Gate, and Admin Tags UI Cleanup
-*After the Week 10 cycle closes out (last profile hits `closed_no_response` or resolves)*
+**Part A — Sending Account + Deployment Config:**
+
+1. Sign up for Resend (or Postmark) and create the sending account. **Deliverable:** provider account; set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in the deployment env. The code (`src/email/resend.js`) is ready and waiting on these.
+2. Set up a dedicated sending subdomain with SPF/DKIM/DMARC records. **Deliverable:** verified sending domain, so real inboxes don't flag the mail as spam.
+3. Confirm `PUBLIC_BASE_URL` matches the real deployed site. **Deliverable:** the claim/remove/opt-out links embedded in outreach emails resolve correctly instead of pointing at localhost or a stale URL.
+4. Set `OUTREACH_CRON_SECRET` and `OUTREACH_TEST_INBOX_EMAIL` in the deployment env. **Deliverable:** cron auth configured, and a real inbox for dry-run sends to land in.
+5. Enable the `pg_cron` and `pg_net` extensions in Supabase, fill in your deployed URL and `OUTREACH_CRON_SECRET` in place of the two placeholders in the follow-up job SQL at the bottom of `docs/supabase-schema.sql`, and run that block once. **Deliverable:** the daily follow-up job actually scheduled and live.
+
+**Part B — Test Before Anything Real:**
+
+6. With `OUTREACH_DRY_RUN` left on (the default), run the full cycle against yourself: send Email 1 → simulate no reply → confirm the follow-up job fires Email 2 on schedule → click "Mark as Replied" → confirm the cycle stops. **Deliverable:** verified working cycle, with nothing sent to a real company yet.
+
+**Part C — Select and Send the First Real Batch:**
+
+7. Select 20–30 approved profiles most likely to respond (smallest, most active, or companies met at events). **Deliverable:** named batch list.
+8. Source/confirm a primary outreach contact per profile in the admin (name, email, LinkedIn) where missing. **Deliverable:** contacts complete for the batch.
+9. Generate and review Email 1 drafts for the batch; edit for accuracy and tone; approve. **Deliverable:** approved Email 1 per profile.
+10. Turn off `OUTREACH_DRY_RUN` and send Email 1 to the real batch via the admin Send button. **Deliverable:** first real outreach sent, cycle tracking live.
+
+## Week 12 — Results Report, Decision Gate, and Admin Tags UI Cleanup
+*After the Week 11 cycle closes out (last profile hits `closed_no_response` or resolves)*
 
 1. Compile results: claims, removals, replies (other), closed-no-response, per stage of the cycle. **Deliverable:** results notes.
 2. Write a short outreach results report (is email quality good enough, is the claim-request flow enough/too much friction, which cycle stage converted). **Deliverable:** `docs/sprint2-outreach-report.md`.
-3. Decide whether manual sending is the bottleneck or contact sourcing is — these have different fixes (see Week 12+). **Deliverable:** documented go/no-go decision.
+3. Decide whether manual sending is the bottleneck or contact sourcing is — these have different fixes (see Week 13+). **Deliverable:** documented go/no-go decision.
 4. Fix and improve the UI of the admin Tags page (`tag_taxonomy` management view) — layout, usability, and visual consistency with the rest of the admin. **Deliverable:** improved Tags page UI.
 
-## Week 12+ — Automation (Only If Week 11 Justifies It)
+## Week 13+ — Automation (Only If Week 12 Justifies It)
 *Build only what's justified — not steps to complete by default*
 
 1. Adopt a cold-outreach sequencer (Instantly.ai, Smartlead, Lemlist, or Apollo.io sequences) instead of building SendGrid/Postmark — build only if manual sending becomes the bottleneck. **Deliverable:** sequencer sending + tracking live.
@@ -136,5 +149,6 @@ All of Part A, C, and most of Part B are now built (code + schema). What's left 
 
 ## Check-Ins
 
-- **Week 10** (Jul 30 onward) — You present: send-from-admin and automated follow-up job built and tested, first real batch sent. We decide together: any adjustments to the stage/due-date model or Email 2/3 content based on early replies.
-- **Week 11** (After cycle closes) — You present: full outreach results + report, admin Tags page UI cleanup. We decide together: sequencer vs. continued manual sending; which deferred items to build next.
+- **Week 10** (Jul 30 onward) — You present: send-from-admin, cycle tracking, and the automated follow-up job built. We decide together: any adjustments to the stage/due-date model before go-live.
+- **Week 11** (Next) — You present: sending account live, cron job activated, test cycle verified end to end, first real batch sent. We decide together: any adjustments to Email 2/3 content based on early replies.
+- **Week 12** (After cycle closes) — You present: full outreach results + report, admin Tags page UI cleanup. We decide together: sequencer vs. continued manual sending; which deferred items to build next.

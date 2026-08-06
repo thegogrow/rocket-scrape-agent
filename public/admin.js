@@ -275,6 +275,12 @@ const elements = {
   profileEditDialog: document.querySelector("#profileEditDialog"),
   profileEditForm: document.querySelector("#profileEditForm"),
   profileEditClose: document.querySelector("#profileEditClose"),
+  emailPreviewDialog: document.querySelector("#emailPreviewDialog"),
+  emailPreviewClose: document.querySelector("#emailPreviewClose"),
+  emailPreviewFrom: document.querySelector("#emailPreviewFrom"),
+  emailPreviewTo: document.querySelector("#emailPreviewTo"),
+  emailPreviewSubject: document.querySelector("#emailPreviewSubject"),
+  emailPreviewBody: document.querySelector("#emailPreviewBody"),
   profileEditPreviewAccessLink: document.querySelector("#profileEditPreviewAccessLink"),
   profileEditKey: document.querySelector("#profileEditKey"),
   profileEditName: document.querySelector("#profileEditName"),
@@ -1520,6 +1526,37 @@ function providerAccessUrlForProvider(provider = {}) {
   return accessUrl || "/profile-access";
 }
 
+// Mirrors bodyToHtml in src/email/resend.js so the preview matches what
+// actually gets sent: blank-line-separated paragraphs, single newlines as <br>.
+function bodyToPreviewHtml(body) {
+  return String(body || "")
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
+    .join("");
+}
+
+function primaryContactEmailForProvider(provider = {}, contactId = "") {
+  const contacts = provider.outreachContacts || [];
+  const matched = contactId ? contacts.find((contact) => contact.id === contactId) : null;
+  const contact = matched || contacts.find((contact) => contact.primaryContact) || contacts[0];
+
+  return contact?.email || "";
+}
+
+function openEmailPreview(row) {
+  const provider = findProvider(elements.profileEditKey?.value) || {};
+  const contactId = row.querySelector('[data-message-field="contactId"]')?.value.trim() || "";
+  const subject = row.querySelector('[data-message-field="subject"]')?.value.trim() || "(no subject)";
+  const body = row.querySelector('[data-message-field="body"]')?.value.trim() || "";
+  const toEmail = primaryContactEmailForProvider(provider, contactId);
+
+  elements.emailPreviewFrom.textContent = "Rocket Engineers <your RESEND_FROM_EMAIL>";
+  elements.emailPreviewTo.textContent = toEmail || "(no contact email set)";
+  elements.emailPreviewSubject.textContent = subject;
+  elements.emailPreviewBody.innerHTML = bodyToPreviewHtml(body) || "<p><em>Nothing drafted yet.</em></p>";
+  elements.emailPreviewDialog.showModal();
+}
+
 function outreachMessageRowMarkup(message = {}) {
   const normalizedMessage = normalizeOutreachMessage(message);
   const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
@@ -1543,6 +1580,7 @@ function outreachMessageRowMarkup(message = {}) {
           </select>
           <button class="secondaryAction compactAction outreachMessageApprove" type="button">Approve</button>
           <button class="secondaryAction compactAction outreachMessageCopy" type="button">Copy</button>
+          ${stepDef.channel === "email" ? `<button class="secondaryAction compactAction outreachMessagePreview" type="button">Preview</button>` : ""}
         </div>
       </div>
       ${isClaimInvite ? `
@@ -4354,6 +4392,7 @@ function bindEvents() {
   });
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
+  elements.emailPreviewClose.addEventListener("click", () => elements.emailPreviewDialog.close());
   elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));
   elements.profileEditAddManagedSuccessStory.addEventListener("click", () => addManagedSuccessStory(elements.profileEditManagedSuccessStories));
   elements.profileEditAddManagedEvent.addEventListener("click", () => addManagedProviderEvent(elements.profileEditManagedEvents));
@@ -4558,6 +4597,13 @@ function bindEvents() {
       copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
         showToast(error.message || "Copy failed.", "error");
       });
+      return;
+    }
+
+    const previewButton = event.target.closest(".outreachMessagePreview");
+
+    if (previewButton) {
+      openEmailPreview(previewButton.closest(".outreachMessageRow"));
       return;
     }
 

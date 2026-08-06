@@ -791,6 +791,23 @@
       </form>
     </dialog>
 
+    <dialog id="emailPreviewDialog" class="emailPreviewDialog">
+      <div class="emailPreviewCard">
+        <div class="emailPreviewToolbar">
+          <span>Email preview</span>
+          <button id="emailPreviewClose" class="secondaryAction compactAction" type="button">Close</button>
+        </div>
+        <div class="emailPreviewChrome">
+          <div class="emailPreviewMeta">
+            <span><strong>From</strong> <span id="emailPreviewFrom"></span></span>
+            <span><strong>To</strong> <span id="emailPreviewTo"></span></span>
+          </div>
+          <h3 id="emailPreviewSubject" class="emailPreviewSubject"></h3>
+        </div>
+        <div id="emailPreviewBody" class="emailPreviewBody"></div>
+      </div>
+    </dialog>
+
     <div id="adminToastRegion" class="adminToastRegion" aria-live="polite" aria-atomic="true"></div>
 
     <script src="/admin.js"></script>
