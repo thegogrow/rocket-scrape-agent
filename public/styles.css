@@ -1327,7 +1327,13 @@ a:hover {
 
 .adminOutreachTable .adminTableHeader,
 .adminOutreachTable .adminTableRow {
-  grid-template-columns: minmax(170px, 0.75fr) minmax(110px, 0.45fr) minmax(200px, 0.9fr) minmax(150px, 0.55fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(160px, 0.65fr) minmax(130px, 0.4fr) minmax(160px, 0.7fr) minmax(210px, 0.75fr) minmax(300px, 1.1fr);
+}
+
+.adminOutreachTable .adminPublishedActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
 }
 
 .adminMissingDataTable .adminTableHeader span:nth-child(3),
