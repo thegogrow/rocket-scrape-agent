@@ -281,6 +281,14 @@ const elements = {
   emailPreviewTo: document.querySelector("#emailPreviewTo"),
   emailPreviewSubject: document.querySelector("#emailPreviewSubject"),
   emailPreviewBody: document.querySelector("#emailPreviewBody"),
+  outreachComposeDialog: document.querySelector("#outreachComposeDialog"),
+  outreachComposeClose: document.querySelector("#outreachComposeClose"),
+  outreachComposeKey: document.querySelector("#outreachComposeKey"),
+  outreachComposeLogo: document.querySelector("#outreachComposeLogo"),
+  outreachComposeCompanyName: document.querySelector("#outreachComposeCompanyName"),
+  outreachComposeDomain: document.querySelector("#outreachComposeDomain"),
+  outreachComposeCycle: document.querySelector("#outreachComposeCycle"),
+  outreachComposeMessages: document.querySelector("#outreachComposeMessages"),
   profileEditPreviewAccessLink: document.querySelector("#profileEditPreviewAccessLink"),
   profileEditKey: document.querySelector("#profileEditKey"),
   profileEditName: document.querySelector("#profileEditName"),
@@ -1508,6 +1516,7 @@ function normalizeOutreachMessage(message = {}) {
     approvedBy: message.approvedBy || message.approved_by || "",
     approvedAt: message.approvedAt || message.approved_at || "",
     sentAt: message.sentAt || message.sent_at || "",
+    cycleNumber: message.cycleNumber ?? message.cycle_number ?? null,
     metadata: message.metadata && typeof message.metadata === "object" ? message.metadata : {},
   };
 }
@@ -1517,6 +1526,16 @@ function outreachMessagesByStep(messages = []) {
     const normalizedMessage = normalizeOutreachMessage(message);
     return [normalizedMessage.messageStep, normalizedMessage];
   }));
+}
+
+// Copy/Preview are shared between the full profile editor and the dedicated
+// outreach compose dialog - whichever is currently open owns the active key.
+function activeOutreachEditorKey() {
+  if (elements.outreachComposeDialog?.open) {
+    return elements.outreachComposeKey.value;
+  }
+
+  return elements.profileEditKey.value;
 }
 
 function providerAccessUrlForProvider(provider = {}) {
@@ -1544,7 +1563,7 @@ function primaryContactEmailForProvider(provider = {}, contactId = "") {
 }
 
 function openEmailPreview(row) {
-  const provider = findProvider(elements.profileEditKey?.value) || {};
+  const provider = findProvider(activeOutreachEditorKey()) || {};
   const contactId = row.querySelector('[data-message-field="contactId"]')?.value.trim() || "";
   const subject = row.querySelector('[data-message-field="subject"]')?.value.trim() || "(no subject)";
   const body = row.querySelector('[data-message-field="body"]')?.value.trim() || "";
@@ -1603,6 +1622,7 @@ function outreachMessageRowMarkup(message = {}) {
       <input data-message-field="approvedBy" type="hidden" value="${escapeHtml(normalizedMessage.approvedBy)}" />
       <input data-message-field="approvedAt" type="hidden" value="${escapeHtml(normalizedMessage.approvedAt)}" />
       <input data-message-field="sentAt" type="hidden" value="${escapeHtml(normalizedMessage.sentAt)}" />
+      <input data-message-field="cycleNumber" type="hidden" value="${normalizedMessage.cycleNumber ?? ""}" />
       <textarea data-message-metadata hidden>${escapeHtml(JSON.stringify(normalizedMessage.metadata || {}))}</textarea>
     </article>
   `;
@@ -1640,6 +1660,11 @@ function collectOutreachMessages(container) {
         approvedBy: row.querySelector('[data-message-field="approvedBy"]').value.trim(),
         approvedAt: row.querySelector('[data-message-field="approvedAt"]').value.trim() || null,
         sentAt: row.querySelector('[data-message-field="sentAt"]').value.trim() || null,
+        cycleNumber: (() => {
+          const raw = row.querySelector('[data-message-field="cycleNumber"]')?.value.trim();
+          const parsed = Number.parseInt(raw, 10);
+          return Number.isInteger(parsed) ? parsed : null;
+        })(),
         metadata,
       };
     })
@@ -1674,7 +1699,7 @@ function approveAllDraftOutreachMessages() {
 async function copyOutreachMessage(row) {
   const subject = row.querySelector('[data-message-field="subject"]')?.value.trim();
   let body = row.querySelector('[data-message-field="body"]')?.value.trim();
-  const provider = findProvider(elements.profileEditKey.value) || {};
+  const provider = findProvider(activeOutreachEditorKey()) || {};
   const accessUrl = providerAccessUrlForProvider(provider);
 
   if (row.dataset.messageStep === "claim_profile_invitation" && provider.domain && !body.includes(accessUrl)) {
@@ -2138,7 +2163,7 @@ function appendActivityLog(provider = {}, entries) {
   return [...normalizedEntries, ...activityLogForProfile(provider)].slice(0, 50);
 }
 
-function openEditProfile(key, options = {}) {
+function openEditProfile(key) {
   const provider = findProvider(key);
 
   if (!provider) {
@@ -2190,10 +2215,6 @@ function openEditProfile(key, options = {}) {
     elements.profileEditPreviewAccessLink.setAttribute("aria-disabled", String(!accessUrl));
   }
   elements.profileEditDialog.showModal();
-
-  if (options.scrollToSelector) {
-    elements.profileEditDialog.querySelector(options.scrollToSelector)?.scrollIntoView({ block: "start" });
-  }
 }
 
 function visiblePageNumbers(currentPage, totalPages) {
@@ -2800,8 +2821,35 @@ function sendableMessageForProvider(provider) {
   )) || null;
 }
 
+// Whether messageStep is the one send-outreach.js/the follow-up job would
+// actually act on next, regardless of its current approval status - used to
+// decide whether to offer a Send button in the compose dialog.
+function isNextSendableStep(provider, messageStep) {
+  const cycle = provider.outreachCycle;
+
+  if (cycle?.resolution || cycle?.paused) {
+    return false;
+  }
+
+  return OUTREACH_CYCLE_NEXT_STEP[cycle?.stage || "not_started"] === messageStep;
+}
+
+const OUTREACH_MESSAGE_STATUS_TONE = {
+  draft: "draft",
+  approved: "approved",
+  sent: "outreach_active",
+  opened: "outreach_active",
+  clicked: "outreach_active",
+  replied: "approved",
+};
+
+function outreachMessageStatusPill(status) {
+  const tone = OUTREACH_MESSAGE_STATUS_TONE[status] || "draft";
+
+  return `<span class="statusPill statusPill-${escapeHtml(tone)}">${escapeHtml(titleCase(status))}</span>`;
+}
+
 function outreachProviderRow(provider) {
-  const contacts = provider.outreachContacts || [];
   const summary = outreachSummaryForProvider(provider);
   const stage = outreachStageForProvider(provider);
   const messageText = [
@@ -2812,7 +2860,7 @@ function outreachProviderRow(provider) {
   const cycle = provider.outreachCycle;
   const sendableMessage = sendableMessageForProvider(provider);
   const key = escapeHtml(provider.id || provider.domain || "");
-  const editDraftsButton = actionButton("edit", "Edit Drafts", `data-edit-provider="${key}" data-edit-scroll-target="outreach"`);
+  const editDraftsButton = actionButton("edit", "Edit Drafts", `data-open-outreach-compose="${key}"`);
   const outreachPageLink = provider.domain
     ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
     : "";
@@ -2841,7 +2889,6 @@ function outreachProviderRow(provider) {
         </span>
       </div>
       <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
-      <div class="adminCell"><span>${escapeHtml(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</span></div>
       <div class="adminCell"><span title="${escapeHtml(`${outreachStageLabel(stage)} - ${messageText}`)}">${escapeHtml(outreachStageLabel(stage))} - ${escapeHtml(messageText)}</span></div>
       <div class="adminCell">${cycleStagePill(cycle)}</div>
       <div class="adminCell adminCellAction">${actions}</div>
@@ -2868,8 +2915,148 @@ function renderOutreach() {
   const providers = filteredOutreachProviders();
 
   elements.outreachProviderList.innerHTML = providers.length
-    ? `${tableHeader(["Company", "Status", "Contacts", "Messages", "Cycle", "Actions"])}${providers.map(outreachProviderRow).join("")}`
+    ? `${tableHeader(["Company", "Status", "Messages", "Cycle", "Actions"])}${providers.map(outreachProviderRow).join("")}`
     : emptyState("No providers match the current outreach filters.");
+}
+
+// Compose-style card for one email_1/2/3 draft inside the dedicated outreach
+// dialog - deliberately styled and behaves like an email client (To/Subject/
+// body, Approve & Save, Send) rather than a generic form row. Reuses the same
+// .outreachMessageRow wrapper and data-message-field inputs as the profile
+// editor's outreachMessageRowMarkup so collectOutreachMessages() works on
+// either container unchanged.
+function outreachComposeMessageMarkup(message = {}, provider = {}) {
+  const normalizedMessage = normalizeOutreachMessage(message);
+  const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
+  const isEmail = stepDef.channel === "email";
+  const isLinkedIn = stepDef.channel === "linkedin";
+  const isClaimInvite = stepDef.messageStep === "claim_profile_invitation";
+  const accessUrl = providerAccessUrlForProvider(provider);
+  const toEmail = primaryContactEmailForProvider(provider, normalizedMessage.contactId);
+  const locked = ["sent", "opened", "clicked", "replied"].includes(normalizedMessage.status);
+  const canSendHere = isEmail && !locked && isNextSendableStep(provider, stepDef.messageStep);
+
+  return `
+    <article class="outreachMessageRow outreachComposeMessage" data-message-step="${escapeHtml(stepDef.messageStep)}" data-message-channel="${escapeHtml(stepDef.channel)}">
+      <div class="outreachComposeMessageHeader">
+        <div class="outreachComposeMessageLabel">
+          <strong>${escapeHtml(stepDef.label)}</strong>
+          <span>${escapeHtml(stepDef.channel.replace(/_/g, " "))}</span>
+        </div>
+        ${outreachMessageStatusPill(normalizedMessage.status)}
+      </div>
+      ${isEmail ? `
+        <div class="outreachComposeField outreachComposeToField">
+          <span>To</span>
+          <span>${escapeHtml(toEmail || "No contact email set")}</span>
+        </div>
+      ` : ""}
+      ${isClaimInvite ? `
+        <div class="outreachAccessLink">
+          <span>Provider access link</span>
+          <a href="${escapeHtml(accessUrl)}" target="_blank" rel="noreferrer">${escapeHtml(accessUrl)}</a>
+        </div>
+      ` : ""}
+      <label class="outreachComposeField" ${isLinkedIn ? "hidden" : ""}>
+        <span>Subject</span>
+        <input data-message-field="subject" type="text" value="${escapeHtml(normalizedMessage.subject)}" placeholder="${escapeHtml(stepDef.label)} subject" ${locked ? "readonly" : ""} />
+      </label>
+      <label class="outreachComposeField outreachComposeBodyField">
+        <span>Message</span>
+        <textarea data-message-field="body" rows="${isLinkedIn ? "5" : "10"}" placeholder="${escapeHtml(stepDef.label)} body" ${locked ? "readonly" : ""}>${escapeHtml(normalizedMessage.body)}</textarea>
+      </label>
+      <input data-message-field="id" type="hidden" value="${escapeHtml(normalizedMessage.id)}" />
+      <input data-message-field="contactId" type="hidden" value="${escapeHtml(normalizedMessage.contactId)}" />
+      <input data-message-field="generatedBy" type="hidden" value="${escapeHtml(normalizedMessage.generatedBy)}" />
+      <input data-message-field="approvedBy" type="hidden" value="${escapeHtml(normalizedMessage.approvedBy)}" />
+      <input data-message-field="approvedAt" type="hidden" value="${escapeHtml(normalizedMessage.approvedAt)}" />
+      <input data-message-field="sentAt" type="hidden" value="${escapeHtml(normalizedMessage.sentAt)}" />
+      <input data-message-field="status" type="hidden" value="${escapeHtml(normalizedMessage.status)}" />
+      <input data-message-field="cycleNumber" type="hidden" value="${normalizedMessage.cycleNumber ?? ""}" />
+      <textarea data-message-metadata hidden>${escapeHtml(JSON.stringify(normalizedMessage.metadata || {}))}</textarea>
+      <div class="outreachComposeFooter">
+        <button class="secondaryAction compactAction outreachMessageCopy" type="button">Copy</button>
+        ${isEmail ? `<button class="secondaryAction compactAction outreachMessagePreview" type="button">Preview</button>` : ""}
+        ${!locked && normalizedMessage.status === "draft" ? `<button class="primaryAction compactAction outreachComposeApprove" type="button">Approve &amp; Save</button>` : ""}
+        ${!locked && normalizedMessage.status === "approved" ? `<button class="secondaryAction compactAction outreachComposeSave" type="button">Save Changes</button>` : ""}
+        ${canSendHere && normalizedMessage.status === "approved" ? `<button class="primaryAction compactAction outreachComposeSend" type="button">Send Email</button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderOutreachComposeHeader(provider) {
+  elements.outreachComposeLogo.innerHTML = providerLogo(provider);
+  elements.outreachComposeCompanyName.textContent = provider.companyName || provider.domain || "Unnamed provider";
+  elements.outreachComposeDomain.textContent = provider.domain || "";
+  elements.outreachComposeCycle.innerHTML = cycleStagePill(provider.outreachCycle);
+}
+
+function renderOutreachComposeMessages() {
+  const key = elements.outreachComposeKey.value;
+  const provider = findProvider(key);
+
+  if (!provider) {
+    return;
+  }
+
+  renderOutreachComposeHeader(provider);
+
+  if ((provider.outreachMessages || []).length === 0) {
+    elements.outreachComposeMessages.innerHTML = `
+      <div class="emptyResults">
+        No drafts yet for this provider.
+        <button class="primaryAction compactAction" type="button" id="outreachComposeGenerateInline">Generate Drafts</button>
+      </div>
+    `;
+    document.querySelector("#outreachComposeGenerateInline")?.addEventListener("click", async (event) => {
+      await runAdminAction(event.currentTarget, "Generating", "Outreach drafts generated.", () => (
+        generateOutreachMessagesForKey(key)
+      ));
+      renderOutreachComposeMessages();
+    });
+    return;
+  }
+
+  const byStep = outreachMessagesByStep(provider.outreachMessages);
+  elements.outreachComposeMessages.innerHTML = OUTREACH_MESSAGE_STEPS
+    .map((step) => outreachComposeMessageMarkup(byStep.get(step.messageStep) || step, provider))
+    .join("");
+}
+
+function openOutreachCompose(key) {
+  const provider = findProvider(key);
+
+  if (!provider) {
+    return;
+  }
+
+  elements.outreachComposeKey.value = key;
+  renderOutreachComposeMessages();
+  elements.outreachComposeDialog.showModal();
+}
+
+// Persists only the outreach_messages set for a provider - admin-provider.js
+// leaves every other field untouched when `profile` only contains this key.
+async function saveOutreachMessagesForKey(key, container) {
+  if (!key) {
+    return false;
+  }
+
+  const outreachMessages = collectOutreachMessages(container);
+  const response = await fetch("/api/admin-provider", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id: key, profile: { outreachMessages } }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to save outreach drafts.");
+  }
+
+  await refreshAdminState();
+  return payload;
 }
 
 function compactOutreachProviderRow(provider) {
@@ -3327,12 +3514,14 @@ function bindPublishButtons() {
 
   document.querySelectorAll("[data-edit-provider]").forEach((button) => {
     button.addEventListener("click", () => {
-      const scrollToSelector = button.dataset.editScrollTarget === "outreach"
-        ? "#profileEditOutreachSection"
-        : null;
-
-      openEditProfile(button.dataset.editProvider, { scrollToSelector });
+      openEditProfile(button.dataset.editProvider);
       showToast("Profile editor opened.");
+    });
+  });
+
+  document.querySelectorAll("[data-open-outreach-compose]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openOutreachCompose(button.dataset.openOutreachCompose);
     });
   });
 
@@ -4121,17 +4310,16 @@ async function deleteJob(id) {
   return true;
 }
 
-async function generateOutreachMessagesForOpenProfile() {
-  const key = elements.profileEditKey.value;
-
+async function generateOutreachMessagesForKey(key) {
   if (!key) {
     return false;
   }
 
-  const existingMessages = collectOutreachMessages(elements.profileEditOutreachMessages);
-  const overwrite = existingMessages.length === 0
-    ? true
-    : window.confirm("Replace existing outreach messages with newly generated drafts?");
+  const provider = findProvider(key);
+  const hasExisting = (provider?.outreachMessages || []).length > 0;
+  const overwrite = hasExisting
+    ? window.confirm("Replace existing outreach messages with newly generated drafts?")
+    : true;
 
   if (!overwrite) {
     return { cancelled: true };
@@ -4149,10 +4337,20 @@ async function generateOutreachMessagesForOpenProfile() {
   }
 
   await refreshAdminState();
-  const provider = findProvider(key);
-  renderOutreachMessages(elements.profileEditOutreachMessages, payload.outreachMessages || provider?.outreachMessages || []);
-  renderProfileActivityLog(provider || payload.provider || {});
-  return true;
+  return payload;
+}
+
+async function generateOutreachMessagesForOpenProfile() {
+  const key = elements.profileEditKey.value;
+  const result = await generateOutreachMessagesForKey(key);
+
+  if (result && !result.cancelled) {
+    const provider = findProvider(key);
+    renderOutreachMessages(elements.profileEditOutreachMessages, result.outreachMessages || provider?.outreachMessages || []);
+    renderProfileActivityLog(provider || result.provider || {});
+  }
+
+  return result;
 }
 
 async function saveProfileEdit(event) {
@@ -4404,6 +4602,59 @@ function bindEvents() {
   elements.profileEditForm.addEventListener("submit", saveProfileEdit);
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.emailPreviewClose.addEventListener("click", () => elements.emailPreviewDialog.close());
+  elements.outreachComposeClose.addEventListener("click", () => elements.outreachComposeDialog.close());
+  elements.outreachComposeMessages.addEventListener("click", async (event) => {
+    const copyButton = event.target.closest(".outreachMessageCopy");
+
+    if (copyButton) {
+      copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
+        showToast(error.message || "Copy failed.", "error");
+      });
+      return;
+    }
+
+    const previewButton = event.target.closest(".outreachMessagePreview");
+
+    if (previewButton) {
+      openEmailPreview(previewButton.closest(".outreachMessageRow"));
+      return;
+    }
+
+    const key = elements.outreachComposeKey.value;
+
+    const approveButton = event.target.closest(".outreachComposeApprove");
+
+    if (approveButton) {
+      approveOutreachMessage(approveButton.closest(".outreachMessageRow"));
+      await runAdminAction(approveButton, "Saving", "Approved and saved.", () => (
+        saveOutreachMessagesForKey(key, elements.outreachComposeMessages)
+      ));
+      renderOutreachComposeMessages();
+      return;
+    }
+
+    const saveButton = event.target.closest(".outreachComposeSave");
+
+    if (saveButton) {
+      await runAdminAction(saveButton, "Saving", "Draft saved.", () => (
+        saveOutreachMessagesForKey(key, elements.outreachComposeMessages)
+      ));
+      renderOutreachComposeMessages();
+      return;
+    }
+
+    const sendButton = event.target.closest(".outreachComposeSend");
+
+    if (sendButton) {
+      const messageId = sendButton.closest(".outreachMessageRow").querySelector('[data-message-field="id"]').value.trim();
+
+      await runAdminAction(sendButton, "Sending", "Email sent.", async () => {
+        await saveOutreachMessagesForKey(key, elements.outreachComposeMessages);
+        return sendOutreachMessage(messageId);
+      });
+      renderOutreachComposeMessages();
+    }
+  });
   elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));
   elements.profileEditAddManagedSuccessStory.addEventListener("click", () => addManagedSuccessStory(elements.profileEditManagedSuccessStories));
   elements.profileEditAddManagedEvent.addEventListener("click", () => addManagedProviderEvent(elements.profileEditManagedEvents));
