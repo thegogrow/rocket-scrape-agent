@@ -2767,20 +2767,22 @@ function outreachProviderRow(provider) {
     summary.approved ? `${summary.approved} approved` : "",
     summary.sent ? `${summary.sent} sent` : "",
   ].filter(Boolean).join(", ") || "No messages yet";
-  const actions = providerActions(provider, { includeEdit: false, includeProfile: false, includeRecrawl: false });
   const cycle = provider.outreachCycle;
   const sendableMessage = sendableMessageForProvider(provider);
-  const cycleButtons = [
+  const outreachPageLink = provider.domain
+    ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
+    : "";
+  const cycleActive = Boolean(cycle && cycle.stage !== "not_started" && !cycle.resolution);
+  const actions = renderActionCell([
+    outreachPageLink,
     sendableMessage
       ? actionButton("publish", "Send", `data-send-outreach="${escapeHtml(sendableMessage.id)}"`)
       : "",
-    cycle && cycle.stage !== "not_started" && !cycle.resolution
-      ? actionButton("process", "Mark Replied", `data-mark-replied="${escapeHtml(provider.id)}"`)
-      : "",
-    cycle && cycle.stage !== "not_started" && !cycle.resolution
+    cycleActive ? actionButton("process", "Mark Replied", `data-mark-replied="${escapeHtml(provider.id)}"`) : "",
+    cycleActive
       ? actionButton("recrawl", cycle.paused ? "Resume" : "Pause", `data-toggle-outreach-pause="${escapeHtml(provider.id)}" data-outreach-pause="${cycle.paused ? "false" : "true"}"`)
       : "",
-  ].filter(Boolean).join("");
+  ]);
 
   return `
     <article class="adminTableRow adminOutreachRow">
@@ -2797,7 +2799,7 @@ function outreachProviderRow(provider) {
       <div class="adminCell"><span>${escapeHtml(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</span></div>
       <div class="adminCell"><span title="${escapeHtml(`${outreachStageLabel(stage)} - ${messageText}`)}">${escapeHtml(outreachStageLabel(stage))} - ${escapeHtml(messageText)}</span></div>
       <div class="adminCell">${cycleStagePill(cycle)}</div>
-      <div class="adminCell adminCellAction">${actions}${cycleButtons}</div>
+      <div class="adminCell adminCellAction">${actions}</div>
     </article>
   `;
 }
