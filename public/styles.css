@@ -5398,6 +5398,12 @@ h4,
   color: #fff;
 }
 
+.adminPublishedActions > .compactAction:first-child:hover {
+  border-color: var(--admin-red-dark);
+  background: var(--admin-red-dark);
+  color: #fff;
+}
+
 .adminActionMenu {
   position: relative;
   flex: 0 0 auto;

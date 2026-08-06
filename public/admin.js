@@ -2138,7 +2138,7 @@ function appendActivityLog(provider = {}, entries) {
   return [...normalizedEntries, ...activityLogForProfile(provider)].slice(0, 50);
 }
 
-function openEditProfile(key) {
+function openEditProfile(key, options = {}) {
   const provider = findProvider(key);
 
   if (!provider) {
@@ -2190,6 +2190,10 @@ function openEditProfile(key) {
     elements.profileEditPreviewAccessLink.setAttribute("aria-disabled", String(!accessUrl));
   }
   elements.profileEditDialog.showModal();
+
+  if (options.scrollToSelector) {
+    elements.profileEditDialog.querySelector(options.scrollToSelector)?.scrollIntoView({ block: "start" });
+  }
 }
 
 function visiblePageNumbers(currentPage, totalPages) {
@@ -2807,11 +2811,14 @@ function outreachProviderRow(provider) {
   ].filter(Boolean).join(", ") || "No messages yet";
   const cycle = provider.outreachCycle;
   const sendableMessage = sendableMessageForProvider(provider);
+  const key = escapeHtml(provider.id || provider.domain || "");
+  const editDraftsButton = actionButton("edit", "Edit Drafts", `data-edit-provider="${key}" data-edit-scroll-target="outreach"`);
   const outreachPageLink = provider.domain
     ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
     : "";
   const cycleActive = Boolean(cycle && cycle.stage !== "not_started" && !cycle.resolution);
   const actions = renderActionCell([
+    editDraftsButton,
     outreachPageLink,
     sendableMessage
       ? actionButton("publish", "Send", `data-send-outreach="${escapeHtml(sendableMessage.id)}"`)
@@ -3320,7 +3327,11 @@ function bindPublishButtons() {
 
   document.querySelectorAll("[data-edit-provider]").forEach((button) => {
     button.addEventListener("click", () => {
-      openEditProfile(button.dataset.editProvider);
+      const scrollToSelector = button.dataset.editScrollTarget === "outreach"
+        ? "#profileEditOutreachSection"
+        : null;
+
+      openEditProfile(button.dataset.editProvider, { scrollToSelector });
       showToast("Profile editor opened.");
     });
   });
