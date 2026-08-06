@@ -47,8 +47,8 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-function profileAccessUrl(domain) {
-  return `/profile-access?domain=${encodeURIComponent(normalizeDomain(domain))}`;
+function profileAccessUrl(token) {
+  return `/profile-access?token=${encodeURIComponent(token)}`;
 }
 
 function redirectLegacyAccessPage() {
@@ -57,10 +57,10 @@ function redirectLegacyAccessPage() {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const domain = normalizeDomain(params.get("domain"));
+  const token = params.get("token");
 
-  if (domain) {
-    window.location.replace(profileAccessUrl(domain));
+  if (token) {
+    window.location.replace(profileAccessUrl(token));
     return true;
   }
 
@@ -116,37 +116,47 @@ async function loadProviderAccess() {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const requestedDomain = normalizeDomain(params.get("domain"));
+  const token = params.get("token");
 
-  if (!requestedDomain) {
+  if (!token) {
     accessElements.actions.hidden = true;
     accessElements.domain.textContent = "Provider not selected";
     accessElements.status.textContent = "Open this page from a provider profile or outreach link.";
     return;
   }
 
-  form.elements.domain.value = requestedDomain;
-  accessElements.domain.textContent = requestedDomain;
+  form.elements.token.value = token;
   accessElements.status.textContent = "Loading profile details";
 
-  const profiles = await loadProfiles();
-  const profile = profiles.find((item) => normalizeDomain(item.domain) === requestedDomain);
-  const claimed = Boolean(profile?.claimed);
-  const status = claimed ? "claimed" : profile?.status || "unclaimed";
+  let link = null;
 
-  accessElements.companyName.textContent = profile?.companyName
-    ? `${profile.companyName} profile access`
-    : `${requestedDomain} profile access`;
-  accessElements.intro.textContent = profile?.companyName
-    ? `Rocket Engineers has a provider profile for ${profile.companyName}. Use this page to request ownership review or removal for this company only.`
+  try {
+    const response = await fetch(`/api/resolve-outreach-link?token=${encodeURIComponent(token)}`);
+    link = response.ok ? await response.json() : null;
+  } catch (error) {
+    link = null;
+  }
+
+  if (!link) {
+    accessElements.actions.hidden = true;
+    accessElements.domain.textContent = "Link not found";
+    accessElements.status.textContent = "This link is invalid or has expired. Reply to the outreach email for a new one.";
+    return;
+  }
+
+  form.elements.domain.value = link.domain;
+  accessElements.domain.textContent = link.domain;
+  const status = link.claimed ? "claimed" : link.status || "unclaimed";
+
+  accessElements.companyName.textContent = link.companyName
+    ? `${link.companyName} profile access`
+    : `${link.domain} profile access`;
+  accessElements.intro.textContent = link.companyName
+    ? `Rocket Engineers has a provider profile for ${link.companyName}. Use this page to request ownership review or removal for this company only.`
     : "Use this provider-specific page to request ownership review or removal for this company only.";
   accessElements.status.textContent = `${titleCase(status)} profile`;
-  accessElements.profileLink.href = `/?provider=${encodeURIComponent(requestedDomain)}`;
+  accessElements.profileLink.href = `/?provider=${encodeURIComponent(link.domain)}`;
   accessElements.profileLink.hidden = false;
-
-  if (!profile) {
-    accessElements.status.textContent = "Profile details unavailable; request can still be reviewed manually.";
-  }
 }
 
 async function submitJson(url, payload) {
@@ -193,6 +203,7 @@ async function handleSubmit(event) {
         domain: data.domain,
         email: data.email,
         requestType,
+        token: flow === "access" ? data.token : undefined,
         metadata: {
           source: flow === "access" ? "provider_access_page" : "public_profile",
           message: data.message || "",
@@ -204,10 +215,12 @@ async function handleSubmit(event) {
     }
 
     const submittedDomain = data.domain;
+    const submittedToken = data.token;
     form.reset();
 
     if (flow === "access") {
       form.elements.domain.value = submittedDomain;
+      form.elements.token.value = submittedToken || "";
     }
   } catch (error) {
     setMessage(error.message, true);

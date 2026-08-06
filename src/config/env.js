@@ -85,6 +85,18 @@ const env = Object.freeze({
       defaultValue: "https://api.brandfetch.io",
     }),
   },
+  resend: {
+    apiKey: getEnv("RESEND_API_KEY"),
+    baseUrl: getEnv("RESEND_BASE_URL", {
+      defaultValue: "https://api.resend.com",
+    }),
+    fromEmail: getEnv("RESEND_FROM_EMAIL"),
+    testInboxEmail: getEnv("OUTREACH_TEST_INBOX_EMAIL"),
+    dryRun: String(getEnv("OUTREACH_DRY_RUN", { defaultValue: "true" })).toLowerCase() === "true",
+  },
+  outreach: {
+    cronSecret: getEnv("OUTREACH_CRON_SECRET"),
+  },
   paths: {
     rootDir: process.cwd(),
     outputDir: resolveOutputDir(),

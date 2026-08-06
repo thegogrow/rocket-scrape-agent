@@ -1514,7 +1514,10 @@ function outreachMessagesByStep(messages = []) {
 }
 
 function providerAccessUrlForProvider(provider = {}) {
-  return provider.domain ? `/profile-access?domain=${encodeURIComponent(provider.domain)}` : "/profile-access";
+  const claimInvite = (provider.outreachMessages || []).find((message) => message.messageStep === "claim_profile_invitation");
+  const accessUrl = claimInvite?.metadata?.accessUrl;
+
+  return accessUrl || "/profile-access";
 }
 
 function outreachMessageRowMarkup(message = {}) {
@@ -2693,6 +2696,68 @@ function outreachStageLabel(stage) {
   }[stage] || titleCase(stage);
 }
 
+const OUTREACH_CYCLE_STAGE_LABELS = {
+  cycle_1_sent: "Email 1 sent",
+  cycle_2_sent: "Email 2 sent",
+  cycle_3_sent: "Email 3 sent",
+};
+const OUTREACH_CYCLE_NEXT_STEP = {
+  not_started: "email_1",
+  cycle_1_sent: "email_2",
+  cycle_2_sent: "email_3",
+};
+const OUTREACH_CYCLE_RESOLUTION_TONE = {
+  claimed: "approved",
+  removed: "merged",
+  no_response: "merged",
+  opted_out: "merged",
+  replied_other: "draft",
+};
+
+function outreachCycleLabel(cycle) {
+  if (!cycle || cycle.stage === "not_started") {
+    return "Not started";
+  }
+
+  if (cycle.resolution) {
+    return `Closed - ${titleCase(cycle.resolution)}`;
+  }
+
+  const stageLabel = OUTREACH_CYCLE_STAGE_LABELS[cycle.stage] || titleCase(cycle.stage);
+  const due = cycle.nextActionDueAt ? ` - next due ${new Date(cycle.nextActionDueAt).toLocaleDateString()}` : "";
+  const paused = cycle.paused ? " (paused)" : "";
+
+  return `${stageLabel}${due}${paused}`;
+}
+
+function cycleStagePill(cycle) {
+  const tone = cycle?.resolution
+    ? (OUTREACH_CYCLE_RESOLUTION_TONE[cycle.resolution] || "draft")
+    : (cycle?.stage && cycle.stage !== "not_started" ? "draft" : "");
+
+  return `<span class="statusPill${tone ? ` statusPill-${escapeHtml(tone)}` : ""}">${escapeHtml(outreachCycleLabel(cycle))}</span>`;
+}
+
+// The next approved-but-unsent email_1/2/3 draft for this provider's current
+// cycle stage, or null if there's nothing ready to send yet.
+function sendableMessageForProvider(provider) {
+  const cycle = provider.outreachCycle;
+
+  if (cycle?.resolution || cycle?.paused) {
+    return null;
+  }
+
+  const nextStep = OUTREACH_CYCLE_NEXT_STEP[cycle?.stage || "not_started"];
+
+  if (!nextStep) {
+    return null;
+  }
+
+  return (provider.outreachMessages || []).find((message) => (
+    message.messageStep === nextStep && message.status === "approved"
+  )) || null;
+}
+
 function outreachProviderRow(provider) {
   const contacts = provider.outreachContacts || [];
   const summary = outreachSummaryForProvider(provider);
@@ -2703,6 +2768,19 @@ function outreachProviderRow(provider) {
     summary.sent ? `${summary.sent} sent` : "",
   ].filter(Boolean).join(", ") || "No messages yet";
   const actions = providerActions(provider, { includeEdit: false, includeProfile: false, includeRecrawl: false });
+  const cycle = provider.outreachCycle;
+  const sendableMessage = sendableMessageForProvider(provider);
+  const cycleButtons = [
+    sendableMessage
+      ? actionButton("publish", "Send", `data-send-outreach="${escapeHtml(sendableMessage.id)}"`)
+      : "",
+    cycle && cycle.stage !== "not_started" && !cycle.resolution
+      ? actionButton("process", "Mark Replied", `data-mark-replied="${escapeHtml(provider.id)}"`)
+      : "",
+    cycle && cycle.stage !== "not_started" && !cycle.resolution
+      ? actionButton("recrawl", cycle.paused ? "Resume" : "Pause", `data-toggle-outreach-pause="${escapeHtml(provider.id)}" data-outreach-pause="${cycle.paused ? "false" : "true"}"`)
+      : "",
+  ].filter(Boolean).join("");
 
   return `
     <article class="adminTableRow adminOutreachRow">
@@ -2718,7 +2796,8 @@ function outreachProviderRow(provider) {
       <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
       <div class="adminCell"><span>${escapeHtml(contacts.length)} contact${contacts.length === 1 ? "" : "s"}</span></div>
       <div class="adminCell"><span title="${escapeHtml(`${outreachStageLabel(stage)} - ${messageText}`)}">${escapeHtml(outreachStageLabel(stage))} - ${escapeHtml(messageText)}</span></div>
-      <div class="adminCell adminCellAction">${actions}</div>
+      <div class="adminCell">${cycleStagePill(cycle)}</div>
+      <div class="adminCell adminCellAction">${actions}${cycleButtons}</div>
     </article>
   `;
 }
@@ -2742,7 +2821,7 @@ function renderOutreach() {
   const providers = filteredOutreachProviders();
 
   elements.outreachProviderList.innerHTML = providers.length
-    ? `${tableHeader(["Company", "Status", "Contacts", "Messages", "Actions"])}${providers.map(outreachProviderRow).join("")}`
+    ? `${tableHeader(["Company", "Status", "Contacts", "Messages", "Cycle", "Actions"])}${providers.map(outreachProviderRow).join("")}`
     : emptyState("No providers match the current outreach filters.");
 }
 
@@ -3264,6 +3343,41 @@ function bindPublishButtons() {
         "Updating",
         `Lead marked ${button.dataset.providerLeadStatus}.`,
         () => updateProviderLeadStatus(button.dataset.updateProviderLead, button.dataset.providerLeadStatus)
+      );
+    });
+  });
+
+  document.querySelectorAll("[data-send-outreach]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(
+        button,
+        "Sending",
+        "Outreach email sent.",
+        () => sendOutreachMessage(button.dataset.sendOutreach)
+      );
+    });
+  });
+
+  document.querySelectorAll("[data-mark-replied]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await runAdminAction(
+        button,
+        "Updating",
+        "Marked as replied. No further follow-ups will send.",
+        () => markProviderReplied(button.dataset.markReplied)
+      );
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-outreach-pause]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const paused = button.dataset.outreachPause === "true";
+
+      await runAdminAction(
+        button,
+        "Updating",
+        paused ? "Outreach paused for this provider." : "Outreach resumed for this provider.",
+        () => toggleOutreachPause(button.dataset.toggleOutreachPause, paused)
       );
     });
   });
@@ -3807,6 +3921,54 @@ async function reviewClaimRequest(id, status) {
 
   await refreshAdminState();
   setSection("requests");
+  return payload;
+}
+
+async function sendOutreachMessage(messageId) {
+  const response = await fetch("/api/send-outreach", {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({ messageId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to send outreach message.");
+  }
+
+  await refreshAdminState();
+  return payload;
+}
+
+async function markProviderReplied(providerId) {
+  const response = await fetch("/api/admin-outreach-cycle", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ providerId, resolution: "replied_other" }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to mark provider as replied.");
+  }
+
+  await refreshAdminState();
+  return payload;
+}
+
+async function toggleOutreachPause(providerId, paused) {
+  const response = await fetch("/api/admin-outreach-cycle", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ providerId, paused }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to update outreach pause state.");
+  }
+
+  await refreshAdminState();
   return payload;
 }
 

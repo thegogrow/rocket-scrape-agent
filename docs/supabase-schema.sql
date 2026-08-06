@@ -134,6 +134,36 @@ create table if not exists public.claim_requests (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.outreach_cycles (
+  id uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.providers(id) on delete cascade,
+  stage text not null default 'not_started' check (
+    stage in ('not_started', 'cycle_1_sent', 'cycle_2_sent', 'cycle_3_sent', 'closed')
+  ),
+  resolution text check (
+    resolution in ('claimed', 'removed', 'no_response', 'opted_out', 'replied_other')
+  ),
+  paused boolean not null default false,
+  last_sent_at timestamptz,
+  next_action_due_at timestamptz,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider_id)
+);
+
+create table if not exists public.outreach_links (
+  id uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.providers(id) on delete cascade,
+  token text not null unique,
+  purpose text not null default 'access' check (purpose in ('access', 'opt_out')),
+  expires_at timestamptz,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists outreach_links_provider_id_idx on public.outreach_links (provider_id);
+
 create table if not exists public.provider_leads (
   id uuid primary key default gen_random_uuid(),
   provider_id uuid references public.providers(id) on delete set null,
@@ -264,6 +294,9 @@ alter table public.provider_leads
   add column if not exists reviewed_by text,
   add column if not exists reviewed_at timestamptz;
 
+alter table public.outreach_messages
+  add column if not exists cycle_number integer;
+
 alter table public.providers
   drop constraint if exists providers_status_check;
 
@@ -331,6 +364,11 @@ create trigger claim_requests_set_updated_at
 before update on public.claim_requests
 for each row execute function public.set_updated_at();
 
+drop trigger if exists outreach_cycles_set_updated_at on public.outreach_cycles;
+create trigger outreach_cycles_set_updated_at
+before update on public.outreach_cycles
+for each row execute function public.set_updated_at();
+
 drop trigger if exists provider_leads_set_updated_at on public.provider_leads;
 create trigger provider_leads_set_updated_at
 before update on public.provider_leads
@@ -357,6 +395,8 @@ alter table public.tag_taxonomy enable row level security;
 alter table public.outreach_contacts enable row level security;
 alter table public.outreach_messages enable row level security;
 alter table public.claim_requests enable row level security;
+alter table public.outreach_cycles enable row level security;
+alter table public.outreach_links enable row level security;
 alter table public.provider_leads enable row level security;
 alter table public.success_stories enable row level security;
 alter table public.provider_events enable row level security;
@@ -375,3 +415,35 @@ using (status in ('approved', 'outreach_pending', 'outreach_active', 'claimed', 
 insert into storage.buckets (id, name, public)
 values ('provider-logos', 'provider-logos', true)
 on conflict (id) do nothing;
+
+-- Week 10 Part C: automated daily outreach follow-up job.
+-- One-time setup, run manually after enabling both extensions from the
+-- Supabase dashboard (Database -> Extensions): pg_cron and pg_net.
+-- Replace the two placeholders below before running:
+--   <YOUR_DEPLOYED_SITE_URL>    e.g. https://rocket-scrape-agent.vercel.app
+--   <YOUR_OUTREACH_CRON_SECRET> must match OUTREACH_CRON_SECRET in the deployment env
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+create or replace function public.trigger_outreach_followup_job()
+returns void as $$
+begin
+  perform net.http_post(
+    url := '<YOUR_DEPLOYED_SITE_URL>/api/outreach-followup',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cron-secret', '<YOUR_OUTREACH_CRON_SECRET>'
+    ),
+    body := '{}'::jsonb
+  );
+end;
+$$ language plpgsql;
+
+select cron.unschedule('outreach-daily-followup')
+where exists (select 1 from cron.job where jobname = 'outreach-daily-followup');
+
+select cron.schedule(
+  'outreach-daily-followup',
+  '0 8 * * *', -- 08:00 UTC daily
+  $$select public.trigger_outreach_followup_job();$$
+);

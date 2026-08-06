@@ -29,6 +29,12 @@ const OUTREACH_MESSAGE_CHANNELS = new Set(["email", "linkedin", "claim_invite"])
 const OUTREACH_MESSAGE_STEPS = new Set(["email_1", "email_2", "email_3", "linkedin_message", "claim_profile_invitation"]);
 const OUTREACH_MESSAGE_STATUSES = new Set(["draft", "approved", "sent", "opened", "clicked", "replied"]);
 const CLAIM_REQUEST_TYPES = new Set(["claim", "removal"]);
+const OUTREACH_CYCLE_STAGES = new Set(["not_started", "cycle_1_sent", "cycle_2_sent", "cycle_3_sent", "closed"]);
+const OUTREACH_CYCLE_RESOLUTIONS = new Set(["claimed", "removed", "no_response", "opted_out", "replied_other"]);
+const OUTREACH_LINK_PURPOSES = new Set(["access", "opt_out"]);
+// Days until the next action is due after each stage - sums to ~14 days total
+// from the first send, matching the cadence in docs/weekly-plan.md Week 10.
+const OUTREACH_CYCLE_FOLLOWUP_DAYS = { cycle_1_sent: 6, cycle_2_sent: 5, cycle_3_sent: 3 };
 const PROVIDER_EVENT_STATUSES = new Set(["suggested", "approved", "expired", "archived"]);
 const MARKET_SIGNAL_TYPES = new Set(["hiring", "news", "leadership", "tender", "technology", "partnership"]);
 const MARKET_SIGNAL_STATUSES = new Set(["scraped", "reviewed", "approved", "archived"]);
@@ -57,6 +63,8 @@ const SPRINT2_SCHEMA_CHECKS = [
   { table: "outreach_contacts", required: false, columns: ["id", "provider_id", "name", "title", "email", "linkedin_url", "primary_contact"] },
   { table: "outreach_messages", required: false, columns: ["id", "provider_id", "contact_id", "channel", "message_step", "subject", "body", "status"] },
   { table: "claim_requests", required: false, columns: ["id", "provider_id", "domain", "email", "request_type", "status", "verification_method", "reviewed_by", "reviewed_at"] },
+  { table: "outreach_cycles", required: false, columns: ["id", "provider_id", "stage", "resolution", "paused", "last_sent_at", "next_action_due_at", "resolved_at"] },
+  { table: "outreach_links", required: false, columns: ["id", "provider_id", "token", "purpose", "expires_at", "used_at"] },
   { table: "provider_leads", required: false, columns: ["id", "provider_id", "domain", "email", "message", "status", "reviewed_by", "reviewed_at"] },
   { table: "success_stories", required: false, columns: ["id", "provider_id", "title", "status", "approved_by", "approved_at"] },
   { table: "provider_events", required: false, columns: ["id", "provider_id", "title", "starts_at", "status", "approved_by", "approved_at"] },
@@ -450,6 +458,7 @@ function rowToOutreachMessage(row = {}) {
     approvedBy: row.approved_by || "",
     approvedAt: row.approved_at,
     sentAt: row.sent_at,
+    cycleNumber: row.cycle_number ?? null,
     metadata: row.metadata || {},
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -471,6 +480,37 @@ function rowToClaimRequest(row = {}) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function rowToOutreachCycle(row = {}) {
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    stage: row.stage || "not_started",
+    resolution: row.resolution || null,
+    paused: Boolean(row.paused),
+    lastSentAt: row.last_sent_at,
+    nextActionDueAt: row.next_action_due_at,
+    resolvedAt: row.resolved_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function rowToOutreachLink(row = {}) {
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    token: row.token,
+    purpose: row.purpose || "access",
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
+  };
+}
+
+function generateOutreachToken() {
+  return require("crypto").randomBytes(24).toString("base64url");
 }
 
 function rowToProviderLead(row = {}) {
@@ -590,6 +630,9 @@ function normalizeOutreachMessages(messages = []) {
       approvedBy: String(message.approvedBy || message.approved_by || "").trim(),
       approvedAt: message.approvedAt || message.approved_at || null,
       sentAt: message.sentAt || message.sent_at || null,
+      cycleNumber: Number.isInteger(message.cycleNumber ?? message.cycle_number)
+        ? (message.cycleNumber ?? message.cycle_number)
+        : null,
       metadata: message.metadata && typeof message.metadata === "object" ? message.metadata : {},
     };
 
@@ -661,11 +704,38 @@ async function replaceProviderOutreachMessages(providerId, messages = []) {
       approved_by: message.approvedBy || null,
       approved_at: message.approvedAt,
       sent_at: message.sentAt,
+      cycle_number: message.cycleNumber,
       metadata: message.metadata,
     }))),
   });
 
   return rows.map(rowToOutreachMessage);
+}
+
+// Single-row send, used by the admin Send button (src/api/send-outreach.js)
+// so it doesn't have to round-trip the full delete/reinsert message set.
+async function markOutreachMessageSent(id, { cycleNumber } = {}) {
+  const rows = await supabaseFetch(`/rest/v1/outreach_messages?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      cycle_number: cycleNumber ?? null,
+    }),
+  });
+
+  return rows[0] ? rowToOutreachMessage(rows[0]) : null;
+}
+
+async function getOutreachMessage(id) {
+  const rows = await supabaseFetch(
+    `/rest/v1/outreach_messages?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+
+  return rows[0] ? rowToOutreachMessage(rows[0]) : null;
 }
 
 async function listClaimRequests() {
@@ -1381,12 +1451,22 @@ function mergeMarketSignalsIntoProfiles(profiles = [], marketSignals = []) {
   }));
 }
 
-async function createClaimRequest({ domain, email, requestType = "claim", metadata = {} } = {}) {
-  const normalizedDomain = normalizeDomain(domain);
+async function createClaimRequest({ domain, email, requestType = "claim", token, metadata = {} } = {}) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedType = CLAIM_REQUEST_TYPES.has(String(requestType || "").trim().toLowerCase())
     ? String(requestType || "").trim().toLowerCase()
     : "claim";
+  let normalizedDomain = normalizeDomain(domain);
+  let linkedToken = null;
+
+  if (token) {
+    const link = await resolveOutreachLink(token);
+
+    if (link?.provider?.domain) {
+      normalizedDomain = link.provider.domain;
+      linkedToken = link.token;
+    }
+  }
 
   if (!normalizedDomain) {
     throw new Error("Provider domain is required.");
@@ -1421,7 +1501,216 @@ async function createClaimRequest({ domain, email, requestType = "claim", metada
     }),
   });
 
+  if (linkedToken) {
+    await markOutreachLinkUsed(linkedToken);
+  }
+
+  if (provider?.id) {
+    await stopOutreachCycle(provider.id, {
+      resolution: normalizedType === "removal" ? "removed" : "claimed",
+    });
+  }
+
   return rows[0];
+}
+
+async function listOutreachCycles(providerIds = []) {
+  const ids = providerIds.filter(Boolean);
+
+  if (ids.length === 0) {
+    return [];
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/outreach_cycles?select=*&provider_id=in.(${ids.map(encodeURIComponent).join(",")})`
+    );
+
+    return rows.map(rowToOutreachCycle);
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function getOutreachCycle(providerId) {
+  if (!providerId) {
+    return null;
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/outreach_cycles?select=*&provider_id=eq.${encodeURIComponent(providerId)}&limit=1`
+    );
+
+    return rows[0] ? rowToOutreachCycle(rows[0]) : null;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function upsertOutreachCycle(providerId, patch = {}) {
+  const rows = await supabaseFetch("/rest/v1/outreach_cycles?on_conflict=provider_id", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify({
+      provider_id: providerId,
+      ...patch,
+    }),
+  });
+
+  return rowToOutreachCycle(rows[0]);
+}
+
+// Called when an outreach email actually sends (from the admin Send button or
+// the automated follow-up job). Advances the stage and sets the next due date.
+async function recordOutreachSend(providerId, stage) {
+  if (!OUTREACH_CYCLE_STAGES.has(stage)) {
+    throw new Error(`Invalid outreach cycle stage: ${stage}`);
+  }
+
+  const now = new Date();
+  const followUpDays = OUTREACH_CYCLE_FOLLOWUP_DAYS[stage];
+  const nextActionDueAt = followUpDays
+    ? new Date(now.getTime() + followUpDays * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
+  return upsertOutreachCycle(providerId, {
+    stage,
+    last_sent_at: now.toISOString(),
+    next_action_due_at: nextActionDueAt,
+    resolution: null,
+    resolved_at: null,
+  });
+}
+
+// Called on claim/removal/opt-out/reply so no further follow-ups go out.
+async function stopOutreachCycle(providerId, { resolution } = {}) {
+  if (!OUTREACH_CYCLE_RESOLUTIONS.has(resolution)) {
+    throw new Error(`Invalid outreach cycle resolution: ${resolution}`);
+  }
+
+  return upsertOutreachCycle(providerId, {
+    stage: "closed",
+    resolution,
+    resolved_at: new Date().toISOString(),
+    next_action_due_at: null,
+  });
+}
+
+async function setOutreachCyclePaused(providerId, paused) {
+  return upsertOutreachCycle(providerId, { paused: Boolean(paused) });
+}
+
+// Providers the daily follow-up job (src/api/outreach-followup.js) should act
+// on: due, not resolved, and not paused.
+async function listDueOutreachCycles() {
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/outreach_cycles?select=*&resolution=is.null&paused=eq.false&next_action_due_at=lte.${encodeURIComponent(new Date().toISOString())}`
+    );
+
+    return rows.map(rowToOutreachCycle);
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function createOutreachLink(providerId, { purpose = "access", expiresInDays = 60 } = {}) {
+  const normalizedPurpose = OUTREACH_LINK_PURPOSES.has(purpose) ? purpose : "access";
+  const rows = await supabaseFetch("/rest/v1/outreach_links", {
+    method: "POST",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      provider_id: providerId,
+      token: generateOutreachToken(),
+      purpose: normalizedPurpose,
+      expires_at: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString(),
+    }),
+  });
+
+  return rowToOutreachLink(rows[0]);
+}
+
+// Reuses a still-valid, unused access token for the provider so regenerating
+// drafts doesn't invalidate a link already sent in a previous email.
+async function getOrCreateAccessLink(providerId) {
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/outreach_links?select=*&provider_id=eq.${encodeURIComponent(providerId)}&purpose=eq.access&used_at=is.null&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=1`
+    );
+
+    if (rows[0]) {
+      return rowToOutreachLink(rows[0]);
+    }
+  } catch (error) {
+    if (!isMissingTableError(error)) {
+      throw error;
+    }
+  }
+
+  return createOutreachLink(providerId, { purpose: "access" });
+}
+
+async function resolveOutreachLink(token) {
+  if (!token) {
+    return null;
+  }
+
+  const rows = await supabaseFetch(
+    `/rest/v1/outreach_links?select=*&token=eq.${encodeURIComponent(token)}&limit=1`
+  );
+  const link = rows[0] ? rowToOutreachLink(rows[0]) : null;
+
+  if (!link) {
+    return null;
+  }
+
+  if (link.expiresAt && new Date(link.expiresAt).getTime() < Date.now()) {
+    return null;
+  }
+
+  const providerRows = await supabaseFetch(
+    `/rest/v1/providers?select=*&id=eq.${encodeURIComponent(link.providerId)}&limit=1`
+  );
+  const provider = providerRows[0] ? rowToProfile(providerRows[0]) : null;
+
+  if (!provider) {
+    return null;
+  }
+
+  return { ...link, provider };
+}
+
+async function markOutreachLinkUsed(token) {
+  if (!token) {
+    return null;
+  }
+
+  const rows = await supabaseFetch(`/rest/v1/outreach_links?token=eq.${encodeURIComponent(token)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({ used_at: new Date().toISOString() }),
+  });
+
+  return rows[0] ? rowToOutreachLink(rows[0]) : null;
 }
 
 async function logActivityEvent({
@@ -1855,6 +2144,18 @@ async function findProviderByDomain(domain) {
   return rows[0] ? rowToProfile(rows[0]) : null;
 }
 
+async function getProviderById(id) {
+  if (!id) {
+    return null;
+  }
+
+  const rows = await supabaseFetch(
+    `/rest/v1/providers?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+
+  return rows[0] ? rowToProfile(rows[0]) : null;
+}
+
 async function findActiveScrapeJobByDomain(domain) {
   const normalizedDomain = normalizeDomain(domain);
 
@@ -2120,6 +2421,7 @@ async function listAdminState() {
   const [
     outreachContacts,
     outreachMessages,
+    outreachCycles,
     successStories,
     providerEvents,
     marketSignals,
@@ -2128,6 +2430,7 @@ async function listAdminState() {
   ] = await Promise.all([
     listOutreachContacts(providerIds),
     listOutreachMessages(providerIds),
+    listOutreachCycles(providerIds),
     listSuccessStories(),
     listProviderEvents(),
     listMarketSignals(),
@@ -2136,6 +2439,7 @@ async function listAdminState() {
   ]);
   const contactsByProviderId = new Map();
   const messagesByProviderId = new Map();
+  const cyclesByProviderId = new Map(outreachCycles.map((cycle) => [cycle.providerId, cycle]));
 
   for (const contact of outreachContacts) {
     const existingContacts = contactsByProviderId.get(contact.providerId) || [];
@@ -2153,6 +2457,7 @@ async function listAdminState() {
     ...rowToProfile(row),
     outreachContacts: contactsByProviderId.get(row.id) || [],
     outreachMessages: messagesByProviderId.get(row.id) || [],
+    outreachCycle: cyclesByProviderId.get(row.id) || null,
     managedSuccessStories: successStories.filter((story) => story.providerId === row.id),
     managedProviderEvents: providerEvents.filter((event) => event.providerId === row.id),
     managedMarketSignals: marketSignals.filter((signal) => signal.providerId === row.id),
@@ -2429,26 +2734,39 @@ module.exports = {
   AdminAuthError,
   statusForError,
   createClaimRequest,
+  createOutreachLink,
   createProviderLead,
   createScrapeJob,
   deleteProvider,
   deleteScrapeJob,
   getNextQueuedScrapeJob,
+  getOrCreateAccessLink,
+  getOutreachCycle,
+  getOutreachMessage,
+  getProviderById,
   getScrapeJob,
   getOperationalReadiness,
   isSupabaseConfigured,
   listAdminState,
   listApprovedTagTaxonomy,
+  listDueOutreachCycles,
   listOutreachContacts,
+  listOutreachCycles,
   listOutreachMessages,
   listTagTaxonomy,
   listPublishedProviders,
   logActivityEvent,
+  markOutreachLinkUsed,
+  markOutreachMessageSent,
   normalizeLifecycleStatus,
   profileToRow,
   publishProvider,
+  recordOutreachSend,
+  resolveOutreachLink,
   reviewClaimRequest,
+  setOutreachCyclePaused,
   signInWithPassword,
+  stopOutreachCycle,
   supabaseFetch,
   supabaseConfig,
   updateTagTaxonomy,
@@ -2456,6 +2774,7 @@ module.exports = {
   updateScrapeJob,
   updateProvider,
   uploadProviderLogo,
+  upsertOutreachCycle,
   upsertProvider,
   verifyAdminToken,
 };

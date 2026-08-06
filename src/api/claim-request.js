@@ -18,6 +18,7 @@ module.exports = async function handler(request, response) {
       domain: body.domain,
       email: body.email,
       requestType: body.requestType,
+      token: body.token,
       metadata: {
         source: body.metadata?.source || "public_profile",
         message: body.metadata?.message || "",

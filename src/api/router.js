@@ -5,6 +5,7 @@ const handlers = {
   "/api/admin-export": require("./admin-export"),
   "/api/admin-generate-outreach": require("./admin-generate-outreach"),
   "/api/admin-job": require("./admin-job"),
+  "/api/admin-outreach-cycle": require("./admin-outreach-cycle"),
   "/api/admin-provider": require("./admin-provider"),
   "/api/admin-provider-lead": require("./admin-provider-lead"),
   "/api/admin-publish": require("./admin-publish"),
@@ -15,9 +16,13 @@ const handlers = {
   "/api/admin-tags": require("./admin-tags"),
   "/api/claim-request": require("./claim-request"),
   "/api/logo": require("./logo"),
+  "/api/outreach-followup": require("./outreach-followup"),
+  "/api/outreach-opt-out": require("./outreach-opt-out"),
   "/api/profile": require("./profile"),
   "/api/profiles": require("./profiles"),
   "/api/provider-lead": require("./provider-lead"),
+  "/api/resolve-outreach-link": require("./resolve-outreach-link"),
+  "/api/send-outreach": require("./send-outreach"),
   "/api/tags": require("./tags"),
 };
 

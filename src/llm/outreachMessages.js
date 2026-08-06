@@ -85,7 +85,7 @@ function primaryContactForProvider(provider = {}) {
   return contacts.find((contact) => contact.primaryContact) || contacts[0] || null;
 }
 
-function buildOutreachPayload(provider = {}, contact = primaryContactForProvider(provider)) {
+function buildOutreachPayload(provider = {}, contact = primaryContactForProvider(provider), accessUrl = null) {
   return {
     provider: {
       id: provider.id || null,
@@ -105,9 +105,7 @@ function buildOutreachPayload(provider = {}, contact = primaryContactForProvider
         })),
       status: provider.status || null,
       confidenceScore: provider.confidenceScore ?? provider.confidence_score ?? null,
-      providerAccessUrl: provider.domain
-        ? `${env.publicBaseUrl}/profile-access?domain=${encodeURIComponent(provider.domain)}`
-        : null,
+      providerAccessUrl: accessUrl || null,
     },
     primaryContact: contact
       ? {
@@ -123,13 +121,13 @@ function buildOutreachPayload(provider = {}, contact = primaryContactForProvider
   };
 }
 
-function buildOutreachPrompt(provider = {}, contact = primaryContactForProvider(provider)) {
+function buildOutreachPrompt(provider = {}, contact = primaryContactForProvider(provider), accessUrl = null) {
   return [
     "Generate outreach drafts for this provider.",
     "The drafts will be reviewed and edited by an admin before any sending. Do not include sending instructions.",
     "",
     "Payload:",
-    JSON.stringify(buildOutreachPayload(provider, contact), null, 2),
+    JSON.stringify(buildOutreachPayload(provider, contact, accessUrl), null, 2),
   ].join("\n");
 }
 
@@ -173,9 +171,9 @@ function parseOutreachResponse(value, context) {
   return normalizeGeneratedMessages(parsed, context);
 }
 
-async function requestOutreachCompletion(client, provider, contact, retryMessage = null) {
+async function requestOutreachCompletion(client, provider, contact, accessUrl, retryMessage = null) {
   const userPrompt = [
-    buildOutreachPrompt(provider, contact),
+    buildOutreachPrompt(provider, contact, accessUrl),
     retryMessage ? `\nCorrection: ${retryMessage}` : "",
   ].filter(Boolean).join("\n");
 
@@ -218,7 +216,7 @@ async function generateOutreachMessages(provider, options = {}) {
   };
 
   try {
-    firstResponseText = await requestOutreachCompletion(client, provider, contact);
+    firstResponseText = await requestOutreachCompletion(client, provider, contact, options.accessUrl);
     return parseOutreachResponse(firstResponseText, context);
   } catch (firstError) {
     try {
@@ -226,6 +224,7 @@ async function generateOutreachMessages(provider, options = {}) {
         client,
         provider,
         contact,
+        options.accessUrl,
         "Your previous response could not be parsed or was missing required messages. Return one valid JSON object with exactly the required five messages."
       );
 

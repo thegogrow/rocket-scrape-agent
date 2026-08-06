@@ -1,4 +1,6 @@
 const {
+  createOutreachLink,
+  getOrCreateAccessLink,
   listAdminState,
   statusForError,
   updateProvider,
@@ -6,6 +8,11 @@ const {
 } = require("../ui/supabaseStore");
 const { generateOutreachMessages, primaryContactForProvider } = require("../llm/outreachMessages");
 const { readJsonBody } = require("../ui/readJsonBody");
+const { env } = require("../config/env");
+
+function appendOptOutFooter(body, optOutUrl) {
+  return `${body}\n\n---\nDon't want further emails about this listing? ${optOutUrl}`;
+}
 
 function activityLogForProfile(profile = {}) {
   return Array.isArray(profile.activityLog) ? profile.activityLog : [];
@@ -40,9 +47,25 @@ module.exports = async function handler(request, response) {
     }
 
     const primaryContact = primaryContactForProvider(provider);
-    const outreachMessages = await generateOutreachMessages(provider, {
+    const [accessLink, optOutLink] = await Promise.all([
+      getOrCreateAccessLink(id),
+      createOutreachLink(id, { purpose: "opt_out" }),
+    ]);
+    const accessUrl = `${env.publicBaseUrl}/profile-access?token=${encodeURIComponent(accessLink.token)}`;
+    const optOutUrl = `${env.publicBaseUrl}/api/outreach-opt-out?token=${encodeURIComponent(optOutLink.token)}`;
+    const generatedMessages = await generateOutreachMessages(provider, {
       contact: primaryContact,
       generatedBy: admin.email,
+      accessUrl,
+    });
+    const outreachMessages = generatedMessages.map((message) => {
+      if (message.messageStep === "claim_profile_invitation") {
+        return { ...message, metadata: { ...message.metadata, accessUrl } };
+      }
+
+      return message.channel === "email"
+        ? { ...message, body: appendOptOutFooter(message.body, optOutUrl) }
+        : message;
     });
     const activityEntry = {
       type: "outreach_generated",
