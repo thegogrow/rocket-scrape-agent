@@ -3200,6 +3200,10 @@ function renderOutreachComposeMessages() {
 
   const byStep = outreachMessagesByStep(provider.outreachMessages);
   elements.outreachComposeMessages.innerHTML = OUTREACH_MESSAGE_STEPS
+    // Edit Drafts only shows the 3-email sequence, which is all that's ever
+    // actually sent automatically - LinkedIn and the claim invite are
+    // separate drafts still generated and stored, just not shown here.
+    .filter((step) => step.channel === "email")
     .map((step) => outreachComposeMessageMarkup(byStep.get(step.messageStep) || step, provider))
     .join("");
 }
@@ -3223,7 +3227,16 @@ async function saveOutreachMessagesForKey(key, container) {
     return false;
   }
 
-  const outreachMessages = collectOutreachMessages(container);
+  // The compose dialog only shows/collects the 3 emails - saving replaces
+  // *all* of a provider's outreach_messages, so the LinkedIn and Claim
+  // Invite drafts (generated alongside the emails, just not shown here)
+  // have to be carried through by hand or they'd be silently deleted.
+  const collectedMessages = collectOutreachMessages(container);
+  const collectedSteps = new Set(collectedMessages.map((message) => message.messageStep));
+  const untouchedMessages = (findProvider(key)?.outreachMessages || [])
+    .filter((message) => !collectedSteps.has(message.messageStep));
+  const outreachMessages = [...collectedMessages, ...untouchedMessages];
+
   const response = await fetch("/api/admin-provider", {
     method: "PATCH",
     headers: adminHeaders(),
