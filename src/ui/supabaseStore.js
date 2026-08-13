@@ -2357,6 +2357,49 @@ async function signInWithPassword(email, password) {
   };
 }
 
+// The access token this issues is short-lived by design (that's normal for
+// Supabase, not a misconfiguration) - the frontend is meant to silently swap
+// it for a new one using the refresh token before/when it expires, rather
+// than making the admin re-enter a password. See public/admin.js's fetch
+// interceptor for where this actually gets called.
+async function refreshAdminSession(refreshToken) {
+  const config = supabaseConfig();
+
+  if (!config.url || !config.anonKey) {
+    throw new Error("Supabase Auth is not configured");
+  }
+
+  if (!refreshToken) {
+    throw new AdminAuthError("Missing refresh token");
+  }
+
+  const response = await fetch(`${normalizeSupabaseUrl(config.url)}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!response.ok) {
+    throw new AdminAuthError("Refresh token is invalid or expired");
+  }
+
+  const payload = await response.json();
+  const userEmail = String(payload.user?.email || "").toLowerCase();
+
+  if (!config.adminEmails.includes(userEmail)) {
+    throw new AdminAuthError("This user is not allowed to access admin.");
+  }
+
+  return {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token,
+    email: userEmail,
+  };
+}
+
 class AdminAuthError extends Error {}
 
 function statusForError(error) {
@@ -2764,6 +2807,7 @@ module.exports = {
   reviewClaimRequest,
   setOutreachCyclePaused,
   signInWithPassword,
+  refreshAdminSession,
   stopOutreachCycle,
   supabaseFetch,
   supabaseConfig,

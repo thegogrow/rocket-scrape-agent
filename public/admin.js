@@ -352,17 +352,23 @@ function adminToken() {
   return window.localStorage.getItem("rocketEngineersAdminToken");
 }
 
+function adminRefreshToken() {
+  return window.localStorage.getItem("rocketEngineersAdminRefreshToken");
+}
+
 function adminEmail() {
   return window.localStorage.getItem("rocketEngineersAdminEmail");
 }
 
 function setAdminSession(session) {
   window.localStorage.setItem("rocketEngineersAdminToken", session.accessToken);
+  window.localStorage.setItem("rocketEngineersAdminRefreshToken", session.refreshToken || "");
   window.localStorage.setItem("rocketEngineersAdminEmail", session.email);
 }
 
 function clearAdminSession() {
   window.localStorage.removeItem("rocketEngineersAdminToken");
+  window.localStorage.removeItem("rocketEngineersAdminRefreshToken");
   window.localStorage.removeItem("rocketEngineersAdminEmail");
 }
 
@@ -377,11 +383,51 @@ function adminHeaders() {
   };
 }
 
-// The admin session token is a Supabase access token with a fixed expiry and
-// no refresh logic - after enough inactivity it goes stale, and every admin
-// action that hits the API then silently does nothing (401, uncaught). This
-// intercepts those 401s globally so the failure is visible and recoverable
-// instead of looking like a broken page.
+// The admin access token is short-lived by design (normal Supabase behavior,
+// not a bug) - it's meant to be silently swapped for a new one using the
+// refresh token, rather than making the admin re-enter a password every time
+// it expires. This dedupes concurrent refresh attempts (several requests can
+// 401 around the same moment) so only one refresh call ever goes out at once.
+let pendingRefresh = null;
+
+async function refreshAdminToken() {
+  if (pendingRefresh) {
+    return pendingRefresh;
+  }
+
+  pendingRefresh = (async () => {
+    const refreshToken = adminRefreshToken();
+
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await nativeFetch("/api/admin-refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const session = await response.json();
+      setAdminSession(session);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  })();
+
+  try {
+    return await pendingRefresh;
+  } finally {
+    pendingRefresh = null;
+  }
+}
+
 function handleExpiredSession() {
   if (!isSignedIn()) {
     return;
@@ -393,20 +439,34 @@ function handleExpiredSession() {
   elements.loginMessage.classList.add("error");
 }
 
-(function watchForExpiredSession() {
-  const nativeFetch = window.fetch.bind(window);
+const nativeFetch = window.fetch.bind(window);
 
-  window.fetch = async function adminSessionAwareFetch(input, init) {
-    const response = await nativeFetch(input, init);
-    const url = typeof input === "string" ? input : input?.url || "";
+// Any admin API call that comes back 401 gets one silent refresh-and-retry
+// attempt before giving up - only a genuinely dead/revoked refresh token (or
+// no refresh token at all, e.g. a session from before this existed) actually
+// drops the admin back to the login screen now.
+window.fetch = async function adminSessionAwareFetch(input, init) {
+  const response = await nativeFetch(input, init);
+  const url = typeof input === "string" ? input : input?.url || "";
+  const isAdminApiCall = url.startsWith("/api/") && !url.startsWith("/api/admin-login") && !url.startsWith("/api/admin-refresh");
 
-    if (response.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/admin-login")) {
-      handleExpiredSession();
-    }
-
+  if (response.status !== 401 || !isAdminApiCall) {
     return response;
-  };
-})();
+  }
+
+  const refreshed = await refreshAdminToken();
+
+  if (!refreshed) {
+    handleExpiredSession();
+    return response;
+  }
+
+  const retryInit = init && init.headers && "Authorization" in init.headers
+    ? { ...init, headers: { ...init.headers, Authorization: `Bearer ${adminToken()}` } }
+    : init;
+
+  return nativeFetch(input, retryInit);
+};
 
 function normalizeWebsiteInput(value) {
   const text = String(value || "").trim();

@@ -10,6 +10,7 @@ const handlers = {
   "/api/admin-provider-lead": require("./admin-provider-lead"),
   "/api/admin-publish": require("./admin-publish"),
   "/api/admin-readiness": require("./admin-readiness"),
+  "/api/admin-refresh": require("./admin-refresh"),
   "/api/admin-run-job": require("./admin-run-job"),
   "/api/admin-scrape": require("./admin-scrape"),
   "/api/admin-state": require("./admin-state"),
