@@ -1092,8 +1092,7 @@ function providerActionMarkup(profile) {
 
   return `
     <div class="providerActions">
-      <a class="providerPrimaryAction" href="#provider-contact" data-provider-action="contact">Contact provider</a>
-      ${website ? `<a class="providerSecondaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
+      ${website ? `<a class="providerPrimaryAction" href="${escapeHtml(website)}" target="_blank" rel="noreferrer">Visit ${escapeHtml(profile.domain || "website")} -></a>` : ""}
     </div>
   `;
 }
@@ -1319,7 +1318,7 @@ function renderDetail() {
               <span class="eyebrow providerSubEyebrow">Industries</span>
               <div class="chips">${chipButtons(industries, "industry", "No industries found", true)}</div>
             </section>
-            <section class="providerProfileBlock">
+            <section class="providerProfileBlock" hidden>
               <div class="providerBlockHeader">
                 <span class="eyebrow">Success stories</span>
                 <a href="#stories" data-profile-page="stories">All stories -></a>
@@ -1332,14 +1331,13 @@ function renderDetail() {
               <span class="eyebrow">Facts</span>
               <div class="providerFacts">${providerFactsMarkup(profile, industries)}</div>
             </section>
-            <section>
+            <section hidden>
               <span class="eyebrow">Upcoming event</span>
               ${providerUpcomingEventMarkup(profile)}
               <a class="providerInlineLink" href="#events" data-profile-page="events">Register -></a>
             </section>
           </aside>
         </section>
-        ${providerRequestPanelMarkup(profile)}
       </div>
     </div>
   `;
@@ -1888,7 +1886,7 @@ function setActivePage(page) {
   const validPages = new Set(["home", "providers", "stories", "events", "signals"]);
   const requestedPage = validPages.has(page) ? page : "providers";
 
-  elements.searchHero.hidden = requestedPage !== "providers";
+  elements.searchHero.hidden = true;
   elements.homePage.hidden = requestedPage !== "home";
   elements.providersPage.hidden = requestedPage !== "providers";
   elements.storiesPage.hidden = requestedPage !== "stories";

@@ -4170,7 +4170,9 @@ h4,
 }
 
 .providerProfileBlock:last-child,
-.providerProfileAside section:last-child {
+.providerProfileAside section:last-child,
+.providerProfileBlock:has(+ [hidden]),
+.providerProfileAside section:has(+ [hidden]) {
   border-bottom: 0;
 }
 
@@ -6561,5 +6563,166 @@ h4,
   .trustBadgeRow {
     width: calc(100vw - 40px);
     max-width: calc(100vw - 40px);
+  }
+}
+
+/* Header brand mark + CTA */
+.brandCluster {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brandMark {
+  width: 22px;
+  height: 22px;
+  fill: var(--blue);
+  flex: none;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.headerCta {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+
+/* Intro band replacing the old oversized hero */
+.introBand {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 40px 48px;
+  border-bottom: 1px solid #111;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.introBandText {
+  max-width: 640px;
+}
+
+.introBandText h1 {
+  margin: 8px 0 0;
+  color: #111;
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.introBandText p {
+  margin: 12px 0 0;
+  color: #555;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 56ch;
+}
+
+.introStats {
+  display: flex;
+  gap: 32px;
+  margin: 0;
+  flex: none;
+}
+
+.introStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.introStats dt {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.introStats dd {
+  margin: 0;
+  color: #8f8f8f;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .introBand {
+    padding: 28px 20px;
+    align-items: flex-start;
+  }
+  .introStats {
+    gap: 22px;
+  }
+  .introStats dt {
+    font-size: 24px;
+  }
+}
+
+/* Site footer */
+.siteFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 32px 48px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.siteFooterMain {
+  max-width: 420px;
+}
+
+.siteFooterMain .cloudLogo {
+  font-size: 14px;
+}
+
+.siteFooterMain p {
+  margin: 8px 0 0;
+  color: #8f8f8f;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.siteFooterLinks {
+  display: flex;
+  gap: 22px;
+}
+
+.siteFooterLinks a {
+  color: #555;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.siteFooterCopy {
+  width: 100%;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: #8f8f8f;
+  font-size: 11.5px;
+}
+
+@media (max-width: 760px) {
+  .siteFooter {
+    padding: 24px 20px;
   }
 }
