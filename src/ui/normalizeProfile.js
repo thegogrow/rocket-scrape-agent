@@ -588,6 +588,7 @@ function normalizeProfile(profile = {}, options = {}) {
     files: profile.files || {},
     sourceData: profile.sourceData || {},
     confidenceScore: Number.parseInt(profile.confidenceScore, 10) || 0,
+    companySize: normalizeString(profile.companySize) || null,
     claimed: Boolean(profile.claimed || profile.claimedAt || profile.verified),
     subscriptionTier,
     isPremium: Boolean(profile.isPremium || profile.premium || subscriptionTier === "premium"),

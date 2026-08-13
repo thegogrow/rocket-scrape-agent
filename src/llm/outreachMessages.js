@@ -28,7 +28,7 @@ const SYSTEM_PROMPT = [
   "Use only the supplied provider profile and primary contact data.",
   "Keep tone professional, direct, and low-pressure.",
   "Every message should invite the provider to verify or claim their Rocket Engineers profile.",
-  "Use the supplied providerAccessUrl verbatim as the link in the Claim Profile invitation. Do not alter it, shorten it, or invent a different domain or URL.",
+  "Use the supplied providerAccessUrl verbatim as the link, in every message that has one (Email 1, Email 2, Email 3, and the Claim Profile invitation). Do not alter it, shorten it, or invent a different domain or URL. Email 1, 2, and 3 are the only messages that actually get sent automatically, so each one must include this real link as its call to action - never a placeholder like [Profile Link].",
   "Email 1 should introduce the profile and ask for verification.",
   "Email 2 should follow up with a practical reason to verify the listing.",
   "Email 3 should be a brief final reminder.",

@@ -416,6 +416,11 @@ insert into storage.buckets (id, name, public)
 values ('provider-logos', 'provider-logos', true)
 on conflict (id) do nothing;
 
+-- Week 11: persist Apollo's estimated_num_employees so the outreach batch
+-- can be ranked/filtered by company size, which nothing captured before.
+alter table public.providers
+  add column if not exists company_size text;
+
 -- Week 10 Part C: automated daily outreach follow-up job.
 -- One-time setup, run manually after enabling both extensions from the
 -- Supabase dashboard (Database -> Extensions): pg_cron and pg_net.

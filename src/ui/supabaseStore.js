@@ -295,6 +295,7 @@ function rowToProfile(row) {
     solutions: row.solutions || [],
     location: row.location,
     confidenceScore: row.confidence_score || 0,
+    companySize: row.company_size || null,
     githubUrl: row.github_url,
     linkedinUrl: row.linkedin_url,
     logoUrl: row.logo_url,
@@ -1932,6 +1933,7 @@ function profileToRow(profile, status = "scraped") {
     solutions: normalizedProfile.solutions,
     location: normalizedProfile.location,
     confidence_score: normalizedProfile.confidenceScore,
+    company_size: normalizedProfile.companySize || null,
     github_url: normalizedProfile.githubUrl,
     linkedin_url: normalizedProfile.linkedinUrl,
     logo_url: normalizedProfile.logoUrl,
@@ -2667,13 +2669,16 @@ async function updateProvider(id, profilePatch = {}, status, { reviewedBy } = {}
     ...(normalizedStatus ? { status: normalizedStatus } : {}),
   };
 
-  const rows = await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: {
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(rowPatch),
-  });
+  const rows =
+    Object.keys(rowPatch).length > 0
+      ? await supabaseFetch(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: {
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(rowPatch),
+        })
+      : await supabaseFetch(`/rest/v1/providers?select=*&id=eq.${encodeURIComponent(id)}`);
 
   const provider = rowToProfile(rows[0]);
   if (profilePatch.outreachContacts !== undefined) {
