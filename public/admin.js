@@ -4852,11 +4852,24 @@ function bindEvents() {
     const sendButton = event.target.closest(".outreachComposeSend");
 
     if (sendButton) {
-      const messageId = sendButton.closest(".outreachMessageRow").querySelector('[data-message-field="id"]').value.trim();
+      // Saving replaces every outreach_messages row for this provider (new
+      // ids, even for messages that weren't touched) - the id captured
+      // before save is guaranteed stale by the time send runs, which is why
+      // this used to fail with "message not found". Re-look-up the message
+      // by step from the freshly-saved state instead of trusting the old id.
+      const messageStep = sendButton.closest(".outreachMessageRow").dataset.messageStep;
 
       await runAdminAction(sendButton, "Sending", "Email sent.", async () => {
         await saveOutreachMessagesForKey(key, elements.outreachComposeMessages);
-        return sendOutreachMessage(messageId);
+
+        const freshProvider = findProvider(key);
+        const freshMessage = freshProvider?.outreachMessages?.find((message) => message.messageStep === messageStep);
+
+        if (!freshMessage) {
+          throw new Error("Couldn't find the saved draft to send - try again.");
+        }
+
+        return sendOutreachMessage(freshMessage.id);
       });
       renderOutreachComposeMessages();
     }
