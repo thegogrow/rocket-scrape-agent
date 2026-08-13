@@ -91,6 +91,7 @@ const env = Object.freeze({
       defaultValue: "https://api.resend.com",
     }),
     fromEmail: getEnv("RESEND_FROM_EMAIL"),
+    fromName: getEnv("RESEND_FROM_NAME", { defaultValue: "" }),
     testInboxEmail: getEnv("OUTREACH_TEST_INBOX_EMAIL"),
     dryRun: String(getEnv("OUTREACH_DRY_RUN", { defaultValue: "true" })).toLowerCase() === "true",
   },

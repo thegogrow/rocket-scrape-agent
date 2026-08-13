@@ -5,6 +5,10 @@ function hasResendConfig() {
   return Boolean(env.resend.apiKey && env.resend.fromEmail);
 }
 
+function formattedFromAddress() {
+  return env.resend.fromName ? `${env.resend.fromName} <${env.resend.fromEmail}>` : env.resend.fromEmail;
+}
+
 function isDryRun() {
   return env.resend.dryRun;
 }
@@ -45,7 +49,7 @@ async function sendOutreachEmail({ to, subject, body, providerId }) {
     },
     timeout: 20000,
     data: {
-      from: env.resend.fromEmail,
+      from: formattedFromAddress(),
       to: [recipient],
       // Plus-addressing lets a future inbound-parse webhook match a reply back
       // to a provider by exact string instead of fuzzy sender matching.
