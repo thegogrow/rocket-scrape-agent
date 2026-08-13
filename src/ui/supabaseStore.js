@@ -754,6 +754,28 @@ async function listClaimRequests() {
   }
 }
 
+// Lets the public access page show "you already requested this" instead of
+// a blank form again if someone reopens the link after already submitting.
+async function latestClaimRequestForProvider(providerId) {
+  if (!providerId) {
+    return null;
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/claim_requests?select=*&provider_id=eq.${encodeURIComponent(providerId)}&order=created_at.desc&limit=1`
+    );
+
+    return rows[0] ? rowToClaimRequest(rows[0]) : null;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 async function listProviderLeads() {
   try {
     const rows = await supabaseFetch("/rest/v1/provider_leads?select=*&order=created_at.desc&limit=200");
@@ -2817,6 +2839,7 @@ module.exports = {
   deleteScrapeJob,
   getNextQueuedScrapeJob,
   getOrCreateAccessLink,
+  latestClaimRequestForProvider,
   getOutreachCycle,
   getOutreachMessage,
   getProviderById,

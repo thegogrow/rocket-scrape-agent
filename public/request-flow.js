@@ -9,7 +9,39 @@ const accessElements = {
   status: document.querySelector("#accessStatus"),
   intro: document.querySelector("#accessIntro"),
   profileLink: document.querySelector("#accessProfileLink"),
+  existingRequest: document.querySelector("#accessExistingRequest"),
 };
+
+const REQUEST_STATUS_LABEL = { pending: "pending review", approved: "approved", rejected: "declined" };
+
+function formatRequestDate(isoDate) {
+  if (!isoDate) {
+    return "";
+  }
+
+  try {
+    return new Date(isoDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  } catch (error) {
+    return "";
+  }
+}
+
+// Shown instead of the form once a request already exists for this link, so
+// reopening it later (or right after submitting) doesn't look like a blank,
+// unused page inviting a duplicate submission.
+function showExistingRequestNotice({ requestType, status, createdAt }) {
+  if (!accessElements.existingRequest || !form) {
+    return;
+  }
+
+  const actionLabel = requestType === "removal" ? "removal" : "claim";
+  const statusLabel = REQUEST_STATUS_LABEL[status] || status;
+  const dateLabel = formatRequestDate(createdAt);
+
+  accessElements.existingRequest.textContent = `You already submitted a ${actionLabel} request${dateLabel ? ` on ${dateLabel}` : ""}. Status: ${statusLabel}. We'll email you once it's reviewed if it's still pending.`;
+  accessElements.existingRequest.hidden = false;
+  form.hidden = true;
+}
 
 function setMessage(text, isError = false) {
   message.textContent = text;
@@ -157,6 +189,10 @@ async function loadProviderAccess() {
   accessElements.status.textContent = `${titleCase(status)} profile`;
   accessElements.profileLink.href = `/?provider=${encodeURIComponent(link.domain)}`;
   accessElements.profileLink.hidden = false;
+
+  if (link.existingRequest) {
+    showExistingRequestNotice(link.existingRequest);
+  }
 }
 
 async function submitJson(url, payload) {
@@ -190,15 +226,15 @@ async function handleSubmit(event) {
   });
   setMessage("Submitting request...");
 
+  const requestType = flow === "access"
+    ? submitter?.value || data.requestType || "claim"
+    : flow === "removal" ? "removal" : "claim";
+
   try {
     if (flow === "lead") {
       await submitJson("/api/provider-lead", data);
       setMessage("Request received. Rocket Engineers will review it before any introduction.");
     } else {
-      const requestType = flow === "access"
-        ? submitter?.value || data.requestType || "claim"
-        : flow === "removal" ? "removal" : "claim";
-
       await submitJson("/api/claim-request", {
         domain: data.domain,
         email: data.email,
@@ -214,13 +250,13 @@ async function handleSubmit(event) {
         : `Claim request received. We'll review it and email ${data.email} once it's decided.`);
     }
 
-    const submittedDomain = data.domain;
-    const submittedToken = data.token;
-    form.reset();
-
     if (flow === "access") {
-      form.elements.domain.value = submittedDomain;
-      form.elements.token.value = submittedToken || "";
+      // Don't reset-and-reshow the form - it's already answered now, so keep
+      // it answered (matches reopening the same link later, which now shows
+      // the same notice via the existingRequest check on page load).
+      showExistingRequestNotice({ requestType, status: "pending", createdAt: new Date().toISOString() });
+    } else {
+      form.reset();
     }
   } catch (error) {
     setMessage(error.message, true);

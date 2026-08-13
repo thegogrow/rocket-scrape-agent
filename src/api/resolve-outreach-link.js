@@ -1,4 +1,4 @@
-const { isSupabaseConfigured, resolveOutreachLink } = require("../ui/supabaseStore");
+const { isSupabaseConfigured, latestClaimRequestForProvider, resolveOutreachLink } = require("../ui/supabaseStore");
 
 module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
@@ -26,6 +26,8 @@ module.exports = async function handler(request, response) {
       return;
     }
 
+    const existingRequest = await latestClaimRequestForProvider(link.provider.id);
+
     response.setHeader("Cache-Control", "no-store");
     response.status(200).json({
       domain: link.provider.domain,
@@ -33,6 +35,13 @@ module.exports = async function handler(request, response) {
       status: link.provider.status,
       claimed: Boolean(link.provider.claimed),
       used: Boolean(link.usedAt),
+      existingRequest: existingRequest
+        ? {
+            requestType: existingRequest.requestType,
+            status: existingRequest.status,
+            createdAt: existingRequest.createdAt,
+          }
+        : null,
     });
   } catch (error) {
     response.status(500).json({ error: error.message });
