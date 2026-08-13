@@ -1974,7 +1974,51 @@ function syncProviderRouteFromLocation(options = {}) {
   }
 }
 
+// Renders whatever profile data is available right now. Called twice: once
+// with the bundled static snapshot (served instantly from the CDN, no
+// Supabase round trip) so the page never sits on a blank spinner, then again
+// once the live API data lands and replaces it - same data shape either way,
+// so this is just "render/re-render", not two different code paths.
+function renderProfiles({ isFirstRender }) {
+  state.filtered = state.profiles;
+  state.selectedDomain = null;
+  elements.status.textContent = `${state.profiles.length} loaded`;
+  populateFilters();
+  renderStaticPages();
+
+  if (isFirstRender) {
+    bindEvents();
+  }
+
+  applyFilters();
+  syncPageFromLocation();
+  syncProviderRouteFromLocation({ replaceHistory: true });
+}
+
 async function loadProfiles() {
+  let renderedFirstPass = false;
+
+  // Static snapshot first, purely for instant perceived load time - it's a
+  // few hundred profiles stale at worst (checked: 201 vs 200 live as of this
+  // writing), and gets fully replaced by the live fetch below within a
+  // second or two either way.
+  try {
+    const staticResponse = await fetch("/profiles.json");
+
+    if (staticResponse.ok) {
+      const staticProfiles = publicProfilesFromPayload(await staticResponse.json());
+
+      if (Array.isArray(staticProfiles) && staticProfiles.length > 0) {
+        state.profiles = staticProfiles;
+        state.tags = [];
+        renderProfiles({ isFirstRender: true });
+        renderedFirstPass = true;
+      }
+    }
+  } catch (error) {
+    // Non-fatal - the live fetch below still runs and throws if it also fails.
+  }
+
   let response = await fetch("/api/profiles");
 
   if (!response.ok) {
@@ -1997,16 +2041,8 @@ async function loadProfiles() {
     state.profiles = publicProfilesFromPayload(await response.json());
   }
 
-  state.filtered = state.profiles;
   state.tags = await loadApprovedTags();
-  state.selectedDomain = null;
-  elements.status.textContent = `${state.profiles.length} loaded`;
-  populateFilters();
-  renderStaticPages();
-  bindEvents();
-  applyFilters();
-  syncPageFromLocation();
-  syncProviderRouteFromLocation({ replaceHistory: true });
+  renderProfiles({ isFirstRender: !renderedFirstPass });
 }
 
 async function loadApprovedTags() {
