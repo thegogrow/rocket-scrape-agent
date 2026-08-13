@@ -2392,23 +2392,16 @@ async function verifyAdminToken(authHeader) {
   return { email, id: user.id };
 }
 
+// Success stories/events/signals are no longer fetched here - that UI is
+// hidden site-wide (see docs/weekly-plan.md Week 11), so merging them into
+// every public page load was three unused Supabase round trips.
 async function listPublishedProviders() {
   const statusList = PUBLIC_PROVIDER_STATUSES.join(",");
   const rows = await supabaseFetch(
     `/rest/v1/providers?select=*&status=in.(${statusList})&order=company_name.asc`
   );
-  const profiles = rows.map(rowToProfile);
-  const providerIds = profiles.map((profile) => profile.id);
-  const [successStories, providerEvents, marketSignals] = await Promise.all([
-    listApprovedSuccessStories(providerIds),
-    listApprovedUpcomingProviderEvents(providerIds),
-    listApprovedMarketSignals(providerIds),
-  ]);
 
-  return mergeMarketSignalsIntoProfiles(
-    mergeProviderEventsIntoProfiles(mergeSuccessStoriesIntoProfiles(profiles, successStories), providerEvents),
-    marketSignals
-  );
+  return rows.map(rowToProfile);
 }
 
 async function listAdminState() {

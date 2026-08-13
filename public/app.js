@@ -1760,7 +1760,7 @@ function homeStatsMarkup() {
   return `
     <strong>${state.profiles.length}</strong><span>public providers</span>
     <strong>${countries}</strong><span>countries covered</span>
-    <strong>5</strong><span>marketplace sections</span>
+    <strong>100%</strong><span>reviewed by a person</span>
   `;
 }
 
@@ -1801,33 +1801,6 @@ function renderStaticPages() {
       <button class="primaryAction" type="button" data-home-page="providers">Browse providers</button>
     </div>
   `;
-  const exploreCards = [
-    [
-      "Provider index",
-      "Search and filter live provider profiles by country, services, technologies, partnerships, and industries.",
-      "providers",
-      '<path d="m21 21-4.3-4.3" /><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />',
-    ],
-    [
-      "Success Stories",
-      "Browse static customer proof while the content model is being built out.",
-      "stories",
-      '<path d="m12 2 2.9 6.5 7.1.7-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7-5.4-4.7 7.1-.7Z" />',
-    ],
-    [
-      "Events",
-      "Preview provider webinars, meetups, and technical sessions.",
-      "events",
-      '<path d="M4 5h16v16H4Z" /><path d="M4 10h16" /><path d="M8 3v4" /><path d="M16 3v4" />',
-    ],
-    [
-      "Signals Pro",
-      "Preview the premium intelligence feed for provider GTM teams.",
-      "signals",
-      '<path d="M3 12h4l3 8 4-16 3 8h4" />',
-    ],
-  ];
-
   elements.homePage.innerHTML = `
     ${staticShell(
       "Rocket Engineers",
@@ -1838,28 +1811,6 @@ function renderStaticPages() {
     )}
 
     ${homeFeaturedLogosMarkup()}
-
-    <section id="explore" class="staticShell homeExploreSection">
-      <div class="panelHeader">
-        <div>
-          <span class="eyebrow">Explore</span>
-          <h2>Everything in the marketplace</h2>
-        </div>
-      </div>
-      <div class="homeExploreGrid">
-        ${exploreCards.map(([title, copy, page, iconPath]) => `
-          <button class="homeExploreCard" type="button" data-home-page="${escapeHtml(page)}">
-            <span class="homeExploreIcon" aria-hidden="true"><svg viewBox="0 0 24 24">${iconPath}</svg></span>
-            <span class="homeExploreTitleRow">
-              <h3>${escapeHtml(title)}</h3>
-              ${page === "signals" ? '<span class="navBadge">Pro</span>' : ""}
-            </span>
-            <p>${escapeHtml(copy)}</p>
-            <span class="homeExploreArrow" aria-hidden="true">Open &rarr;</span>
-          </button>
-        `).join("")}
-      </div>
-    </section>
 
     <section class="homeClosingCta">
       <div>
@@ -2076,4 +2027,5 @@ loadProfiles().catch((error) => {
   elements.status.textContent = "Load failed";
   elements.detailContent.className = "detailContent empty";
   elements.detailContent.textContent = error.message;
+  elements.profileList.innerHTML = `<div class="emptyResults">Couldn't load providers. Please refresh the page.</div>`;
 });

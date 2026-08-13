@@ -18,7 +18,11 @@ module.exports = async function handler(request, response) {
       }
 
       if (databaseProfiles !== null) {
-        response.setHeader("Cache-Control", "no-store");
+        // Public directory data, same for every visitor - cache at the edge so
+        // repeat/concurrent loads don't each pay for a fresh Supabase query.
+        // Admin changes show up within a minute; stale-while-revalidate keeps
+        // it feeling fresh without blocking the response on a refetch.
+        response.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
         response.status(200).json(databaseProfiles);
         return;
       }
@@ -26,7 +30,7 @@ module.exports = async function handler(request, response) {
 
     const staticProfiles = await listStaticProfiles();
 
-    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     response.status(200).json(staticProfiles.length > 0 ? staticProfiles : await listProfiles());
   } catch (error) {
     response.status(500).json({ error: error.message });
