@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Rocket Engineers Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -655,7 +656,7 @@
           <span>Public Content</span>
           <p>Stories, solutions, and activity shown or used on the provider profile.</p>
         </div>
-        <section class="structuredEditGroup">
+        <section class="structuredEditGroup" hidden>
           <div class="structuredEditHeader">
             <h3>Success Stories</h3>
             <button id="profileEditAddSuccessStory" class="secondaryAction compactAction" type="button">Add Story</button>
@@ -663,7 +664,7 @@
           <div id="profileEditSuccessStories" class="structuredEntryList"></div>
           <span class="fieldHelp">Legacy profile stories. Managed stories below are the approved public source when present.</span>
         </section>
-        <section class="structuredEditGroup">
+        <section class="structuredEditGroup" hidden>
           <div class="structuredEditHeader">
             <div>
               <h3>Managed Success Stories</h3>
@@ -686,7 +687,7 @@
           Recent Activities
           <textarea id="profileEditActivities" rows="4" placeholder="One activity per line. Optional: 2026-06-30 | Activity title | Source"></textarea>
         </label>
-        <section class="structuredEditGroup">
+        <section class="structuredEditGroup" hidden>
           <div class="structuredEditHeader">
             <div>
               <h3>Managed Events</h3>
@@ -697,7 +698,7 @@
           <div id="profileEditManagedEvents" class="managedEventList"></div>
           <span class="fieldHelp">Only approved future events appear publicly. Past approved events are counted out of the public calendar.</span>
         </section>
-        <section class="structuredEditGroup">
+        <section class="structuredEditGroup" hidden>
           <div class="structuredEditHeader">
             <div>
               <h3>Managed Signals</h3>
