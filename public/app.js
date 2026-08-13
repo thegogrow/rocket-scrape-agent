@@ -1886,7 +1886,7 @@ function setActivePage(page) {
   const validPages = new Set(["home", "providers", "stories", "events", "signals"]);
   const requestedPage = validPages.has(page) ? page : "providers";
 
-  elements.searchHero.hidden = true;
+  elements.searchHero.hidden = requestedPage !== "providers";
   elements.homePage.hidden = requestedPage !== "home";
   elements.providersPage.hidden = requestedPage !== "providers";
   elements.storiesPage.hidden = requestedPage !== "stories";

@@ -13,12 +13,6 @@
   <body>
     <header class="appHeader">
       <div class="brandCluster">
-        <svg class="brandMark" viewBox="0 0 28 28" aria-hidden="true">
-          <path d="M14 1.5c4 3.2 6.2 7.9 6.2 12.9 0 2.7-.7 5.2-1.9 7.4l-4.3-2.5V10.6L14 8.9l-.6 1.7v8.7l-4.3 2.5A15.9 15.9 0 0 1 7.2 14.4c0-5 2.2-9.7 6.2-12.9Z" />
-          <circle cx="14" cy="10.8" r="2" />
-          <path d="M9.8 21.3 8 26.5l3.2-1.8Z" />
-          <path d="M18.2 21.3 20 26.5l-3.2-1.8Z" />
-        </svg>
         <div class="cloudLogo">Rocket Engineers</div>
       </div>
       <nav class="topNav" aria-label="Primary navigation">
@@ -30,11 +24,10 @@
       </nav>
       <div class="headerActions">
         <span id="status" hidden>Loading profiles</span>
-        <a class="headerCta" href="/connect.html">Connect With a Provider</a>
       </div>
     </header>
 
-    <section class="searchHero" hidden>
+    <section class="searchHero">
       <div>
         <h1>Explore Providers by Business Need</h1>
         <p>Find cloud, DevOps, platform, and software providers using generated profile evidence.</p>
@@ -43,19 +36,6 @@
         <span>Search Rocket Engineers</span>
         <input id="searchInput" type="search" placeholder="Search providers, services, technologies, partnerships" />
       </label>
-    </section>
-
-    <section class="introBand" aria-label="About Rocket Engineers">
-      <div class="introBandText">
-        <span class="eyebrow">Provider Directory</span>
-        <h1>The vetted directory for cloud, DevOps, and platform engineering partners.</h1>
-        <p>Every profile below is built from public evidence and reviewed by a person before publishing — no pay-to-rank, no self-submitted claims.</p>
-      </div>
-      <dl class="introStats">
-        <div><dt>199</dt><dd>Vetted providers</dd></div>
-        <div><dt>16</dt><dd>Countries covered</dd></div>
-        <div><dt>100%</dt><dd>Reviewed by a person</dd></div>
-      </dl>
     </section>
 
     <section id="homePage" class="homePage" hidden></section>
@@ -135,18 +115,6 @@
         <div id="profileList" class="profileList"></div>
       </section>
     </main>
-
-    <footer class="siteFooter">
-      <div class="siteFooterMain">
-        <div class="cloudLogo">Rocket Engineers</div>
-        <p>The vetted directory for cloud, DevOps, and platform engineering partners across Switzerland, Germany, and the wider DACH region.</p>
-      </div>
-      <nav class="siteFooterLinks" aria-label="Footer">
-        <a href="/">Providers</a>
-        <a href="/connect.html">Connect With a Provider</a>
-      </nav>
-      <p class="siteFooterCopy">© 2026 Rocket Engineers. All profiles are reviewed by a person before publishing.</p>
-    </footer>
 
     <script src="/app.js"></script>
   </body>
