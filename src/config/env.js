@@ -92,6 +92,7 @@ const env = Object.freeze({
     }),
     fromEmail: getEnv("RESEND_FROM_EMAIL"),
     fromName: getEnv("RESEND_FROM_NAME", { defaultValue: "" }),
+    replyToEmail: getEnv("OUTREACH_REPLY_TO_EMAIL", { defaultValue: "" }),
     testInboxEmail: getEnv("OUTREACH_TEST_INBOX_EMAIL"),
     dryRun: String(getEnv("OUTREACH_DRY_RUN", { defaultValue: "true" })).toLowerCase() === "true",
   },

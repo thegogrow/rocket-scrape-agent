@@ -2,6 +2,7 @@ const fs = require("fs-extra");
 const path = require("path");
 require("dotenv").config();
 const { normalizeProfile, normalizeProfiles } = require("./normalizeProfile");
+const { sendOutreachEmail } = require("../email/resend");
 
 const DEFAULT_ADMIN_EMAILS = ["phil@thegogrow.ch", "nunezkathleenm@gmail.com"];
 const LIFECYCLE_STATUSES = new Set([
@@ -1792,6 +1793,34 @@ async function logReviewerFeedback(providerId, {
   }
 }
 
+// Tells the requester their claim/removal request was reviewed - previously
+// nothing did this, so a company had no way to know an approval even
+// happened short of someone manually emailing them.
+async function notifyClaimRequestOutcome(request, status, provider) {
+  const companyName = provider?.companyName || request.domain;
+  const isRemoval = request.request_type === "removal";
+  const approved = status === "approved";
+
+  const subject = isRemoval
+    ? `Your removal request for ${companyName} on Rocket Engineers is ${approved ? "complete" : "on hold"}`
+    : `Your claim request for ${companyName} on Rocket Engineers is ${approved ? "approved" : "declined"}`;
+
+  const body = isRemoval
+    ? (approved
+        ? `Hi,\n\nYour request to remove the ${companyName} profile from Rocket Engineers has been reviewed and completed. The profile is no longer listed.\n\nBest regards,\nRocket Engineers Team`
+        : `Hi,\n\nWe reviewed your request to remove the ${companyName} profile from Rocket Engineers, and we weren't able to complete it as submitted. Reply to this email if you'd like to follow up.\n\nBest regards,\nRocket Engineers Team`)
+    : (approved
+        ? `Hi,\n\nYour request to claim the ${companyName} profile on Rocket Engineers has been reviewed and approved. You now have ownership of this profile.\n\nBest regards,\nRocket Engineers Team`
+        : `Hi,\n\nWe reviewed your request to claim the ${companyName} profile on Rocket Engineers, and we weren't able to approve it as submitted. Reply to this email if you'd like to follow up.\n\nBest regards,\nRocket Engineers Team`);
+
+  await sendOutreachEmail({
+    to: request.email,
+    subject,
+    body,
+    providerId: provider?.id || request.provider_id || null,
+  });
+}
+
 async function reviewClaimRequest(id, { status, reviewedBy } = {}) {
   const normalizedStatus = String(status || "").trim().toLowerCase();
 
@@ -1856,6 +1885,12 @@ async function reviewClaimRequest(id, { status, reviewedBy } = {}) {
       body: JSON.stringify(providerPatch),
     });
   }
+
+  await notifyClaimRequestOutcome(current, normalizedStatus, provider).catch((error) => {
+    // Never let a notification failure undo or block the actual review -
+    // the request is already approved/rejected in the database by this point.
+    console.warn(`[claim-request] Failed to send outcome email: ${error.message}`);
+  });
 
   await logActivityEvent({
     providerId: provider?.id || current.provider_id || null,

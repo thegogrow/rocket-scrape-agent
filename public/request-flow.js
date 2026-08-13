@@ -210,8 +210,8 @@ async function handleSubmit(event) {
         },
       });
       setMessage(requestType === "removal"
-        ? "Removal request received for manual review."
-        : "Claim request received for manual verification.");
+        ? `Removal request received. We'll review it and email ${data.email} once it's decided.`
+        : `Claim request received. We'll review it and email ${data.email} once it's decided.`);
     }
 
     const submittedDomain = data.domain;

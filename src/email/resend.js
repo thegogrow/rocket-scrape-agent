@@ -51,11 +51,10 @@ async function sendOutreachEmail({ to, subject, body, providerId }) {
     data: {
       from: formattedFromAddress(),
       to: [recipient],
-      // Plus-addressing lets a future inbound-parse webhook match a reply back
-      // to a provider by exact string instead of fuzzy sender matching.
-      reply_to: providerId
-        ? env.resend.fromEmail.replace("@", `+${providerId}@`)
-        : undefined,
+      // The sending domain (RESEND_FROM_EMAIL) has no inbound mail setup, so
+      // a reply-to on that address would just bounce - point replies at a
+      // real, monitored inbox instead.
+      reply_to: env.resend.replyToEmail || undefined,
       subject: dryRun ? `[TEST -> ${to}] ${subject}` : subject,
       html: bodyToHtml(body),
       text: body,
