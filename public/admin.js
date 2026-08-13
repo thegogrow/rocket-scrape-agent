@@ -372,6 +372,37 @@ function adminHeaders() {
   };
 }
 
+// The admin session token is a Supabase access token with a fixed expiry and
+// no refresh logic - after enough inactivity it goes stale, and every admin
+// action that hits the API then silently does nothing (401, uncaught). This
+// intercepts those 401s globally so the failure is visible and recoverable
+// instead of looking like a broken page.
+function handleExpiredSession() {
+  if (!isSignedIn()) {
+    return;
+  }
+
+  clearAdminSession();
+  showShell();
+  elements.loginMessage.textContent = "Your session expired - please sign in again.";
+  elements.loginMessage.classList.add("error");
+}
+
+(function watchForExpiredSession() {
+  const nativeFetch = window.fetch.bind(window);
+
+  window.fetch = async function adminSessionAwareFetch(input, init) {
+    const response = await nativeFetch(input, init);
+    const url = typeof input === "string" ? input : input?.url || "";
+
+    if (response.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/admin-login")) {
+      handleExpiredSession();
+    }
+
+    return response;
+  };
+})();
+
 function normalizeWebsiteInput(value) {
   const text = String(value || "").trim();
 
@@ -646,18 +677,18 @@ function renderActionCell(actions = []) {
   `;
 }
 
-// Same shape as renderActionCell but collapses to "More" above 2 items
-// instead of 3 - the Outreach Queue row has a narrower Actions column and
-// needs to guarantee a single line rather than favor showing more buttons.
+// Same shape as renderActionCell but keeps only 1 item primary instead of 2 -
+// the Outreach Queue row always leads with a single, priority-ordered action
+// (Send / Mark Replied / Edit Drafts), with everything else under "More".
 function renderOutreachActionCell(actions = []) {
   const items = actions.filter(Boolean);
 
-  if (items.length <= 2) {
+  if (items.length <= 1) {
     return `<div class="adminPublishedActions">${items.join("")}</div>`;
   }
 
-  const primary = items.slice(0, 2);
-  const overflow = items.slice(2);
+  const primary = items.slice(0, 1);
+  const overflow = items.slice(1);
 
   return `
     <div class="adminPublishedActions">
@@ -2892,17 +2923,23 @@ function outreachProviderRow(provider) {
     ? actionLink("access", "Outreach Page", providerAccessUrlForProvider(provider), 'target="_blank" rel="noopener"')
     : "";
   const cycleActive = Boolean(cycle && cycle.stage !== "not_started" && !cycle.resolution);
-  const actions = renderOutreachActionCell([
-    editDraftsButton,
-    outreachPageLink,
-    sendableMessage
-      ? actionButton("publish", "Send", `data-send-outreach="${escapeHtml(sendableMessage.id)}"`)
-      : "",
-    cycleActive ? actionButton("process", "Mark Replied", `data-mark-replied="${escapeHtml(provider.id)}"`) : "",
-    cycleActive
-      ? actionButton("recrawl", cycle.paused ? "Resume" : "Pause", `data-toggle-outreach-pause="${escapeHtml(provider.id)}" data-outreach-pause="${cycle.paused ? "false" : "true"}"`)
-      : "",
-  ]);
+  const sendButton = sendableMessage
+    ? actionButton("publish", "Send", `data-send-outreach="${escapeHtml(sendableMessage.id)}"`)
+    : null;
+  const markRepliedButton = cycleActive
+    ? actionButton("process", "Mark Replied", `data-mark-replied="${escapeHtml(provider.id)}"`)
+    : null;
+  const pauseResumeButton = cycleActive
+    ? actionButton("recrawl", cycle.paused ? "Resume" : "Pause", `data-toggle-outreach-pause="${escapeHtml(provider.id)}" data-outreach-pause="${cycle.paused ? "false" : "true"}"`)
+    : null;
+
+  // Exactly one primary action shown per row (Send once approved, otherwise
+  // Mark Replied once a cycle is running, otherwise Edit Drafts) - everything
+  // else, including whichever of those didn't win, collapses into "More".
+  const primaryAction = sendButton || markRepliedButton || editDraftsButton;
+  const moreActions = [editDraftsButton, outreachPageLink, markRepliedButton, pauseResumeButton]
+    .filter((action) => action && action !== primaryAction);
+  const actions = renderOutreachActionCell([primaryAction, ...moreActions]);
 
   return `
     <article class="adminTableRow adminOutreachRow">
