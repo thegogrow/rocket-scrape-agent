@@ -2,6 +2,7 @@ const state = {
   activeSection: "dashboard",
   activityEvents: [],
   claimRequests: [],
+  outreachSelection: new Set(),
   jobs: [],
   metrics: {},
   providerLeads: [],
@@ -248,6 +249,10 @@ const elements = {
   outreachSearchFilter: document.querySelector("#outreachSearchFilter"),
   outreachStatusFilter: document.querySelector("#outreachStatusFilter"),
   outreachProviderList: document.querySelector("#outreachProviderList"),
+  outreachBulkBar: document.querySelector("#outreachBulkBar"),
+  outreachBulkCount: document.querySelector("#outreachBulkCount"),
+  outreachBulkSend: document.querySelector("#outreachBulkSend"),
+  outreachBulkClear: document.querySelector("#outreachBulkClear"),
   missingDataList: document.querySelector("#missingDataList"),
   claimRequestList: document.querySelector("#claimRequestList"),
   providerLeadList: document.querySelector("#providerLeadList"),
@@ -2941,8 +2946,20 @@ function outreachProviderRow(provider) {
     .filter((action) => action && action !== primaryAction);
   const actions = renderOutreachActionCell([primaryAction, ...moreActions]);
 
+  const selectable = Boolean(sendableMessage);
+  const selected = selectable && state.outreachSelection.has(key);
+
   return `
     <article class="adminTableRow adminOutreachRow">
+      <div class="adminCell adminCellSelect">
+        <input
+          type="checkbox"
+          data-outreach-select="${key}"
+          aria-label="Select ${escapeHtml(provider.companyName || provider.domain || "provider")} for bulk send"
+          ${selectable ? "" : "disabled"}
+          ${selected ? "checked" : ""}
+        />
+      </div>
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -2978,9 +2995,48 @@ function renderOutreach() {
 
   const providers = filteredOutreachProviders();
 
+  // Drop anything from the selection that's no longer sendable (already
+  // sent, unapproved, filtered out) so a stale checkbox can never bulk-send
+  // something it shouldn't.
+  const selectableKeys = new Set(
+    providers.filter((provider) => sendableMessageForProvider(provider)).map((provider) => providerKey(provider))
+  );
+  for (const key of state.outreachSelection) {
+    if (!selectableKeys.has(key)) {
+      state.outreachSelection.delete(key);
+    }
+  }
+
+  const outreachTableHeader = `
+    <div class="adminTableHeader">
+      <span class="adminCellSelect">
+        <input
+          type="checkbox"
+          id="outreachSelectAll"
+          aria-label="Select all providers with an approved draft"
+          ${selectableKeys.size === 0 ? "disabled" : ""}
+          ${selectableKeys.size > 0 && state.outreachSelection.size === selectableKeys.size ? "checked" : ""}
+        />
+      </span>
+      <span>Company</span>
+      <span>Status</span>
+      <span>Messages</span>
+      <span>Cycle</span>
+      <span>Actions</span>
+    </div>
+  `;
+
   elements.outreachProviderList.innerHTML = providers.length
-    ? `${tableHeader(["Company", "Status", "Messages", "Cycle", "Actions"])}${providers.map(outreachProviderRow).join("")}`
+    ? `${outreachTableHeader}${providers.map(outreachProviderRow).join("")}`
     : emptyState("No providers match the current outreach filters.");
+
+  if (elements.outreachBulkBar) {
+    elements.outreachBulkBar.hidden = state.outreachSelection.size === 0;
+  }
+
+  if (elements.outreachBulkCount) {
+    elements.outreachBulkCount.textContent = `${state.outreachSelection.size} selected`;
+  }
 }
 
 // Compose-style card for one email_1/2/3 draft inside the dedicated outreach
@@ -3587,6 +3643,32 @@ function bindPublishButtons() {
     button.addEventListener("click", () => {
       openOutreachCompose(button.dataset.openOutreachCompose);
     });
+  });
+
+  document.querySelectorAll("[data-outreach-select]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const key = checkbox.dataset.outreachSelect;
+
+      if (checkbox.checked) {
+        state.outreachSelection.add(key);
+      } else {
+        state.outreachSelection.delete(key);
+      }
+
+      renderOutreach();
+    });
+  });
+
+  document.querySelector("#outreachSelectAll")?.addEventListener("change", (event) => {
+    document.querySelectorAll("[data-outreach-select]:not(:disabled)").forEach((checkbox) => {
+      if (event.target.checked) {
+        state.outreachSelection.add(checkbox.dataset.outreachSelect);
+      } else {
+        state.outreachSelection.delete(checkbox.dataset.outreachSelect);
+      }
+    });
+
+    renderOutreach();
   });
 
   document.querySelectorAll("[data-unpublish-provider]").forEach((button) => {
@@ -4999,6 +5081,81 @@ function bindEvents() {
   window.addEventListener("hashchange", () => {
     setSection(sectionFromHash());
   });
+
+  elements.outreachBulkClear?.addEventListener("click", () => {
+    state.outreachSelection.clear();
+    renderOutreach();
+  });
+
+  elements.outreachBulkSend?.addEventListener("click", () => bulkSendOutreach());
+}
+
+// Sends every selected provider's next approved message one at a time (not
+// Promise.all - keeps this predictable and avoids bursting Resend/Supabase
+// with N simultaneous sends). Only ever acts on providers that were
+// selectable in the first place (row checkboxes are disabled unless there's
+// an approved draft ready), so this can't send an unapproved draft.
+async function bulkSendOutreach() {
+  const keys = [...state.outreachSelection];
+
+  if (keys.length === 0) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Send outreach to ${keys.length} provider${keys.length === 1 ? "" : "s"}? This cannot be undone.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setBusy(elements.outreachBulkSend, true, "Sending");
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const key of keys) {
+    const provider = findProvider(key);
+    const message = provider ? sendableMessageForProvider(provider) : null;
+
+    if (!message) {
+      failed += 1;
+      continue;
+    }
+
+    try {
+      const response = await fetch("/api/send-outreach", {
+        method: "POST",
+        headers: adminHeaders(),
+        body: JSON.stringify({ messageId: message.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Send failed");
+      }
+
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+    }
+  }
+
+  state.outreachSelection.clear();
+  setBusy(elements.outreachBulkSend, false);
+
+  try {
+    await refreshAdminState();
+  } finally {
+    renderLists();
+  }
+
+  showToast(
+    failed > 0
+      ? `Sent ${sent}, ${failed} failed - check the individual rows.`
+      : `Sent ${sent} outreach email${sent === 1 ? "" : "s"}.`,
+    failed > 0 ? "error" : "success"
+  );
 }
 
 async function init() {
