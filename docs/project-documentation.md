@@ -1,7 +1,7 @@
-# Rocket Engineers Scrape Agent — Project Documentation (Week 1–10)
+# Rocket Engineers Scrape Agent — Project Documentation (Week 1–11)
 
 Prepared: 2026-07-31
-Updated: 2026-08-06
+Updated: 2026-08-20
 Prepared for: Phil (client)
 
 A week-by-week record of what was built, from the first Firecrawl crawl through the current state of the Sprint 2 admin, outreach, and claim workflow.
@@ -97,6 +97,17 @@ A week-by-week record of what was built, from the first Firecrawl crawl through 
 - Fixed a bug where saving outreach messages from the admin silently cleared `cycle_number` on already-sent emails, because the client-side collect/normalize helpers never round-tripped that field.
 - Sending account setup (Resend/Postmark signup, DNS, activating the cron job) and the first real batch send are tracked as go-live setup work in `docs/weekly-plan.md` Week 11 — Week 10 is the code/schema side only.
 
+### Week 11 — Go-Live Setup + First Real Batch
+
+- Signed up for Resend and set `RESEND_API_KEY`/`RESEND_FROM_EMAIL`. Currently sending from Resend's shared `onboarding@resend.dev` domain — a dedicated sending subdomain with SPF/DKIM/DMARC records is still not set up, and is the single biggest thing blocking a trustworthy real send, since cold email from a shared/unverified domain is materially more likely to land in spam.
+- Fixed a real deployment gotcha while confirming `PUBLIC_BASE_URL`: Vercel's per-deployment URLs (the ones with a random hash) change on every redeploy, so the links embedded in outreach emails have to point at the stable project alias instead. Also had to disable Vercel's "Vercel Authentication" deployment protection, which was silently returning 401 on every API call, including the cron job's own request.
+- Set `OUTREACH_CRON_SECRET` and `OUTREACH_TEST_INBOX_EMAIL` in both local `.env` and Vercel's environment separately (`.env` is gitignored and never reaches the deployed site, which tripped up the first attempt).
+- Enabled the `pg_cron`/`pg_net` extensions in Supabase and confirmed the daily follow-up job is actually scheduled and reachable.
+- Ran the full outreach cycle end to end against a throwaway synthetic test provider with `OUTREACH_DRY_RUN` left on: Email 1 sent and redirected to the test inbox, the live follow-up job picked up the backdated due date and sent Email 2 on schedule, "Mark as Replied" stopped the cycle, and the test provider was deleted afterward. Found and fixed a real bug along the way: `updateProvider()` crashed when called with only outreach-contact/message changes and no status change, because the resulting database update ended up empty.
+- Built Apollo people-search + email-reveal (`src/enrichment/apollo.js`) and a batch script (`scripts/sourceOutreachContacts.js`), after manual per-company contact research proved too slow at any real volume (~2 minutes per contact, mostly turning up no verified email). This pulled a Week 13+ item forward. Sourced 62 real, named, mostly-verified contacts — up from 0 real contacts and 17 generic mailboxes. Also found and fixed a duplicate-provider-record bug ("Public Cloud Group" existed under two different domains) surfaced while sourcing.
+- Audited the site end to end from three angles — the admin, a general visitor, and the company clicking their outreach link — before sending anything real. Found and fixed a CSS cascade bug that silently broke the claim page's mobile layout. Confirmed the claim/removal request flow and the `?domain=`-guessing security fix both still work correctly. Hid Success Stories, Events, and Signals from the public nav and admin edit panels to keep the admin workflow focused on outreach for now.
+- Still open, and blocking the first real send: the sending-domain DNS work above, final selection of the 20–30 company batch (17 pre-staged candidates started; ranking by company size turned out to be uncomputable, since no such field exists in the schema yet), and drafting/approving Email 1 for the batch — only 18 of the 62 contacted providers have any draft, and all 18 predate the opt-out-footer feature, so none of them are actually ready to send.
+
 ---
 
 ## Reference Index
@@ -116,3 +127,4 @@ A week-by-week record of what was built, from the first Firecrawl crawl through 
 | Sprint 2 operations | `docs/archive/sprint2-operations.md` |
 | Supabase schema | `docs/supabase-schema.sql` |
 | Week 10 outreach cycle + go-live setup | `docs/weekly-plan.md` (Week 10/11), `src/email/`, `src/api/send-outreach.js`, `src/api/outreach-followup.js` |
+| Week 11 contact sourcing | `src/enrichment/apollo.js`, `scripts/sourceOutreachContacts.js` |

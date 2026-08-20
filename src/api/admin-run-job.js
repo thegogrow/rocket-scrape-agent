@@ -1,6 +1,7 @@
 const fs = require("fs-extra");
 const path = require("path");
 const { runScrapingPipeline } = require("../pipeline/runPipeline");
+const { generateDraftsForProvider, sourceContactIfMissing } = require("../pipeline/outreachAutomation");
 const { env } = require("../config/env");
 const { logoFileForDomain } = require("../ui/profileData");
 const {
@@ -13,6 +14,24 @@ const {
   verifyAdminToken,
 } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
+
+// Best-effort: a company being scraped is treated as good enough to start
+// outreach prep on immediately, rather than waiting for admin approval -
+// sources a named contact (Apollo) and drafts the five outreach messages if
+// a contact was found. Never throws - a scrape job shouldn't fail just
+// because Apollo/the LLM had a bad moment, and both steps already skip
+// cleanly if the provider already has a real contact/drafts (e.g. a recrawl).
+async function prepareOutreachForScrapedProvider(provider) {
+  try {
+    const withContact = await sourceContactIfMissing(provider);
+
+    if (withContact) {
+      await generateDraftsForProvider(withContact, { generatedBy: "auto-scrape" });
+    }
+  } catch (error) {
+    console.warn(`[admin-run-job] Outreach auto-prep failed for ${provider.domain}: ${error.message}`);
+  }
+}
 
 function imageMetadata(buffer, fallbackPath) {
   const head = buffer.subarray(0, 256).toString("utf8").trimStart();
@@ -124,6 +143,8 @@ module.exports = async function handler(request, response) {
       error: null,
       resultProviderId: provider.id,
     });
+
+    await prepareOutreachForScrapedProvider(provider);
 
     response.status(200).json({ jobId: job.id, provider });
   } catch (error) {

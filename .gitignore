@@ -13,3 +13,5 @@ data/*
 !data/.gitkeep
 
 backups/
+
+scripts/_outreach_sourcing_results.json

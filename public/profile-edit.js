@@ -14,9 +14,6 @@ const elements = {
   introBar: document.querySelector("#accessIntroBar"),
   companyName: document.querySelector("#accessCompanyName"),
   profileLink: document.querySelector("#accessProfileLink"),
-  verifyGate: document.querySelector("#verifyGate"),
-  verifyForm: document.querySelector("#verifyForm"),
-  verifyMessage: document.querySelector("[data-verify-message]"),
   editForm: document.querySelector("#ownerEditForm"),
   editFieldset: document.querySelector("#editFieldset"),
   logoPreview: document.querySelector("#logoPreview"),
@@ -47,7 +44,6 @@ const fields = {
 const state = {
   token: "",
   domain: "",
-  verified: false,
   tags: { services: [], technologies: [], industries: [] },
 };
 
@@ -184,11 +180,6 @@ function setStatus(message) {
   elements.statusMessage.textContent = message;
 }
 
-function setVerifyMessage(text, isError = false) {
-  elements.verifyMessage.textContent = text;
-  elements.verifyMessage.classList.toggle("error", isError);
-}
-
 function setSaveMessage(text, isError = false) {
   elements.saveMessage.textContent = text;
   elements.saveMessage.classList.toggle("error", isError);
@@ -238,7 +229,7 @@ function populateForm(profile) {
   elements.accessDomain.textContent = profile.companyName || profile.domain || "";
   elements.accessStatus.textContent = profile.claimed
     ? "Claimed - you're set up to manage this listing"
-    : "Unclaimed - verify your email below to start editing";
+    : "Unclaimed - edit and publish below to claim it";
 
   tagInputs.services.setValues(profile.services);
   tagInputs.technologies.setValues(profile.technologies);
@@ -279,34 +270,6 @@ async function callProfileEdit(body) {
   return payload;
 }
 
-function unlockEditing() {
-  state.verified = true;
-  elements.verifyGate.hidden = true;
-  elements.editFieldset.disabled = false;
-  elements.saveButton.textContent = "Publish changes";
-}
-
-async function handleVerifySubmit(event) {
-  event.preventDefault();
-  const email = new FormData(elements.verifyForm).get("email");
-  const submitButton = elements.verifyForm.querySelector("button[type='submit']");
-
-  submitButton.disabled = true;
-  setVerifyMessage("Verifying...");
-
-  try {
-    const result = await callProfileEdit({ token: state.token, email, profile: {} });
-    setToken(result.editToken);
-    populateForm(result.profile);
-    unlockEditing();
-    setVerifyMessage("");
-  } catch (error) {
-    setVerifyMessage(error.message, true);
-  } finally {
-    submitButton.disabled = false;
-  }
-}
-
 async function handleSaveSubmit(event) {
   event.preventDefault();
   elements.saveButton.disabled = true;
@@ -318,6 +281,7 @@ async function handleSaveSubmit(event) {
     populateForm(result.profile);
     elements.profileLink.href = `/?provider=${encodeURIComponent(state.domain)}`;
     elements.profileLink.hidden = false;
+    elements.saveButton.textContent = "Publish changes";
     setSaveMessage("Published. Your public profile is up to date.");
   } catch (error) {
     setSaveMessage(error.message, true);
@@ -476,17 +440,11 @@ async function init() {
   elements.editFieldset.hidden = false;
   elements.saveBar.hidden = false;
   elements.removalPanel.hidden = false;
+  elements.saveButton.textContent = payload.profile.claimed ? "Publish changes" : "Claim & publish profile";
 
   if (payload.profile.domain) {
     elements.profileLink.href = `/?provider=${encodeURIComponent(payload.profile.domain)}`;
     elements.profileLink.hidden = false;
-  }
-
-  if (payload.requiresEmailVerification) {
-    elements.verifyGate.hidden = false;
-    elements.saveButton.textContent = "Claim & publish profile";
-  } else {
-    unlockEditing();
   }
 
   fields.companyName.addEventListener("input", () => {
@@ -495,7 +453,6 @@ async function init() {
   fields.description.addEventListener("input", updateFocusStrip);
 }
 
-elements.verifyForm.addEventListener("submit", handleVerifySubmit);
 elements.editForm.addEventListener("submit", handleSaveSubmit);
 elements.removalForm.addEventListener("submit", handleRemovalSubmit);
 elements.logoFile.addEventListener("change", handleLogoFileChange);

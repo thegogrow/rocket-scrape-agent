@@ -1771,7 +1771,11 @@ class OwnerEditError extends Error {
 // unexpiring "owner_edit" token is minted so the owner can return later
 // without re-verifying, similar in spirit to createClaimRequest's
 // verification but publishing immediately instead of queuing for review.
-async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
+// No email verification: possessing the emailed link's token is treated as
+// sufficient authorization by itself (it was only ever sent to the
+// provider's own outreach contact). The first save on the token claims the
+// profile automatically.
+async function applyOwnerProfileEdit(token, { profile = {} } = {}) {
   const link = await resolveOutreachLink(token);
 
   if (!link) {
@@ -1782,30 +1786,6 @@ async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
 
   if (provider.status === "removed" || provider.status === "removal_requested") {
     throw new OwnerEditError("This profile is no longer editable.", 403);
-  }
-
-  const isVerifiedSession = link.purpose === "owner_edit";
-  let claimedByEmail = provider.claimedByEmail || null;
-
-  if (!isVerifiedSession) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      throw new OwnerEditError("A valid business email is required to save changes.", 400);
-    }
-
-    if (!providerDomainMatchesEmail(provider.domain, normalizedEmail)) {
-      throw new OwnerEditError(
-        `Use an email address at ${provider.domain} to verify you can edit this profile.`,
-        403
-      );
-    }
-
-    if (provider.claimed && provider.claimedByEmail && provider.claimedByEmail !== normalizedEmail) {
-      throw new OwnerEditError("This profile has already been claimed by another verified email.", 409);
-    }
-
-    claimedByEmail = normalizedEmail;
   }
 
   const isFirstClaim = !provider.claimed;
@@ -1826,13 +1806,12 @@ async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
 
   if (isFirstClaim) {
     patch.claimed = true;
-    patch.claimedByEmail = claimedByEmail;
     patch.claimedAt = provider.claimedAt || new Date().toISOString();
-    patch.claimVerificationMethod = "email_domain_match_self_serve";
+    patch.claimVerificationMethod = "outreach_link_token";
   }
 
   const updated = await updateProvider(provider.id, patch, isFirstClaim ? "claimed" : undefined, {
-    reviewedBy: claimedByEmail || "self-serve",
+    reviewedBy: "self-serve",
     skipConfidenceGuardrail: true,
   });
 
@@ -1841,8 +1820,7 @@ async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
       providerId: provider.id,
       eventType: "provider_self_edited",
       label: isFirstClaim ? "Profile claimed and edited by owner" : "Profile edited by owner",
-      summary: `Saved via emailed link by ${claimedByEmail || "verified owner"}`,
-      actorEmail: claimedByEmail,
+      summary: isFirstClaim ? "Claimed and saved via the emailed link." : "Saved via the emailed link.",
       metadata: { linkPurpose: link.purpose, providerDomain: provider.domain, before },
     });
   } else if (isFirstClaim) {
@@ -1850,13 +1828,12 @@ async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
       providerId: provider.id,
       eventType: "provider_self_edited",
       label: "Profile claimed by owner",
-      summary: `Verified via emailed link by ${claimedByEmail || "verified owner"}`,
-      actorEmail: claimedByEmail,
+      summary: "Claimed via the emailed link.",
       metadata: { linkPurpose: link.purpose, providerDomain: provider.domain },
     });
   }
 
-  let editToken = isVerifiedSession ? link.token : null;
+  let editToken = link.purpose === "owner_edit" ? link.token : null;
 
   if (!editToken) {
     const ownerLink = await createOutreachLink(provider.id, { purpose: "owner_edit", expiresInDays: null });
@@ -2868,6 +2845,7 @@ async function updateProvider(id, profilePatch = {}, status, { reviewedBy, skipC
     ...(profilePatch.description !== undefined ? { description: profilePatch.description || "" } : {}),
     ...(profilePatch.githubUrl !== undefined ? { github_url: profilePatch.githubUrl || null } : {}),
     ...(profilePatch.linkedinUrl !== undefined ? { linkedin_url: profilePatch.linkedinUrl || null } : {}),
+    ...(profilePatch.companySize !== undefined ? { company_size: profilePatch.companySize || null } : {}),
     ...(profilePatch.companyLocation !== undefined
       ? {
           country: profilePatch.companyLocation?.country || null,

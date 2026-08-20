@@ -1,69 +1,46 @@
-// Batch-sources a named outreach contact (via Apollo people search) for every
-// approved/outreach-staged provider that doesn't have one yet, or only has a
-// generic mailbox (info@, kontakt@, etc). Built for Week 11 batch prep - see
-// docs/weekly-plan.md. Run with: node scripts/sourceOutreachContacts.js
+// Backfills a named outreach contact (via Apollo people search) and, once a
+// contact is found, the five outreach drafts, for every approved/outreach-
+// staged provider that doesn't have them yet. Originally Week 11 batch prep
+// (contacts only); extended in Week 12 to also generate drafts and to share
+// the sourcing/generation logic with the automatic per-scrape hook in
+// src/api/admin-run-job.js via src/pipeline/outreachAutomation.js, instead of
+// re-implementing the "is this contact generic" check in two places.
+// Run with: node scripts/sourceOutreachContacts.js [--limit=N]
 require("dotenv").config();
 
-const { sourceOutreachContact } = require("../src/enrichment/apollo");
-const { updateProvider } = require("../src/ui/supabaseStore");
-
-const GENERIC_LOCAL_PARTS = new Set([
-  "info", "kontakt", "hello", "contact", "office", "sales", "support",
-  "admin", "anfragen", "hi", "team", "mail", "inquiries", "de.office",
-]);
+const { generateDraftsForProvider, isGenericContact, sourceContactIfMissing } = require("../src/pipeline/outreachAutomation");
+const { listAdminState } = require("../src/ui/supabaseStore");
 
 const DELAY_MS = 400;
 const MAX_CONSECUTIVE_ERRORS = 5;
-
-function isGenericContact(contact) {
-  if (!contact || !contact.email) return true;
-  const localPart = contact.email.split("@")[0].toLowerCase();
-  return GENERIC_LOCAL_PARTS.has(localPart);
-}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function primaryContact(provider) {
+  const contacts = Array.isArray(provider.outreachContacts) ? provider.outreachContacts : [];
+
+  return contacts.find((contact) => contact.primaryContact) || contacts[0] || null;
+}
+
+function isEligible(provider) {
+  const cycle = provider.outreachCycle;
+  const cycleOk = !cycle || (cycle.stage === "not_started" && !cycle.resolution);
+
+  return cycleOk && isGenericContact(primaryContact(provider));
+}
+
 async function fetchEligibleProviders() {
-  const url = process.env.SUPABASE_URL.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const state = await listAdminState();
 
-  const fetchAll = async (q) => {
-    const res = await fetch(`${url}/rest/v1/${q}`, { headers });
-    if (!res.ok) throw new Error(`${q} -> ${res.status} ${await res.text()}`);
-    return res.json();
-  };
-
-  const [providers, cycles, contacts] = await Promise.all([
-    fetchAll("providers?select=id,company_name,domain,status&status=in.(approved,outreach_pending,outreach_active)"),
-    fetchAll("outreach_cycles?select=provider_id,stage,resolution"),
-    fetchAll("outreach_contacts?select=provider_id,name,email,primary_contact"),
-  ]);
-
-  const cycleByProvider = new Map(cycles.map((c) => [c.provider_id, c]));
-  const contactsByProvider = new Map();
-  for (const c of contacts) {
-    if (!contactsByProvider.has(c.provider_id)) contactsByProvider.set(c.provider_id, []);
-    contactsByProvider.get(c.provider_id).push(c);
-  }
-
-  return providers
-    .filter((p) => {
-      const cycle = cycleByProvider.get(p.id);
-      return (!cycle || cycle.stage === "not_started") && !(cycle && cycle.resolution);
-    })
-    .map((p) => {
-      const pcontacts = contactsByProvider.get(p.id) || [];
-      const primary = pcontacts.find((c) => c.primary_contact) || pcontacts[0] || null;
-      return { id: p.id, name: p.company_name, domain: p.domain, status: p.status, existingContact: primary };
-    })
-    .filter((p) => isGenericContact(p.existingContact));
+  return state.providers.filter(
+    (provider) => ["approved", "outreach_pending", "outreach_active"].includes(provider.status) && isEligible(provider)
+  );
 }
 
 async function main() {
-  const limitArg = process.argv.find((a) => a.startsWith("--limit="));
+  const limitArg = process.argv.find((arg) => arg.startsWith("--limit="));
   const limit = limitArg ? Number.parseInt(limitArg.split("=")[1], 10) : null;
 
   let targets = await fetchEligibleProviders();
@@ -76,38 +53,42 @@ async function main() {
     console.log("");
   }
 
-  let sourced = 0;
+  let contactsSourced = 0;
+  let draftsGenerated = 0;
   let noEmailFound = 0;
   let noCandidates = 0;
   let consecutiveErrors = 0;
   const errors = [];
   const results = [];
 
-  for (const [i, provider] of targets.entries()) {
+  for (const [index, provider] of targets.entries()) {
     try {
-      const contact = await sourceOutreachContact({ website: `https://${provider.domain}` });
+      const withContact = await sourceContactIfMissing(provider, { actorEmail: "batch-script" });
       consecutiveErrors = 0;
 
-      if (contact && contact.email) {
-        await updateProvider(
-          provider.id,
-          { outreachContacts: [{ ...contact, primaryContact: true }] },
-          provider.status
-        );
-        sourced += 1;
-        results.push({ name: provider.name, domain: provider.domain, ...contact });
-        console.log(`[${i + 1}/${targets.length}] ${provider.name}: ${contact.name} (${contact.title}) <${contact.email}>`);
-      } else if (contact) {
-        noEmailFound += 1;
-        console.log(`[${i + 1}/${targets.length}] ${provider.name}: found ${contact.name || "a candidate"} but no email - skipped.`);
-      } else {
+      if (!withContact) {
         noCandidates += 1;
-        console.log(`[${i + 1}/${targets.length}] ${provider.name}: no Apollo candidates found.`);
+        console.log(`[${index + 1}/${targets.length}] ${provider.companyName}: no Apollo candidate with a usable email.`);
+        await sleep(DELAY_MS);
+        continue;
       }
+
+      const contact = primaryContact(withContact);
+      contactsSourced += 1;
+      console.log(`[${index + 1}/${targets.length}] ${provider.companyName}: ${contact.name} (${contact.title}) <${contact.email}>`);
+
+      const withDrafts = await generateDraftsForProvider(withContact, { generatedBy: "batch-script" });
+
+      if (withDrafts) {
+        draftsGenerated += 1;
+        console.log(`    -> 5 outreach drafts generated.`);
+      }
+
+      results.push({ name: provider.companyName, domain: provider.domain, ...contact, draftsGenerated: Boolean(withDrafts) });
     } catch (error) {
       consecutiveErrors += 1;
-      errors.push({ name: provider.name, domain: provider.domain, error: error.message });
-      console.error(`[${i + 1}/${targets.length}] ${provider.name}: ERROR - ${error.message}`);
+      errors.push({ name: provider.companyName, domain: provider.domain, error: error.message });
+      console.error(`[${index + 1}/${targets.length}] ${provider.companyName}: ERROR - ${error.message}`);
 
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         console.error(`\nAborting after ${MAX_CONSECUTIVE_ERRORS} consecutive errors (likely rate limit or out of credits).`);
@@ -119,9 +100,9 @@ async function main() {
   }
 
   console.log("\n=== Summary ===");
-  console.log(`Sourced with email: ${sourced}`);
-  console.log(`Candidate found, no email: ${noEmailFound}`);
-  console.log(`No candidates: ${noCandidates}`);
+  console.log(`Contacts sourced: ${contactsSourced}`);
+  console.log(`Drafts generated: ${draftsGenerated}`);
+  console.log(`No candidates / no email: ${noCandidates}`);
   console.log(`Errors: ${errors.length}`);
 
   require("fs").writeFileSync(

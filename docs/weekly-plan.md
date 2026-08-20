@@ -141,13 +141,53 @@ Before sending real email to real companies, audited the site end to end from th
 5. Minor copy cleanup still open: `profile-access.html` and `claim.html` both still say claiming "gives you... the ability to add success stories and events," which now points at a hidden feature. **Status:** Not done, low priority.
 6. Direct-linking to a specific provider's public detail page via `?domain=` on the homepage doesn't open it (shows the full index instead). **Status:** Not done, low priority — not part of the outreach flow, since outreach links point to `profile-access.html`, not the public detail page.
 
-## Week 12 — Results Report, Decision Gate, and Admin Tags UI Cleanup
-*After the Week 11 cycle closes out (last profile hits `closed_no_response` or resolves)*
+## Week 12 — Self-Serve Profile Editing From the Claim Link (Built)
+*Aug 17 – Aug 20, 2026*
 
-1. Compile results: claims, removals, replies (other), closed-no-response, per stage of the cycle. **Deliverable:** results notes.
-2. Write a short outreach results report (is email quality good enough, is the claim-request flow enough/too much friction, which cycle stage converted). **Deliverable:** `docs/sprint2-outreach-report.md`.
-3. Decide whether manual sending is the bottleneck or contact sourcing is — these have different fixes (see Week 13+). **Deliverable:** documented go/no-go decision.
-4. Fix and improve the UI of the admin Tags page (`tag_taxonomy` management view) — layout, usability, and visual consistency with the rest of the admin. **Deliverable:** improved Tags page UI.
+This displaced the originally-planned Week 12 below. The trigger wasn't outreach-cycle results (the cycle hasn't closed — Email 1 hasn't even sent to the real batch yet, see Week 11 Part C) but direct feedback on the claim-link experience itself: a company clicking their link could only submit a generic claim/removal *request* and then wait for an admin to manually review it and separately go edit the profile later. That's high friction for the company and a manual bottleneck for review. It's also the foundation for the planned premium-profile monetization — the same link is meant to become a durable "manage your listing" entry point a company returns to, not a one-time form.
+
+**Part A — Self-Serve Edit + Publish:**
+
+1. Replace the "submit a request and wait" flow at `/profile-access` with a self-serve editor styled like the public profile page — company name, logo, website, location, description, services/technologies/industries, LinkedIn/GitHub — so what the owner edits looks like what visitors will see. **Deliverable:** rewritten `public/profile-access.html`, new `public/profile-edit.js`. **Status:** Done, deployed to production 2026-08-20.
+2. Verify ownership with a one-time business-email-domain match (reusing the same check `claim_requests` already used), then mint a persistent, non-expiring `owner_edit` outreach link so the company can come back later without re-verifying. **Deliverable:** `applyOwnerProfileEdit()` in `src/ui/supabaseStore.js`, new `owner_edit` outreach-link purpose (schema change in `docs/supabase-schema.sql`). **Status:** Done.
+3. New `GET`/`PATCH /api/profile-edit` endpoint: publishes edits immediately, no admin review queue, auto-claims the profile on first save. Removal requests are unchanged and still go through admin review — only the edit/claim path got faster. **Deliverable:** `src/api/profile-edit.js`. **Status:** Done.
+4. Real logo file upload instead of requiring a hosted URL, reusing `uploadProviderLogo()` (previously wired only into the scraper pipeline, never exposed to a browser). Logo uploads publish immediately on selection — the one field that doesn't wait for the page-level Publish button, since a logo swap is low-ambiguity and the extra click was pure friction. **Deliverable:** `src/api/profile-edit-logo.js`. **Status:** Done.
+
+**Part B — Safety Net for a Zero-Review Write Path:**
+
+5. Explicit bypass of the confidence-score publish guardrail for this path only — an owner claiming and fixing a low-confidence scraped profile is exactly the case the guardrail would otherwise block, with no reviewer left in the loop to clear it. **Deliverable:** `skipConfidenceGuardrail` option on `updateProvider()`. **Status:** Done.
+6. Every self-serve save logs a `provider_self_edited` activity event with a before/after snapshot of just the fields touched, and a one-click **"Revert this edit"** button in the admin Activity tab restores it — the safety net standing in for a pre-publish review gate. **Deliverable:** snapshot capture in `applyOwnerProfileEdit()`, revert button in `public/admin.js`. **Status:** Done. Building this surfaced and fixed a real pre-existing bug: the admin's "Self-edited" badge/filter (item 7) was checking field names (`eventType`, `providerId`) that never matched the actual processed activity-timeline shape (`type`, and no `providerId` at all) — it would have silently never worked.
+7. Admin "Self-edited" badge + filter on the Live Providers table, so recently self-edited profiles can be spot-checked after the fact instead of gated before publish. **Deliverable:** badge/filter in `public/admin.js`/`public/admin.html`. **Status:** Done (see bug note above).
+8. Logo uploads write to a unique storage path per upload instead of overwriting the same file, so a reverted logo change still resolves to a real image rather than one that got destroyed by the next upload. **Status:** Done.
+
+Verified end-to-end against a throwaway test provider (created via script, fully deleted afterward including its activity-log rows) and against the real "Demo Test 2" fixture already used to rehearse the outreach flow: claiming despite a low confidence score, editing and publishing with no re-verification on return visits, edits reflected on the public site immediately, logo upload with auto-publish, and a simulated revert that restored the exact prior field values without touching claim status. **Not yet verified:** an actual click-through in a browser, and clicking the real "Revert" button in a live admin session — both need a human, not just API calls.
+
+**Part C — Automatic Contact Sourcing + Draft Generation on Scrape:**
+
+Before this, a scraped company got a full profile but no named contact and no outreach drafts — both existed as capabilities (`sourceOutreachContact()`, `generateOutreachMessages()`) but only ever ran manually: a standalone batch script for contacts, an admin button click per provider for drafts. Decision: trigger both automatically the moment a company is scraped, not gated behind admin approval — a scraped profile is treated as good enough to start outreach prep on immediately.
+
+9. Extracted the shared "source a contact if missing / generate drafts if missing" logic (previously duplicated between the manual admin action and the batch script) into `src/pipeline/outreachAutomation.js`, so the automatic hook and the backfill script can't drift apart. **Status:** Done.
+10. Wired both steps into the scrape-job completion path, right after a provider is saved with status `scraped` — `src/api/admin-run-job.js`. Best-effort: never fails the scrape job if Apollo or the LLM has a bad moment, and skips cleanly if the provider already has a real (non-generic) contact or already has drafts, so re-scraping/recrawling an already-enriched company doesn't waste an Apollo credit. **Deliverable:** `prepareOutreachForScrapedProvider()` in `src/api/admin-run-job.js`. **Status:** Done.
+11. Found and fixed a real, separate pre-existing bug while wiring this up: `updateProvider()` (the update path used by everything except the initial scrape insert) was missing `company_size` from its field whitelist entirely — any attempt to save it through that path, including the new backfill script below, would have failed silently. **Deliverable:** fix in `src/ui/supabaseStore.js`. **Status:** Done.
+12. Updated `scripts/sourceOutreachContacts.js` to use the shared module and to also generate drafts immediately after sourcing a contact, instead of contacts and drafts being two separate manual passes. **Status:** Done.
+13. New `scripts/backfillCompanySize.js` — backfills the `company_size` column (added Week 11, never backfilled) via Apollo company enrichment, which doesn't cost per-contact credits. **Status:** Done, script built and tested.
+14. Verified the auto-hook end-to-end against a throwaway test provider: created with status `scraped`, contact found and saved, 5 drafts generated, provider status correctly left untouched (still `scraped`, awaiting review) rather than accidentally publishing it. **Status:** Done.
+
+**Backfill results for the existing 212 providers — partially done, then blocked on Apollo credits:**
+
+| | Before | After this run |
+|---|---|---|
+| Have `company_size` | 0 / 212 | **71 / 212** |
+| Have a real contact + drafts | 65 / 212 | **66 / 212** |
+
+Running `scripts/backfillCompanySize.js` against the full set hit Apollo's `organizations/enrich` rate limit (50 calls/min) and then genuine credit exhaustion ("insufficient credits," confirmed with a fresh live call afterward) — the same wall Week 11 hit. **Status:** Blocked on Apollo credits being topped up, not a code issue. Once credits are back: `node scripts/backfillCompanySize.js` for the remaining ~138, then `node scripts/sourceOutreachContacts.js` for the remaining ~146 (this one costs more per provider — email reveal, not just company lookup — so it'll hit the same wall immediately if run before credits are restored).
+
+**Deferred from the originally-planned Week 12** (still gated on the Week 11 cycle actually closing, which hasn't happened yet — see Week 11 Part C):
+
+1. Compile results: claims, removals, replies (other), closed-no-response, per stage of the cycle. **Deliverable:** results notes. **Status:** Not started.
+2. Write a short outreach results report (is email quality good enough, is the claim-request flow enough/too much friction, which cycle stage converted). **Deliverable:** `docs/sprint2-outreach-report.md`. **Status:** Not started.
+3. Decide whether manual sending is the bottleneck or contact sourcing is — these have different fixes (see Week 13+). **Deliverable:** documented go/no-go decision. **Status:** Not started.
+4. Fix and improve the UI of the admin Tags page (`tag_taxonomy` management view) — layout, usability, and visual consistency with the rest of the admin. **Deliverable:** improved Tags page UI. **Status:** Not started.
 
 ## Week 13+ — Automation (Only If Week 12 Justifies It)
 *Build only what's justified — not steps to complete by default*
@@ -155,7 +195,7 @@ Before sending real email to real companies, audited the site end to end from th
 1. Adopt a cold-outreach sequencer (Instantly.ai, Smartlead, Lemlist, or Apollo.io sequences) instead of building SendGrid/Postmark — build only if manual sending becomes the bottleneck. **Deliverable:** sequencer sending + tracking live.
 2. ~~Wire Apollo people-search (fallback: Hunter.io) into contact creation~~ — **Done early, in Week 11 (2026-08-10).** Manual per-company research (LinkedIn/web search) proved too slow to reach the trigger condition without hitting it first: sourcing 6 contacts by hand took ~2 minutes each and mostly turned up "no verified email." Apollo's people-search + email-reveal API, wired into `src/enrichment/apollo.js`, does the same job in seconds per company using the account already paid for and used for company enrichment. See Week 11 Part C item 8.
 3. Add automatic inbound reply detection (Postmark Inbound/Mailgun Routes), matching replies via a   per-provider plus-address (`outreach+<provider_id>@yourdomain.com`) — build only if manually clicking "Mark as Replied" becomes tedious at higher reply volume. **Deliverable:** reply detection live.
-4. Build the self-serve OTP + account-creation claim flow — build only if claim requests outpace manual admin review. **Deliverable:** self-serve claim flow.
+4. ~~Build the self-serve OTP + account-creation claim flow~~ — **Done differently, in Week 12 (2026-08-17 to 2026-08-20).** Built as email-domain verification against the existing outreach-link token rather than OTP + account creation — simpler, and reuses infrastructure already in place instead of adding a new auth mechanism. See Week 12.
 5. Write a formal Sprint 2 report equivalent to `docs/archive/final-report.md` — once a large-enough outreach sample exists. **Deliverable:** `docs/sprint2-report.md`.
 6. Backfill `company_size` for existing providers via Apollo's `organizations/enrich` call, and wire it into batch-ranking so "smallest, most active" from Week 11 Part C item 7 becomes computable — build once Apollo credits are topped up. **Deliverable:** populated `company_size` column, ranked batch selection.
 
@@ -163,4 +203,4 @@ Before sending real email to real companies, audited the site end to end from th
 
 - **Week 10** (Jul 30 onward) — You present: send-from-admin, cycle tracking, and the automated follow-up job built. We decide together: any adjustments to the stage/due-date model before go-live.
 - **Week 11** (Aug 10 onward) — You present: sending account live, cron job activated, test cycle verified end to end, 62 real contacts sourced via the new Apollo pipeline, a full site readiness audit with fixes applied. Still open before the first real send: sending domain + DNS, final batch selection, and drafting/approving Email 1 for the batch (only 18 of 62 contacted providers have any draft, and those 18 predate the opt-out-link feature). We decide together: any adjustments to Email 2/3 content based on early replies, once sending actually starts.
-- **Week 12** (After cycle closes) — You present: full outreach results + report, admin Tags page UI cleanup. We decide together: sequencer vs. continued manual sending; which deferred items to build next.
+- **Week 12** (Aug 17–20, 2026) — You present: self-serve profile editing shipped to production — company edits publish instantly from the claim link with no admin review queue, logo upload, and a one-click admin revert as the safety net in place of a pre-publish gate. Also: contact sourcing and outreach-draft generation now fire automatically the moment a company is scraped, instead of needing a manual batch script and a manual "Generate Drafts" click; backfilled `company_size` and contacts/drafts partway through the existing 212 providers before hitting Apollo credit exhaustion (same wall as Week 11). Verified against a real demo-company link end to end via direct API calls; browser click-through and a live admin revert are still open. We decide together: any adjustments after you try it yourself; when to top up Apollo credits and finish the backfill; when to pick back up the original Week 12 items (results report, Tags UI cleanup), still gated on the outreach cycle actually closing.

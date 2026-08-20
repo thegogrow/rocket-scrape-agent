@@ -95,7 +95,6 @@ async function handleGet(request, response) {
 
   response.status(200).json({
     editable: true,
-    requiresEmailVerification: link.purpose !== "owner_edit",
     providerId: provider.id,
     profile: shapeProfile(provider),
   });
@@ -104,7 +103,6 @@ async function handleGet(request, response) {
 async function handlePatch(request, response) {
   const body = await readJsonBody(request);
   const result = await applyOwnerProfileEdit(String(body.token || "").trim(), {
-    email: body.email,
     profile: sanitizeProfileInput(body.profile),
   });
 
