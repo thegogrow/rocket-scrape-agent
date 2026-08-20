@@ -452,3 +452,15 @@ select cron.schedule(
   '0 8 * * *', -- 08:00 UTC daily
   $$select public.trigger_outreach_followup_job();$$
 );
+
+-- Week 12: self-serve profile editing from the claim link. A provider that
+-- verifies ownership (business email matching their domain) gets a
+-- non-expiring "owner_edit" link, distinct from the one-shot "access" link
+-- sent in the outreach email, so they can return later to manage the
+-- listing without re-verifying every time.
+alter table public.outreach_links
+  drop constraint if exists outreach_links_purpose_check;
+
+alter table public.outreach_links
+  add constraint outreach_links_purpose_check
+  check (purpose in ('access', 'opt_out', 'owner_edit'));

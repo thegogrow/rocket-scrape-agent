@@ -19,6 +19,7 @@ const state = {
   publishedFilters: {
     name: "",
     status: "",
+    selfEdited: false,
   },
   publishedSortField: "name",
   publishedSortDirection: "asc",
@@ -117,6 +118,7 @@ const ACTIVITY_GROUPS = [
   { key: "events", label: "Events", test: (type) => type.startsWith("provider_event_") },
   { key: "signals", label: "Market Signals", test: (type) => type.startsWith("market_signal_") },
   { key: "claims", label: "Claims & Removals", test: (type) => type === "claim_requested" || type === "removal_requested" },
+  { key: "owner_edits", label: "Owner Edits", test: (type) => type === "provider_self_edited" },
   { key: "leads", label: "Leads", test: (type) => type === "lead_submitted" },
 ];
 
@@ -237,6 +239,7 @@ const elements = {
   publishedNameFilter: document.querySelector("#publishedNameFilter"),
   publishedStatusFilter: document.querySelector("#publishedStatusFilter"),
   publishedSortFilter: document.querySelector("#publishedSortFilter"),
+  publishedSelfEditedFilter: document.querySelector("#publishedSelfEditedFilter"),
   publishedFlipButton: document.querySelector("#publishedFlipButton"),
   publishedSelectModeButton: document.querySelector("#publishedSelectModeButton"),
   publishedBulkActionBar: document.querySelector("#publishedBulkActionBar"),
@@ -829,7 +832,7 @@ function providerRow(provider, options = {}) {
         </span>
       </div>
       <div class="adminCell"><span>${escapeHtml([provider.companyLocation?.city || provider.city, provider.companyLocation?.country || provider.country].filter(Boolean).join(", ") || provider.location || "Unknown")}</span></div>
-      <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}</div>
+      <div class="adminCell">${statusPill(lifecycleStatusForProvider(provider))}${selfEditedBadge(provider)}</div>
       <div class="adminCell"><span>${escapeHtml(provider.confidenceScore || 0)}%</span></div>
       <div class="adminCell adminCellAction">${action}</div>
     </article>
@@ -863,6 +866,48 @@ function providerAddedDate(provider) {
   return date && !Number.isNaN(date.getTime()) ? date : null;
 }
 
+// Week 12: self-serve edits from the claim link publish immediately with no
+// admin approval step, so this is the after-the-fact spot-check surface -
+// a badge/filter derived from the same activity feed already loaded for the
+// Activity tab, not a new endpoint.
+const SELF_EDIT_LOOKBACK_DAYS = 14;
+
+function lastSelfEditActivity(providerId) {
+  if (!providerId) {
+    return null;
+  }
+
+  // state.activityEvents is the processed timeline from buildActivityTimeline
+  // (already ordered newest-first) - entries use `type`, not `eventType`.
+  return state.activityEvents.find(
+    (entry) => entry.type === "provider_self_edited" && entry.providerId === providerId
+  ) || null;
+}
+
+function isRecentlySelfEdited(provider) {
+  const activity = lastSelfEditActivity(provider.id);
+
+  if (!activity?.createdAt) {
+    return false;
+  }
+
+  const ageMs = Date.now() - new Date(activity.createdAt).getTime();
+
+  return ageMs >= 0 && ageMs <= SELF_EDIT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function selfEditedBadge(provider) {
+  const activity = lastSelfEditActivity(provider.id);
+
+  if (!isRecentlySelfEdited(provider)) {
+    return "";
+  }
+
+  const dateLabel = new Date(activity.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  return `<span class="selfEditedBadge" title="${escapeHtml(activity.summary || "Edited by the owner via their claim link")}">Self-edited ${escapeHtml(dateLabel)}</span>`;
+}
+
 function filterPublishedProviders(providers) {
   const nameFilter = state.publishedFilters.name.trim().toLowerCase();
   const statusFilter = normalizeLifecycleStatus(state.publishedFilters.status);
@@ -876,6 +921,10 @@ function filterPublishedProviders(providers) {
     }
 
     if (state.publishedFilters.status && lifecycleStatusForProvider(provider) !== statusFilter) {
+      return false;
+    }
+
+    if (state.publishedFilters.selfEdited && !isRecentlySelfEdited(provider)) {
       return false;
     }
 
@@ -3535,6 +3584,11 @@ function signalMetricsMarkup(signalsByTypeAndStatus = {}) {
 function activityTimelineRow(entry = {}) {
   const providerLabel = [entry.providerName, entry.providerDomain].filter(Boolean).join(" - ");
   const group = activityGroupForType(entry.type || "");
+  // Only self-serve edits carry a before/after snapshot (see
+  // applyOwnerProfileEdit in supabaseStore.js) - that's what makes a
+  // one-click revert possible for a write path with no review gate.
+  const canRevert = entry.type === "provider_self_edited" && entry.providerId && entry.metadata?.before
+    && Object.keys(entry.metadata.before).length > 0;
 
   return `
     <article class="adminActivityItem">
@@ -3545,8 +3599,54 @@ function activityTimelineRow(entry = {}) {
       </div>
       <p>${escapeHtml(entry.summary || "")}</p>
       <small>${escapeHtml(providerLabel || entry.actorEmail || "System")}</small>
+      ${canRevert
+        ? `<button class="secondaryAction adminActivityRevert" type="button" data-revert-provider="${escapeHtml(entry.providerId)}" data-revert-snapshot="${escapeHtml(JSON.stringify(entry.metadata.before))}">Revert this edit</button>`
+        : ""}
     </article>
   `;
+}
+
+function bindActivityRevertButtons() {
+  document.querySelectorAll("[data-revert-provider]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!window.confirm("Revert this edit? This restores the field values from just before it was made.")) {
+        return;
+      }
+
+      const providerId = button.dataset.revertProvider;
+      let snapshot;
+
+      try {
+        snapshot = JSON.parse(button.dataset.revertSnapshot || "{}");
+      } catch (error) {
+        showToast("Could not read the revert snapshot.", "error");
+        return;
+      }
+
+      await runAdminAction(
+        button,
+        "Reverting",
+        "Reverted to the values from before that edit.",
+        () => revertOwnerEdit(providerId, snapshot)
+      );
+    });
+  });
+}
+
+async function revertOwnerEdit(providerId, snapshot) {
+  const response = await fetch("/api/admin-provider", {
+    method: "PATCH",
+    headers: adminHeaders(),
+    body: JSON.stringify({ id: providerId, profile: snapshot }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to revert.");
+  }
+
+  await refreshAdminState();
+  return payload;
 }
 
 function filteredActivityEvents() {
@@ -3681,6 +3781,7 @@ function renderMetrics() {
     elements.activityTimeline.innerHTML = filtered.length
       ? filtered.slice(0, 30).map(activityTimelineRow).join("")
       : emptyState("No activity events match the current filters.");
+    bindActivityRevertButtons();
   }
 }
 
@@ -4686,6 +4787,7 @@ function applyPublishedFilters(event) {
   state.publishedFilters = {
     name: elements.publishedNameFilter.value,
     status: elements.publishedStatusFilter.value,
+    selfEdited: elements.publishedSelfEditedFilter.checked,
   };
   state.publishedSortField = elements.publishedSortFilter.value;
   state.publishedPage = 1;
@@ -4721,6 +4823,7 @@ function bindEvents() {
   elements.publishedFilters.addEventListener("submit", applyPublishedFilters);
   elements.publishedNameFilter.addEventListener("input", applyPublishedFilters);
   elements.publishedStatusFilter.addEventListener("change", applyPublishedFilters);
+  elements.publishedSelfEditedFilter.addEventListener("change", applyPublishedFilters);
   elements.publishedSortFilter.addEventListener("change", () => {
     state.publishedSortField = elements.publishedSortFilter.value;
     updatePublishedSortButton();

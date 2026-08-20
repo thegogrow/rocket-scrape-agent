@@ -32,7 +32,22 @@ const OUTREACH_MESSAGE_STATUSES = new Set(["draft", "approved", "sent", "opened"
 const CLAIM_REQUEST_TYPES = new Set(["claim", "removal"]);
 const OUTREACH_CYCLE_STAGES = new Set(["not_started", "cycle_1_sent", "cycle_2_sent", "cycle_3_sent", "closed"]);
 const OUTREACH_CYCLE_RESOLUTIONS = new Set(["claimed", "removed", "no_response", "opted_out", "replied_other"]);
-const OUTREACH_LINK_PURPOSES = new Set(["access", "opt_out"]);
+const OUTREACH_LINK_PURPOSES = new Set(["access", "opt_out", "owner_edit"]);
+// Fields an unreviewed self-serve edit (via the claim link) is allowed to
+// touch - a subset of what admins can edit, matching the public detail view.
+const OWNER_EDITABLE_FIELDS = [
+  "companyName",
+  "logoUrl",
+  "website",
+  "country",
+  "city",
+  "description",
+  "services",
+  "technologies",
+  "industries",
+  "githubUrl",
+  "linkedinUrl",
+];
 // Days until the next action is due after each stage - sums to ~14 days total
 // from the first send, matching the cadence in docs/weekly-plan.md Week 10.
 const OUTREACH_CYCLE_FOLLOWUP_DAYS = { cycle_1_sent: 6, cycle_2_sent: 5, cycle_3_sent: 3 };
@@ -1276,8 +1291,10 @@ function buildActivityTimeline({ providers = [], claimRequests = [], providerLea
       label: event.label,
       summary: event.summary,
       actorEmail: event.actorEmail,
+      providerId: event.providerId,
       providerDomain: provider?.domain || "",
       providerName: provider?.companyName || provider?.company_name || "",
+      metadata: event.metadata || {},
       createdAt: event.createdAt,
     };
   });
@@ -1664,7 +1681,11 @@ async function createOutreachLink(providerId, { purpose = "access", expiresInDay
       provider_id: providerId,
       token: generateOutreachToken(),
       purpose: normalizedPurpose,
-      expires_at: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString(),
+      // null/0 means non-expiring - used for the "owner_edit" link so an
+      // owner can return later to manage their listing without re-verifying.
+      expires_at: expiresInDays
+        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+        : null,
     }),
   });
 
@@ -1735,6 +1756,114 @@ async function markOutreachLinkUsed(token) {
   });
 
   return rows[0] ? rowToOutreachLink(rows[0]) : null;
+}
+
+class OwnerEditError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// Publishes a self-serve edit made from the claim link with no admin review
+// in the loop. The emailed "access" token requires a one-time business-email
+// verification (domain must match the provider's); after that, an
+// unexpiring "owner_edit" token is minted so the owner can return later
+// without re-verifying, similar in spirit to createClaimRequest's
+// verification but publishing immediately instead of queuing for review.
+async function applyOwnerProfileEdit(token, { email, profile = {} } = {}) {
+  const link = await resolveOutreachLink(token);
+
+  if (!link) {
+    throw new OwnerEditError("This link is invalid or has expired.", 404);
+  }
+
+  const provider = link.provider;
+
+  if (provider.status === "removed" || provider.status === "removal_requested") {
+    throw new OwnerEditError("This profile is no longer editable.", 403);
+  }
+
+  const isVerifiedSession = link.purpose === "owner_edit";
+  let claimedByEmail = provider.claimedByEmail || null;
+
+  if (!isVerifiedSession) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      throw new OwnerEditError("A valid business email is required to save changes.", 400);
+    }
+
+    if (!providerDomainMatchesEmail(provider.domain, normalizedEmail)) {
+      throw new OwnerEditError(
+        `Use an email address at ${provider.domain} to verify you can edit this profile.`,
+        403
+      );
+    }
+
+    if (provider.claimed && provider.claimedByEmail && provider.claimedByEmail !== normalizedEmail) {
+      throw new OwnerEditError("This profile has already been claimed by another verified email.", 409);
+    }
+
+    claimedByEmail = normalizedEmail;
+  }
+
+  const isFirstClaim = !provider.claimed;
+  const patch = {};
+  // Snapshot only the content fields actually being touched, both before and
+  // after, so an admin can revert this specific edit later (see the
+  // "Revert this edit" button in admin.js's activity timeline) without
+  // needing a full version-history table - there's no review gate on this
+  // write path, so this is the safety net instead of a pre-publish check.
+  const before = {};
+
+  for (const field of OWNER_EDITABLE_FIELDS) {
+    if (profile[field] !== undefined) {
+      before[field] = provider[field];
+      patch[field] = profile[field];
+    }
+  }
+
+  if (isFirstClaim) {
+    patch.claimed = true;
+    patch.claimedByEmail = claimedByEmail;
+    patch.claimedAt = provider.claimedAt || new Date().toISOString();
+    patch.claimVerificationMethod = "email_domain_match_self_serve";
+  }
+
+  const updated = await updateProvider(provider.id, patch, isFirstClaim ? "claimed" : undefined, {
+    reviewedBy: claimedByEmail || "self-serve",
+    skipConfidenceGuardrail: true,
+  });
+
+  if (Object.keys(before).length > 0) {
+    await logActivityEvent({
+      providerId: provider.id,
+      eventType: "provider_self_edited",
+      label: isFirstClaim ? "Profile claimed and edited by owner" : "Profile edited by owner",
+      summary: `Saved via emailed link by ${claimedByEmail || "verified owner"}`,
+      actorEmail: claimedByEmail,
+      metadata: { linkPurpose: link.purpose, providerDomain: provider.domain, before },
+    });
+  } else if (isFirstClaim) {
+    await logActivityEvent({
+      providerId: provider.id,
+      eventType: "provider_self_edited",
+      label: "Profile claimed by owner",
+      summary: `Verified via emailed link by ${claimedByEmail || "verified owner"}`,
+      actorEmail: claimedByEmail,
+      metadata: { linkPurpose: link.purpose, providerDomain: provider.domain },
+    });
+  }
+
+  let editToken = isVerifiedSession ? link.token : null;
+
+  if (!editToken) {
+    const ownerLink = await createOutreachLink(provider.id, { purpose: "owner_edit", expiresInDays: null });
+    editToken = ownerLink.token;
+  }
+
+  return { provider: updated, editToken };
 }
 
 async function logActivityEvent({
@@ -2714,14 +2843,14 @@ async function publishProvider(id, status = "approved") {
   return rowToProfile(rows[0]);
 }
 
-async function updateProvider(id, profilePatch = {}, status, { reviewedBy } = {}) {
+async function updateProvider(id, profilePatch = {}, status, { reviewedBy, skipConfidenceGuardrail = false } = {}) {
   const normalizedStatus = status ? normalizeLifecycleStatus(status) : null;
   const previousRows = await supabaseFetch(
     `/rest/v1/providers?select=id,status,confidence_score&id=eq.${encodeURIComponent(id)}&limit=1`
   );
   const previousStatus = normalizeLifecycleStatus(previousRows[0]?.status || "", "scraped");
 
-  if (normalizedStatus && normalizedStatus !== previousStatus) {
+  if (normalizedStatus && normalizedStatus !== previousStatus && !skipConfidenceGuardrail) {
     await assertConfidenceGuardrail(
       id,
       normalizedStatus,
@@ -2736,6 +2865,9 @@ async function updateProvider(id, profilePatch = {}, status, { reviewedBy } = {}
     ...(profilePatch.website !== undefined ? { website: profilePatch.website } : {}),
     ...(profilePatch.country !== undefined ? { country: profilePatch.country } : {}),
     ...(profilePatch.city !== undefined ? { city: profilePatch.city } : {}),
+    ...(profilePatch.description !== undefined ? { description: profilePatch.description || "" } : {}),
+    ...(profilePatch.githubUrl !== undefined ? { github_url: profilePatch.githubUrl || null } : {}),
+    ...(profilePatch.linkedinUrl !== undefined ? { linkedin_url: profilePatch.linkedinUrl || null } : {}),
     ...(profilePatch.companyLocation !== undefined
       ? {
           country: profilePatch.companyLocation?.country || null,
@@ -2830,7 +2962,9 @@ async function deleteScrapeJob(id) {
 
 module.exports = {
   AdminAuthError,
+  OwnerEditError,
   statusForError,
+  applyOwnerProfileEdit,
   createClaimRequest,
   createOutreachLink,
   createProviderLead,

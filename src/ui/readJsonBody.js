@@ -23,6 +23,25 @@ async function readJsonBody(request) {
   return rawBody ? JSON.parse(rawBody) : {};
 }
 
+async function readRawBody(request) {
+  if (Buffer.isBuffer(request.body)) {
+    return request.body;
+  }
+
+  if (typeof request.body === "string") {
+    return Buffer.from(request.body);
+  }
+
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+}
+
 module.exports = {
   readJsonBody,
+  readRawBody,
 };

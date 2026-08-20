@@ -20,6 +20,8 @@ const handlers = {
   "/api/outreach-followup": require("./outreach-followup"),
   "/api/outreach-opt-out": require("./outreach-opt-out"),
   "/api/profile": require("./profile"),
+  "/api/profile-edit": require("./profile-edit"),
+  "/api/profile-edit-logo": require("./profile-edit-logo"),
   "/api/profiles": require("./profiles"),
   "/api/provider-lead": require("./provider-lead"),
   "/api/resolve-outreach-link": require("./resolve-outreach-link"),
