@@ -464,3 +464,63 @@ alter table public.outreach_links
 alter table public.outreach_links
   add constraint outreach_links_purpose_check
   check (purpose in ('access', 'opt_out', 'owner_edit'));
+
+-- Week 13: multi-contact outreach sourcing (client feedback). Apollo
+-- people-search now returns several ranked candidates per company instead of
+-- auto-picking one, so contacts need a way to distinguish "Apollo suggested
+-- this, nobody's reviewed it yet" from "a human confirmed this is a real
+-- contact to send to" - default 'confirmed' keeps every pre-existing row
+-- (manually added, or auto-sourced before this distinction existed) exactly
+-- as send-eligible as it already was.
+alter table public.outreach_contacts
+  add column if not exists source_status text not null default 'confirmed';
+
+alter table public.outreach_contacts
+  drop constraint if exists outreach_contacts_source_status_check;
+
+alter table public.outreach_contacts
+  add constraint outreach_contacts_source_status_check
+  check (source_status in ('sourced', 'confirmed'));
+
+-- Week 13: real owner/editor verification (client feedback). Week 12's
+-- applyOwnerProfileEdit only ever checked "does this person possess the
+-- token", never who they actually are - this closes that gap. A new
+-- "verify" link purpose carries the email it was minted for (unlike
+-- "access"/"owner_edit", which are per-provider, not per-person), and
+-- provider_editors is the actual roles table: who's verified to edit a
+-- given provider, and whether they're the owner (can invite others) or an
+-- editor (can only edit). Providers already claimed via the old flow are
+-- grandfathered - see the code-level check in resolveOwnerEditAccess()
+-- rather than a data backfill, so no existing claim needs to be touched.
+alter table public.outreach_links
+  add column if not exists email text;
+
+alter table public.outreach_links
+  drop constraint if exists outreach_links_purpose_check;
+
+alter table public.outreach_links
+  add constraint outreach_links_purpose_check
+  check (purpose in ('access', 'opt_out', 'owner_edit', 'verify'));
+
+create table if not exists public.provider_editors (
+  id uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.providers(id) on delete cascade,
+  email text not null,
+  name text,
+  role text not null default 'editor' check (role in ('owner', 'editor')),
+  status text not null default 'pending' check (status in ('pending', 'active')),
+  invited_by text,
+  verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider_id, email)
+);
+
+create index if not exists provider_editors_provider_id_idx on public.provider_editors (provider_id);
+
+drop trigger if exists provider_editors_set_updated_at on public.provider_editors;
+create trigger provider_editors_set_updated_at
+before update on public.provider_editors
+for each row execute function public.set_updated_at();
+
+alter table public.provider_editors enable row level security;

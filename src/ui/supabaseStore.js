@@ -32,7 +32,9 @@ const OUTREACH_MESSAGE_STATUSES = new Set(["draft", "approved", "sent", "opened"
 const CLAIM_REQUEST_TYPES = new Set(["claim", "removal"]);
 const OUTREACH_CYCLE_STAGES = new Set(["not_started", "cycle_1_sent", "cycle_2_sent", "cycle_3_sent", "closed"]);
 const OUTREACH_CYCLE_RESOLUTIONS = new Set(["claimed", "removed", "no_response", "opted_out", "replied_other"]);
-const OUTREACH_LINK_PURPOSES = new Set(["access", "opt_out", "owner_edit"]);
+const OUTREACH_LINK_PURPOSES = new Set(["access", "opt_out", "owner_edit", "verify"]);
+const PROVIDER_EDITOR_ROLES = new Set(["owner", "editor"]);
+const PROVIDER_EDITOR_STATUSES = new Set(["pending", "active"]);
 // Fields an unreviewed self-serve edit (via the claim link) is allowed to
 // touch - a subset of what admins can edit, matching the public detail view.
 const OWNER_EDITABLE_FIELDS = [
@@ -345,6 +347,7 @@ function rowToOutreachContact(row = {}) {
     seniority: row.seniority || "",
     source: row.source || "",
     primaryContact: Boolean(row.primary_contact),
+    sourceStatus: row.source_status || "confirmed",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -362,6 +365,7 @@ function normalizeOutreachContacts(contacts = []) {
       seniority: String(contact.seniority || "").trim(),
       source: String(contact.source || "").trim(),
       primaryContact: Boolean(contact.primaryContact || contact.primary_contact),
+      sourceStatus: contact.sourceStatus === "sourced" ? "sourced" : "confirmed",
     }))
     .filter((contact) => (
       contact.name ||
@@ -372,7 +376,9 @@ function normalizeOutreachContacts(contacts = []) {
       contact.source
     ))
     .map((contact) => {
-      const primaryContact = contact.primaryContact && !primaryAssigned;
+      // An unconfirmed candidate can never be the send-eligible primary,
+      // regardless of what any caller set - confirming is what promotes it.
+      const primaryContact = contact.sourceStatus === "sourced" ? false : contact.primaryContact && !primaryAssigned;
 
       if (primaryContact) {
         primaryAssigned = true;
@@ -437,6 +443,7 @@ async function replaceProviderOutreachContacts(providerId, contacts = []) {
       seniority: contact.seniority || null,
       source: contact.source || null,
       primary_contact: contact.primaryContact,
+      source_status: contact.sourceStatus,
     }))),
   });
 
@@ -520,6 +527,7 @@ function rowToOutreachLink(row = {}) {
     providerId: row.provider_id,
     token: row.token,
     purpose: row.purpose || "access",
+    email: row.email || null,
     expiresAt: row.expires_at,
     usedAt: row.used_at,
     createdAt: row.created_at,
@@ -1670,7 +1678,7 @@ async function listDueOutreachCycles() {
   }
 }
 
-async function createOutreachLink(providerId, { purpose = "access", expiresInDays = 60 } = {}) {
+async function createOutreachLink(providerId, { purpose = "access", expiresInDays = 60, email = null } = {}) {
   const normalizedPurpose = OUTREACH_LINK_PURPOSES.has(purpose) ? purpose : "access";
   const rows = await supabaseFetch("/rest/v1/outreach_links", {
     method: "POST",
@@ -1681,6 +1689,10 @@ async function createOutreachLink(providerId, { purpose = "access", expiresInDay
       provider_id: providerId,
       token: generateOutreachToken(),
       purpose: normalizedPurpose,
+      // Only "verify" links are minted for a specific person - "access" and
+      // "owner_edit" stay per-provider, since anyone with the emailed link
+      // was always meant to be able to use it.
+      email: email || null,
       // null/0 means non-expiring - used for the "owner_edit" link so an
       // owner can return later to manage their listing without re-verifying.
       expires_at: expiresInDays
@@ -1758,6 +1770,106 @@ async function markOutreachLinkUsed(token) {
   return rows[0] ? rowToOutreachLink(rows[0]) : null;
 }
 
+function rowToProviderEditor(row = {}) {
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    email: row.email,
+    name: row.name || "",
+    role: row.role,
+    status: row.status,
+    invitedBy: row.invited_by || null,
+    verifiedAt: row.verified_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function listProviderEditors(providerId) {
+  if (!providerId) {
+    return [];
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/provider_editors?select=*&provider_id=eq.${encodeURIComponent(providerId)}&order=created_at.asc`
+    );
+
+    return rows.map(rowToProviderEditor);
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function findProviderEditor(providerId, email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!providerId || !normalizedEmail) {
+    return null;
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/provider_editors?select=*&provider_id=eq.${encodeURIComponent(providerId)}&email=eq.${encodeURIComponent(normalizedEmail)}&limit=1`
+    );
+
+    return rows[0] ? rowToProviderEditor(rows[0]) : null;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+// Upsert by (provider_id, email) - re-running this for someone who already
+// has a row (e.g. requesting a fresh verification email after losing their
+// link) overwrites role/status/name, so callers that want to preserve an
+// existing role must look it up first (see beginOwnerVerification).
+async function upsertProviderEditor({ providerId, email, name = "", role = "editor", status = "pending", invitedBy = null }) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedRole = PROVIDER_EDITOR_ROLES.has(role) ? role : "editor";
+  const normalizedStatus = PROVIDER_EDITOR_STATUSES.has(status) ? status : "pending";
+
+  const rows = await supabaseFetch("/rest/v1/provider_editors?on_conflict=provider_id,email", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify({
+      provider_id: providerId,
+      email: normalizedEmail,
+      name: String(name || "").trim(),
+      role: normalizedRole,
+      status: normalizedStatus,
+      invited_by: invitedBy,
+    }),
+  });
+
+  return rows[0] ? rowToProviderEditor(rows[0]) : null;
+}
+
+async function markProviderEditorVerified(providerId, email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const rows = await supabaseFetch(
+    `/rest/v1/provider_editors?provider_id=eq.${encodeURIComponent(providerId)}&email=eq.${encodeURIComponent(normalizedEmail)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({ status: "active", verified_at: new Date().toISOString() }),
+    }
+  );
+
+  return rows[0] ? rowToProviderEditor(rows[0]) : null;
+}
+
 class OwnerEditError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -1765,17 +1877,63 @@ class OwnerEditError extends Error {
   }
 }
 
-// Publishes a self-serve edit made from the claim link with no admin review
-// in the loop. The emailed "access" token requires a one-time business-email
-// verification (domain must match the provider's); after that, an
-// unexpiring "owner_edit" token is minted so the owner can return later
-// without re-verifying, similar in spirit to createClaimRequest's
-// verification but publishing immediately instead of queuing for review.
-// No email verification: possessing the emailed link's token is treated as
-// sufficient authorization by itself (it was only ever sent to the
-// provider's own outreach contact). The first save on the token claims the
-// profile automatically.
-async function applyOwnerProfileEdit(token, { profile = {} } = {}) {
+// The single "can this token edit, and as who" check, shared by the GET
+// (so the client knows whether to show the verify-gate or the editor) and
+// the PATCH (so a client that skips the gate can't bypass it - see
+// applyOwnerProfileEdit below). Week 13: closes the gap the old comment on
+// applyOwnerProfileEdit used to document - token possession is no longer
+// enough by itself for a first-time claim.
+async function resolveOwnerEditAccess(token) {
+  const link = await resolveOutreachLink(token);
+
+  if (!link) {
+    return null;
+  }
+
+  const provider = link.provider;
+
+  if (link.purpose === "owner_edit" && link.email) {
+    // A personal token, minted only after a real email verification -
+    // confirm the editor row it's tied to is still active (it always
+    // should be; failing closed here is just defense in depth).
+    const editor = await findProviderEditor(provider.id, link.email);
+
+    if (editor && editor.status === "active") {
+      return { link, provider, requiresVerification: false, editorRole: editor.role, editorEmail: editor.email, editorName: editor.name };
+    }
+
+    return { link, provider, requiresVerification: true, editorRole: null, editorEmail: null, editorName: null };
+  }
+
+  if (link.purpose === "owner_edit" && !link.email) {
+    // Pre-Week-13 token: minted with no identity attached at all. Grandfather
+    // it only for a provider already claimed under the old flow, so nothing
+    // that already worked breaks; a first-time claim always goes through
+    // real verification now, even on an old-style link.
+    if (provider.claimed) {
+      return { link, provider, requiresVerification: false, editorRole: "owner", editorEmail: provider.claimedByEmail || null, editorName: null };
+    }
+
+    return { link, provider, requiresVerification: true, editorRole: null, editorEmail: null, editorName: null };
+  }
+
+  // "access" purpose - the link from the outreach email itself. Never
+  // sufficient on its own to edit; it's just what gets you to the
+  // verify-your-email step.
+  return { link, provider, requiresVerification: true, editorRole: null, editorEmail: null, editorName: null };
+}
+
+// Step 1 of verification: someone on an "access" (or unverified legacy
+// "owner_edit") link submits Name/Email/Role. Validates the email's domain
+// matches the provider's, then mints a short-lived "verify" token bound to
+// that exact email. Does not send email itself - src/email/
+// ownerVerification.js does that, keeping this file's email/store layering
+// the same as everywhere else (sendOutreachMessage.js follows the same
+// split). The first person to verify for a provider becomes its owner;
+// anyone verifying afterward becomes an editor - unless they already have a
+// row (e.g. re-requesting a lost link), in which case their existing role
+// is kept rather than recomputed.
+async function beginOwnerVerification(token, { name, email, role } = {}) {
   const link = await resolveOutreachLink(token);
 
   if (!link) {
@@ -1788,7 +1946,161 @@ async function applyOwnerProfileEdit(token, { profile = {} } = {}) {
     throw new OwnerEditError("This profile is no longer editable.", 403);
   }
 
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    throw new OwnerEditError("A valid email address is required.", 400);
+  }
+
+  if (!providerDomainMatchesEmail(provider.domain, normalizedEmail)) {
+    throw new OwnerEditError(`Use an email address at ${provider.domain} to verify you work there.`, 403);
+  }
+
+  const existingEditors = await listProviderEditors(provider.id);
+  const existingSelf = existingEditors.find((editor) => editor.email === normalizedEmail);
+  const hasOtherActiveOwner = existingEditors.some(
+    (editor) => editor.role === "owner" && editor.status === "active" && editor.email !== normalizedEmail
+  );
+  const resolvedRole = existingSelf ? existingSelf.role : (hasOtherActiveOwner ? "editor" : "owner");
+  const trimmedName = String(name || "").trim();
+
+  await upsertProviderEditor({
+    providerId: provider.id,
+    email: normalizedEmail,
+    name: trimmedName,
+    role: resolvedRole,
+    status: "pending",
+  });
+
+  const verifyLink = await createOutreachLink(provider.id, { purpose: "verify", email: normalizedEmail, expiresInDays: 1 });
+
+  return { provider, email: normalizedEmail, name: trimmedName, role: resolvedRole, verifyToken: verifyLink.token };
+}
+
+// Step 2: the person clicks the emailed verify link. Marks them active,
+// mints their personal owner_edit token, and - only on a genuine first-ever
+// claim - claims the provider the same way the old flow did.
+async function confirmOwnerVerification(verifyToken) {
+  const link = await resolveOutreachLink(verifyToken);
+
+  if (!link || link.purpose !== "verify" || !link.email) {
+    throw new OwnerEditError("This verification link is invalid or has expired.", 404);
+  }
+
+  if (link.usedAt) {
+    throw new OwnerEditError("This verification link has already been used. Request a new one to verify again.", 410);
+  }
+
+  const provider = link.provider;
+  const editor = await markProviderEditorVerified(provider.id, link.email);
+
+  if (!editor) {
+    throw new OwnerEditError("No pending verification found for this link.", 404);
+  }
+
+  await markOutreachLinkUsed(verifyToken);
+
   const isFirstClaim = !provider.claimed;
+
+  if (isFirstClaim) {
+    await updateProvider(
+      provider.id,
+      {
+        claimed: true,
+        claimedAt: new Date().toISOString(),
+        claimVerificationMethod: "email_verification",
+        claimedByEmail: link.email,
+      },
+      "claimed",
+      { reviewedBy: "self-serve", skipConfidenceGuardrail: true }
+    );
+  }
+
+  const editLink = await createOutreachLink(provider.id, { purpose: "owner_edit", email: link.email, expiresInDays: null });
+
+  await logActivityEvent({
+    providerId: provider.id,
+    eventType: "provider_editor_verified",
+    label: editor.role === "owner" ? "Owner verified" : "Editor verified",
+    summary: `${editor.name || link.email} <${link.email}> verified as ${editor.role} via emailed link.`,
+    metadata: { providerDomain: provider.domain, role: editor.role },
+  });
+
+  return { editToken: editLink.token, role: editor.role, email: link.email, name: editor.name, provider };
+}
+
+// Owner-only: invites someone by email as an editor. Bypasses the domain
+// match beginOwnerVerification requires, since the inviter is themselves
+// already a verified person vouching for this address directly (e.g. an
+// agency contact or a colleague on a different domain) rather than an
+// unverified token holder claiming to be from the company.
+async function inviteProviderEditor(inviterToken, { email } = {}) {
+  const access = await resolveOwnerEditAccess(inviterToken);
+
+  if (!access) {
+    throw new OwnerEditError("This link is invalid or has expired.", 404);
+  }
+
+  if (access.requiresVerification) {
+    throw new OwnerEditError("Verify your own email before inviting others.", 403);
+  }
+
+  if (access.editorRole !== "owner") {
+    throw new OwnerEditError("Only the owner can invite editors.", 403);
+  }
+
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    throw new OwnerEditError("A valid email address is required.", 400);
+  }
+
+  await upsertProviderEditor({
+    providerId: access.provider.id,
+    email: normalizedEmail,
+    role: "editor",
+    status: "pending",
+    invitedBy: access.editorEmail,
+  });
+
+  const verifyLink = await createOutreachLink(access.provider.id, { purpose: "verify", email: normalizedEmail, expiresInDays: 7 });
+
+  await logActivityEvent({
+    providerId: access.provider.id,
+    eventType: "provider_editor_invited",
+    label: "Editor invited",
+    summary: `${access.editorEmail || "The owner"} invited ${normalizedEmail} as an editor.`,
+    metadata: { providerDomain: access.provider.domain },
+  });
+
+  return { provider: access.provider, email: normalizedEmail, verifyToken: verifyLink.token };
+}
+
+// Publishes a self-serve edit made from the claim link with no admin review
+// in the loop. Week 13: real identity verification happens before this is
+// ever reached (see resolveOwnerEditAccess) - this still fails closed on a
+// token that somehow got here unverified, rather than trusting the caller.
+async function applyOwnerProfileEdit(token, { profile = {} } = {}) {
+  const access = await resolveOwnerEditAccess(token);
+
+  if (!access) {
+    throw new OwnerEditError("This link is invalid or has expired.", 404);
+  }
+
+  if (access.requiresVerification) {
+    throw new OwnerEditError("Verify your email before editing this profile.", 403);
+  }
+
+  const { link, provider } = access;
+
+  if (provider.status === "removed" || provider.status === "removal_requested") {
+    throw new OwnerEditError("This profile is no longer editable.", 403);
+  }
+
+  // Claiming now happens at verification time (confirmOwnerVerification),
+  // before any edit is reachable, so provider.claimed is always already
+  // true by this point - editable resolvedRole/access already confirmed
+  // that above.
   const patch = {};
   // Snapshot only the content fields actually being touched, both before and
   // after, so an admin can revert this specific edit later (see the
@@ -1804,43 +2116,45 @@ async function applyOwnerProfileEdit(token, { profile = {} } = {}) {
     }
   }
 
-  if (isFirstClaim) {
-    patch.claimed = true;
-    patch.claimedAt = provider.claimedAt || new Date().toISOString();
-    patch.claimVerificationMethod = "outreach_link_token";
+  // A self-serve tag that isn't already in the shared taxonomy gets queued
+  // as a "candidate" here, so it shows up for review in the admin Tags
+  // panel instead of silently existing only on this provider's jsonb array.
+  const TAG_TAXONOMY_FIELDS = { services: "services", technologies: "technologies", industries: "industries" };
+  const newCandidateTags = [];
+
+  for (const [field, category] of Object.entries(TAG_TAXONOMY_FIELDS)) {
+    if (patch[field]) {
+      const created = await upsertCandidateTagsIfNew(category, patch[field]);
+      newCandidateTags.push(...created);
+    }
   }
 
-  const updated = await updateProvider(provider.id, patch, isFirstClaim ? "claimed" : undefined, {
-    reviewedBy: "self-serve",
+  const updated = await updateProvider(provider.id, patch, undefined, {
+    reviewedBy: access.editorEmail || "self-serve",
     skipConfidenceGuardrail: true,
   });
+
+  if (newCandidateTags.length > 0) {
+    await logActivityEvent({
+      providerId: provider.id,
+      eventType: "tag_candidate_created",
+      label: "New tag submitted for review",
+      summary: `${newCandidateTags.length} new tag${newCandidateTags.length === 1 ? "" : "s"} added via self-serve edit, pending taxonomy review: ${newCandidateTags.map((tag) => `${tag.name} (${tag.category})`).join(", ")}.`,
+      metadata: { providerDomain: provider.domain, tags: newCandidateTags.map((tag) => ({ id: tag.id, category: tag.category, name: tag.name })) },
+    });
+  }
 
   if (Object.keys(before).length > 0) {
     await logActivityEvent({
       providerId: provider.id,
       eventType: "provider_self_edited",
-      label: isFirstClaim ? "Profile claimed and edited by owner" : "Profile edited by owner",
-      summary: isFirstClaim ? "Claimed and saved via the emailed link." : "Saved via the emailed link.",
-      metadata: { linkPurpose: link.purpose, providerDomain: provider.domain, before },
-    });
-  } else if (isFirstClaim) {
-    await logActivityEvent({
-      providerId: provider.id,
-      eventType: "provider_self_edited",
-      label: "Profile claimed by owner",
-      summary: "Claimed via the emailed link.",
-      metadata: { linkPurpose: link.purpose, providerDomain: provider.domain },
+      label: `Profile edited by ${access.editorRole === "owner" ? "owner" : "editor"}`,
+      summary: `Saved by ${access.editorEmail || "a verified editor"} via the emailed link.`,
+      metadata: { linkPurpose: link.purpose, providerDomain: provider.domain, before, editorEmail: access.editorEmail, editorRole: access.editorRole },
     });
   }
 
-  let editToken = link.purpose === "owner_edit" ? link.token : null;
-
-  if (!editToken) {
-    const ownerLink = await createOutreachLink(provider.id, { purpose: "owner_edit", expiresInDays: null });
-    editToken = ownerLink.token;
-  }
-
-  return { provider: updated, editToken };
+  return { provider: updated, editToken: link.token, editorRole: access.editorRole, editorEmail: access.editorEmail };
 }
 
 async function logActivityEvent({
@@ -2293,6 +2607,47 @@ async function listApprovedTagTaxonomy() {
   const tags = await listTagTaxonomy();
 
   return tags.filter((tag) => tag.status === "approved");
+}
+
+// Inserts a "candidate" row for each name not already present in
+// tag_taxonomy for this category, at any status - resolution=ignore-
+// duplicates means an existing approved/candidate/merged row is left
+// completely untouched (never downgraded back to candidate). return=
+// representation means the response only contains the rows actually
+// inserted, so the caller gets back exactly the genuinely-new tags without
+// a separate diff. Used by applyOwnerProfileEdit so a self-serve tag that
+// isn't in the shared taxonomy yet gets queued for admin review instead of
+// silently existing only on this one provider's record.
+async function upsertCandidateTagsIfNew(category, tagNames = []) {
+  const tagCategory = normalizeTagCategory(category);
+  const names = Array.from(new Set((tagNames || []).map((name) => normalizeTagName(name)).filter(Boolean)));
+
+  if (names.length === 0) {
+    return [];
+  }
+
+  try {
+    const rows = await supabaseFetch("/rest/v1/tag_taxonomy?on_conflict=category,normalized_name", {
+      method: "POST",
+      headers: {
+        Prefer: "return=representation,resolution=ignore-duplicates",
+      },
+      body: JSON.stringify(names.map((name) => ({
+        category: tagCategory,
+        name,
+        normalized_name: normalizeTagKey(name),
+        status: "candidate",
+      }))),
+    });
+
+    return rows.map(tagRowToClient);
+  } catch (error) {
+    if (isMissingTagTaxonomyTable(error)) {
+      return [];
+    }
+
+    throw error;
+  }
 }
 
 async function findProviderByDomain(domain) {
@@ -2943,6 +3298,11 @@ module.exports = {
   OwnerEditError,
   statusForError,
   applyOwnerProfileEdit,
+  beginOwnerVerification,
+  confirmOwnerVerification,
+  inviteProviderEditor,
+  listProviderEditors,
+  resolveOwnerEditAccess,
   createClaimRequest,
   createOutreachLink,
   createProviderLead,

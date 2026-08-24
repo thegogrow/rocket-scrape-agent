@@ -33,9 +33,15 @@ async function sendOutreachMessageAndAdvanceCycle(message, { actorEmail = "syste
   }
 
   const contacts = await listOutreachContacts([provider.id]);
+  // An explicit contactId match is an intentional choice (e.g. a message
+  // generated for a specific person) and can send regardless of
+  // sourceStatus; the fallbacks must not land on an Apollo-suggested
+  // candidate nobody has confirmed yet - see llm/outreachMessages.js's
+  // primaryContactForProvider, which applies the same rule.
+  const confirmedContacts = contacts.filter((item) => (item.sourceStatus || "confirmed") === "confirmed");
   const contact = contacts.find((item) => item.id === message.contactId)
-    || contacts.find((item) => item.primaryContact)
-    || contacts[0];
+    || confirmedContacts.find((item) => item.primaryContact)
+    || confirmedContacts[0];
 
   if (!contact?.email) {
     throw new Error("No contact email to send to.");

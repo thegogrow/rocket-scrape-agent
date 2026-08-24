@@ -9,6 +9,7 @@
 require("dotenv").config();
 
 const { generateDraftsForProvider, isGenericContact, sourceContactIfMissing } = require("../src/pipeline/outreachAutomation");
+const { primaryContactForProvider } = require("../src/llm/outreachMessages");
 const { listAdminState } = require("../src/ui/supabaseStore");
 
 const DELAY_MS = 400;
@@ -18,17 +19,15 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function primaryContact(provider) {
-  const contacts = Array.isArray(provider.outreachContacts) ? provider.outreachContacts : [];
-
-  return contacts.find((contact) => contact.primaryContact) || contacts[0] || null;
-}
-
+// primaryContactForProvider only counts human-confirmed contacts (Week 13:
+// Apollo can now surface several unconfirmed candidates per provider) - so a
+// provider with only fresh, unconfirmed candidates still counts as
+// "generic"/no real contact yet here, same as having none at all.
 function isEligible(provider) {
   const cycle = provider.outreachCycle;
   const cycleOk = !cycle || (cycle.stage === "not_started" && !cycle.resolution);
 
-  return cycleOk && isGenericContact(primaryContact(provider));
+  return cycleOk && isGenericContact(primaryContactForProvider(provider));
 }
 
 async function fetchEligibleProviders() {
@@ -73,10 +72,20 @@ async function main() {
         continue;
       }
 
-      const contact = primaryContact(withContact);
-      contactsSourced += 1;
-      console.log(`[${index + 1}/${targets.length}] ${provider.companyName}: ${contact.name} (${contact.title}) <${contact.email}>`);
+      // New candidates land unconfirmed (sourceStatus "sourced") - an admin
+      // has to pick one in the admin UI before it's send-eligible, so there's
+      // no single "the" contact to log yet, just the batch just found.
+      const sourcedCandidates = (withContact.outreachContacts || []).filter(
+        (contact) => contact.sourceStatus === "sourced"
+      );
+      contactsSourced += sourcedCandidates.length;
+      console.log(
+        `[${index + 1}/${targets.length}] ${provider.companyName}: ${sourcedCandidates.length} candidate(s) found, awaiting admin confirmation - ` +
+          sourcedCandidates.map((contact) => `${contact.name} (${contact.title}) <${contact.email}>`).join("; ")
+      );
 
+      // Draft generation still requires a confirmed contact, so this stays a
+      // no-op until an admin confirms one of the candidates above.
       const withDrafts = await generateDraftsForProvider(withContact, { generatedBy: "batch-script" });
 
       if (withDrafts) {
@@ -84,7 +93,12 @@ async function main() {
         console.log(`    -> 5 outreach drafts generated.`);
       }
 
-      results.push({ name: provider.companyName, domain: provider.domain, ...contact, draftsGenerated: Boolean(withDrafts) });
+      results.push({
+        name: provider.companyName,
+        domain: provider.domain,
+        candidates: sourcedCandidates,
+        draftsGenerated: Boolean(withDrafts),
+      });
     } catch (error) {
       consecutiveErrors += 1;
       errors.push({ name: provider.companyName, domain: provider.domain, error: error.message });

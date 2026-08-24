@@ -1,4 +1,4 @@
-const { applyOwnerProfileEdit, isSupabaseConfigured, OwnerEditError, resolveOutreachLink } = require("../ui/supabaseStore");
+const { applyOwnerProfileEdit, isSupabaseConfigured, OwnerEditError, resolveOwnerEditAccess } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 const STRING_FIELDS = ["companyName", "logoUrl", "website", "country", "city", "description", "githubUrl", "linkedinUrl"];
@@ -72,14 +72,14 @@ async function handleGet(request, response) {
     return;
   }
 
-  const link = await resolveOutreachLink(token);
+  const access = await resolveOwnerEditAccess(token);
 
-  if (!link) {
+  if (!access) {
     response.status(404).json({ error: "This link is invalid or has expired." });
     return;
   }
 
-  const provider = link.provider;
+  const { provider } = access;
 
   response.setHeader("Cache-Control", "no-store");
 
@@ -93,9 +93,21 @@ async function handleGet(request, response) {
     return;
   }
 
+  if (access.requiresVerification) {
+    response.status(200).json({
+      editable: false,
+      reason: "verification_required",
+      domain: provider.domain,
+      companyName: provider.companyName,
+    });
+    return;
+  }
+
   response.status(200).json({
     editable: true,
     providerId: provider.id,
+    editorRole: access.editorRole,
+    editorEmail: access.editorEmail,
     profile: shapeProfile(provider),
   });
 }
@@ -110,6 +122,8 @@ async function handlePatch(request, response) {
   response.status(200).json({
     ok: true,
     editToken: result.editToken,
+    editorRole: result.editorRole,
+    editorEmail: result.editorEmail,
     profile: shapeProfile(result.provider),
   });
 }

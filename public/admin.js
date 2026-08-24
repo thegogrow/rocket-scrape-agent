@@ -3,6 +3,7 @@ const state = {
   activityEvents: [],
   claimRequests: [],
   outreachSelection: new Set(),
+  tagNormalizationProposals: [],
   jobs: [],
   metrics: {},
   providerLeads: [],
@@ -120,6 +121,7 @@ const ACTIVITY_GROUPS = [
   { key: "claims", label: "Claims & Removals", test: (type) => type === "claim_requested" || type === "removal_requested" },
   { key: "owner_edits", label: "Owner Edits", test: (type) => type === "provider_self_edited" },
   { key: "leads", label: "Leads", test: (type) => type === "lead_submitted" },
+  { key: "tags", label: "Pending Tags", test: (type) => type === "tag_candidate_created" },
 ];
 
 function activityGroupForType(type = "") {
@@ -267,6 +269,8 @@ const elements = {
   activityGroupFilter: document.querySelector("#activityGroupFilter"),
   activitySortButton: document.querySelector("#activitySortButton"),
   tagApproveVisibleButton: document.querySelector("#tagApproveVisibleButton"),
+  tagNormalizeButton: document.querySelector("#tagNormalizeButton"),
+  tagNormalizeResults: document.querySelector("#tagNormalizeResults"),
   tagSummary: document.querySelector("#tagSummary"),
   tagSearchFilter: document.querySelector("#tagSearchFilter"),
   tagCategoryFilter: document.querySelector("#tagCategoryFilter"),
@@ -349,6 +353,22 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// The free-text filter inputs (published/tags/outreach search) fire a full
+// synchronous re-render on every "input" event with no debounce - typing a
+// short query fires that many renders back-to-back, which reads as exactly
+// the kind of intermittent freeze reported in Week 13 client feedback
+// (worse as jobs/tags/activity events grow, even with the provider count
+// flat). Wrapping those three handlers in this is a low-risk fix that
+// doesn't touch the render functions themselves.
+function debounce(fn, waitMs = 200) {
+  let timeoutId = null;
+
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => fn(...args), waitMs);
+  };
 }
 
 function adminToken() {
@@ -525,6 +545,26 @@ function setSection(section, options = {}) {
   if (options.updateHash && window.location.hash !== `#${nextSection}`) {
     window.history.pushState({ adminSection: nextSection }, "", `#${nextSection}`);
   }
+}
+
+// Same show/hide-by-data-attribute pattern as setSection above, scoped to
+// the edit-profile dialog instead of the whole page - no location.hash
+// involvement, since a dialog tab isn't a bookmarkable destination.
+const EDIT_DIALOG_TABS = ["profile", "content", "outreach", "notes"];
+
+function setEditTab(tab) {
+  const nextTab = EDIT_DIALOG_TABS.includes(tab) ? tab : "profile";
+
+  document.querySelectorAll(".editDialogTab").forEach((button) => {
+    const isActive = button.dataset.editTab === nextTab;
+
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  document.querySelectorAll(".editDialogPanel").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.editPanel === nextTab);
+  });
 }
 
 function statusPill(status) {
@@ -841,9 +881,10 @@ function providerRow(provider, options = {}) {
 
 function compactProviderRow(provider) {
   const attentionClass = isBelowConfidenceGuardrail(provider) ? " adminLowConfidenceRow" : "";
+  const key = escapeHtml(providerKey(provider));
 
   return `
-    <article class="adminTableRow adminReviewRow adminCompactRow adminDashboardProviderRow${attentionClass}">
+    <article class="adminTableRow adminReviewRow adminCompactRow adminDashboardProviderRow${attentionClass}" data-edit-provider="${key}">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -1058,6 +1099,18 @@ function selectedTagNames(category) {
   return uniqueList(Array.from(list.querySelectorAll("[data-tag-value]")).map((item) => item.dataset.tagValue));
 }
 
+// A value with no matching taxonomy row, or one still status "candidate",
+// hasn't been through admin review yet (self-serve edits can add tags the
+// taxonomy doesn't have - see profile-edit.js's createTagInput). Flagged
+// visually here so an admin skimming a provider's tags can see which ones
+// are provisional without having to cross-check the Tags panel.
+function tagStatusForValue(category, value) {
+  const key = normalizeTagKey(value);
+  const match = state.tags.find((tag) => tag.category === category && normalizeTagKey(tag.name) === key);
+
+  return match?.status || null;
+}
+
 function setTagPickerValues(category, values = []) {
   const list = document.querySelector(`[data-tag-picker-list="${category}"]`);
 
@@ -1068,12 +1121,17 @@ function setTagPickerValues(category, values = []) {
   const allKnown = uniqueList([...approvedTagNames(category), ...values]);
   const selected = uniqueList(values);
   list.innerHTML = selected.length
-    ? selected.map((value) => `
-      <span class="tagChip" data-tag-value="${escapeHtml(value)}">
-        ${escapeHtml(value)}
+    ? selected.map((value) => {
+        const status = tagStatusForValue(category, value);
+        const isPending = status !== "approved";
+
+        return `
+      <span class="tagChip${isPending ? " tagChipPending" : ""}" data-tag-value="${escapeHtml(value)}"${isPending ? ' title="Not yet reviewed - see the Tags panel to approve or merge it"' : ""}>
+        ${escapeHtml(value)}${isPending ? '<span class="tagPendingBadge">Pending</span>' : ""}
         <button type="button" data-remove-tag="${escapeHtml(category)}" aria-label="Remove ${escapeHtml(value)}">x</button>
       </span>
-    `).join("")
+    `;
+      }).join("")
     : `<span class="emptyTagHint">No tags selected.</span>`;
 
   renderTagPickerOptions(category, allKnown);
@@ -1590,14 +1648,21 @@ function normalizeOutreachContact(contact = {}) {
     seniority: contact.seniority || "",
     source: contact.source || "",
     primaryContact: Boolean(contact.primaryContact || contact.primary_contact),
+    sourceStatus: (contact.sourceStatus || contact.source_status) === "sourced" ? "sourced" : "confirmed",
   };
 }
 
 function outreachContactRowMarkup(contact = {}) {
   const normalizedContact = normalizeOutreachContact(contact);
+  const isSourced = normalizedContact.sourceStatus === "sourced";
 
   return `
-    <article class="outreachContactRow">
+    <article class="outreachContactRow${isSourced ? " outreachContactSourced" : ""}">
+      ${isSourced
+        ? `<div class="outreachSourcedBadgeRow">
+            <span class="outreachSourcedBadge" title="Found automatically via Apollo - not yet reviewed by a human">Suggested, not yet confirmed</span>
+          </div>`
+        : ""}
       <label>
         Name
         <input data-contact-field="name" type="text" value="${escapeHtml(normalizedContact.name)}" placeholder="Contact name" />
@@ -1622,10 +1687,16 @@ function outreachContactRowMarkup(contact = {}) {
         Source
         <input data-contact-field="source" type="text" value="${escapeHtml(normalizedContact.source)}" placeholder="Manual research, Apollo, LinkedIn" />
       </label>
-      <label class="adminCheckboxLabel outreachPrimaryControl">
-        <input data-contact-field="primaryContact" type="checkbox" ${normalizedContact.primaryContact ? "checked" : ""} />
-        <span>Primary Contact</span>
-      </label>
+      <input data-contact-field="sourceStatus" type="hidden" value="${escapeHtml(normalizedContact.sourceStatus)}" />
+      ${isSourced
+        ? `<label class="adminCheckboxLabel outreachPrimaryControl">
+            <input data-contact-field="confirmSourced" type="checkbox" />
+            <span>Confirm as a real contact (this is who we'll reach out to)</span>
+          </label>`
+        : `<label class="adminCheckboxLabel outreachPrimaryControl">
+            <input data-contact-field="primaryContact" type="checkbox" ${normalizedContact.primaryContact ? "checked" : ""} />
+            <span>Primary Contact</span>
+          </label>`}
       <button class="secondaryAction compactAction outreachContactRemove" type="button">Remove</button>
     </article>
   `;
@@ -1643,8 +1714,15 @@ function collectOutreachContacts(container) {
 
   return Array.from(container.querySelectorAll(".outreachContactRow"))
     .map((row) => {
+      const wasSourced = row.querySelector('[data-contact-field="sourceStatus"]')?.value === "sourced";
+      const confirmedNow = wasSourced && Boolean(row.querySelector('[data-contact-field="confirmSourced"]')?.checked);
+      const sourceStatus = wasSourced && !confirmedNow ? "sourced" : "confirmed";
+      // Unconfirmed candidates are never primary/send-eligible - enforced
+      // here too, though supabaseStore.normalizeOutreachContacts is the real
+      // guard since this array goes straight into a PATCH.
       const primaryInput = row.querySelector('[data-contact-field="primaryContact"]');
-      const primaryContact = primaryInput.checked && !primaryAssigned;
+      const wantsPrimary = sourceStatus === "sourced" ? false : (confirmedNow || primaryInput?.checked);
+      const primaryContact = wantsPrimary && !primaryAssigned;
 
       if (primaryContact) {
         primaryAssigned = true;
@@ -1657,6 +1735,7 @@ function collectOutreachContacts(container) {
         linkedinUrl: row.querySelector('[data-contact-field="linkedinUrl"]').value.trim(),
         seniority: row.querySelector('[data-contact-field="seniority"]').value.trim(),
         source: row.querySelector('[data-contact-field="source"]').value.trim(),
+        sourceStatus,
         primaryContact,
       };
     })
@@ -1729,7 +1808,8 @@ function bodyToPreviewHtml(body) {
 function primaryContactEmailForProvider(provider = {}, contactId = "") {
   const contacts = provider.outreachContacts || [];
   const matched = contactId ? contacts.find((contact) => contact.id === contactId) : null;
-  const contact = matched || contacts.find((contact) => contact.primaryContact) || contacts[0];
+  const confirmedContacts = contacts.filter((contact) => (contact.sourceStatus || "confirmed") === "confirmed");
+  const contact = matched || confirmedContacts.find((contact) => contact.primaryContact) || confirmedContacts[0];
 
   return contact?.email || "";
 }
@@ -2386,6 +2466,7 @@ function openEditProfile(key) {
     elements.profileEditPreviewAccessLink.classList.toggle("isDisabled", !accessUrl);
     elements.profileEditPreviewAccessLink.setAttribute("aria-disabled", String(!accessUrl));
   }
+  setEditTab("profile");
   elements.profileEditDialog.showModal();
 }
 
@@ -2479,9 +2560,15 @@ function compactJobRow(job) {
     companyName: job.company_name || job.domain || job.url,
     domain: job.domain || "",
   };
+  // If the job already resolved to a provider, clicking opens that provider
+  // directly (more useful than just switching tabs); otherwise it's still
+  // queued/running, so the click falls back to the Scrape section's Jobs list.
+  const clickAttribute = provider
+    ? `data-edit-provider="${escapeHtml(providerKey(provider))}"`
+    : `data-open-section="scrape"`;
 
   return `
-    <article class="adminTableRow adminJobRow adminCompactRow adminDashboardJobRow">
+    <article class="adminTableRow adminJobRow adminCompactRow adminDashboardJobRow" ${clickAttribute}>
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity adminDashboardJobIdentity">
           ${providerLogo(logoProvider)}
@@ -2758,6 +2845,95 @@ async function saveTagUpdate(id, patch) {
 
   await refreshAdminState();
   return payload;
+}
+
+// Each proposal is a canonical tag plus the duplicate/synonym names an LLM
+// pass suggested folding into it (Week 13 client feedback: "too many tags,
+// use an LLM to normalize them"). Nothing is written until an admin clicks
+// Apply on a specific proposal - each duplicate then goes through the exact
+// same merge path as the existing per-row "Merge" action.
+function tagNormalizeProposalMarkup(proposal, index) {
+  const duplicateNames = proposal.duplicates.map((duplicate) => escapeHtml(duplicate.name)).join(", ");
+
+  return `
+    <article class="tagNormalizeProposal">
+      <div>
+        <strong>${escapeHtml(duplicateNames)}</strong>
+        <span> → merge into </span>
+        <strong>${escapeHtml(proposal.canonicalName)}</strong>
+        <span class="tagNormalizeCategory">${escapeHtml(tagCategoryLabel(proposal.category))}</span>
+      </div>
+      <div class="structuredHeaderActions">
+        <button class="primaryAction compactAction" type="button" data-apply-tag-normalize="${index}">Apply Merge</button>
+        <button class="secondaryAction compactAction" type="button" data-dismiss-tag-normalize="${index}">Dismiss</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderTagNormalizeResults() {
+  if (!elements.tagNormalizeResults) {
+    return;
+  }
+
+  const proposals = state.tagNormalizationProposals;
+
+  elements.tagNormalizeResults.hidden = proposals.length === 0;
+  elements.tagNormalizeResults.innerHTML = proposals.length
+    ? `<p class="fieldHelp">Review each suggestion before applying - merges can't be un-done automatically.</p>${proposals.map(tagNormalizeProposalMarkup).join("")}`
+    : "";
+
+  document.querySelectorAll("[data-apply-tag-normalize]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const index = Number(button.dataset.applyTagNormalize);
+      const proposal = state.tagNormalizationProposals[index];
+
+      if (!proposal) {
+        return;
+      }
+
+      await runAdminAction(button, "Merging", `Merged into ${proposal.canonicalName}.`, async () => {
+        for (const duplicate of proposal.duplicates) {
+          await saveTagUpdate(duplicate.id, { mergeTarget: proposal.canonicalName, category: proposal.category });
+        }
+      });
+
+      state.tagNormalizationProposals = state.tagNormalizationProposals.filter((_, i) => i !== index);
+      renderTagNormalizeResults();
+    });
+  });
+
+  document.querySelectorAll("[data-dismiss-tag-normalize]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.dismissTagNormalize);
+
+      state.tagNormalizationProposals = state.tagNormalizationProposals.filter((_, i) => i !== index);
+      renderTagNormalizeResults();
+    });
+  });
+}
+
+async function runTagNormalization(button) {
+  await runAdminAction(button, "Finding duplicates", null, async () => {
+    const response = await fetch("/api/admin-tags-normalize", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({}),
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to run tag normalization.");
+    }
+
+    state.tagNormalizationProposals = payload.proposals || [];
+    renderTagNormalizeResults();
+    showToast(
+      state.tagNormalizationProposals.length
+        ? `Found ${state.tagNormalizationProposals.length} possible duplicate group(s) to review.`
+        : "No likely duplicates found."
+    );
+  });
 }
 
 function bindTagButtons() {
@@ -3813,6 +3989,12 @@ function bindPublishButtons() {
     });
   });
 
+  document.querySelectorAll("[data-open-section]").forEach((element) => {
+    element.addEventListener("click", () => {
+      setSection(element.dataset.openSection, { updateHash: true });
+    });
+  });
+
   document.querySelectorAll("[data-open-outreach-compose]").forEach((button) => {
     button.addEventListener("click", () => {
       openOutreachCompose(button.dataset.openOutreachCompose);
@@ -4821,7 +5003,7 @@ function bindEvents() {
   elements.loginForm.addEventListener("submit", handleLogin);
   elements.scrapeForm.addEventListener("submit", handleScrapeSubmit);
   elements.publishedFilters.addEventListener("submit", applyPublishedFilters);
-  elements.publishedNameFilter.addEventListener("input", applyPublishedFilters);
+  elements.publishedNameFilter.addEventListener("input", debounce(applyPublishedFilters));
   elements.publishedStatusFilter.addEventListener("change", applyPublishedFilters);
   elements.publishedSelfEditedFilter.addEventListener("change", applyPublishedFilters);
   elements.publishedSortFilter.addEventListener("change", () => {
@@ -4847,10 +5029,10 @@ function bindEvents() {
   elements.publishedBulkApply.addEventListener("click", () => {
     runAdminAction(elements.publishedBulkApply, "Applying", null, () => applyBulkAction("published"));
   });
-  elements.tagSearchFilter?.addEventListener("input", () => {
+  elements.tagSearchFilter?.addEventListener("input", debounce(() => {
     state.tagFilters.search = elements.tagSearchFilter.value;
     renderTags();
-  });
+  }));
   [elements.tagCategoryFilter, elements.tagStatusFilter].forEach((select) => {
     select?.addEventListener("change", () => {
       state.tagFilters.search = elements.tagSearchFilter?.value || "";
@@ -4862,16 +5044,19 @@ function bindEvents() {
   elements.tagApproveVisibleButton?.addEventListener("click", () => {
     runAdminAction(elements.tagApproveVisibleButton, "Approving", "Visible candidate tags approved.", approveVisibleTags);
   });
+  elements.tagNormalizeButton?.addEventListener("click", () => {
+    runTagNormalization(elements.tagNormalizeButton);
+  });
   elements.requestsSampleToggle?.addEventListener("click", () => {
     state.showSampleRequests = !state.showSampleRequests;
     elements.requestsSampleToggle.setAttribute("aria-pressed", String(state.showSampleRequests));
     elements.requestsSampleToggle.querySelector("span").textContent = state.showSampleRequests ? "Hide sample data" : "Preview sample data";
     renderRequests();
   });
-  elements.outreachSearchFilter?.addEventListener("input", () => {
+  elements.outreachSearchFilter?.addEventListener("input", debounce(() => {
     state.outreachFilters.search = elements.outreachSearchFilter.value;
     renderOutreach();
-  });
+  }));
   elements.outreachStatusFilter?.addEventListener("change", () => {
     state.outreachFilters.status = elements.outreachStatusFilter.value;
     renderOutreach();
@@ -5269,6 +5454,34 @@ function bindEvents() {
   });
   window.addEventListener("hashchange", () => {
     setSection(sectionFromHash());
+  });
+
+  // Static dashboard tiles/headers (not re-rendered on every renderLists()
+  // call, unlike the row-level [data-edit-provider]/[data-open-section]
+  // handlers rebound in bindPublishButtons) - bound once here so clicking
+  // "Needs Review" or "Recent Jobs" jumps straight to the full list.
+  [
+    ["#reviewStatTile", "review"],
+    ["#dashboardReviewPanelHeader", "review"],
+    ["#dashboardJobsPanelHeader", "scrape"],
+  ].forEach(([selector, section]) => {
+    const element = document.querySelector(selector);
+
+    element?.addEventListener("click", () => {
+      setSection(section, { updateHash: true });
+    });
+    element?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setSection(section, { updateHash: true });
+      }
+    });
+  });
+
+  document.querySelectorAll(".editDialogTab").forEach((button) => {
+    button.addEventListener("click", () => {
+      setEditTab(button.dataset.editTab);
+    });
   });
 
   elements.outreachBulkClear?.addEventListener("click", () => {

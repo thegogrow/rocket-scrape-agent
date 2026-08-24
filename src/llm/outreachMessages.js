@@ -79,8 +79,17 @@ function compactList(value, limit = 8) {
   return asArray(value).map((item) => String(item || "").trim()).filter(Boolean).slice(0, limit);
 }
 
+// Contacts sourced automatically (sourceStatus "sourced") are candidates, not
+// confirmed send targets - a human has to confirm one in the admin before
+// outreach (drafts, sends) can target it. Rows without a sourceStatus at all
+// (manually added, or sourced before this distinction existed) count as
+// confirmed for backward compatibility.
+function isConfirmedContact(contact = {}) {
+  return (contact.sourceStatus || "confirmed") === "confirmed";
+}
+
 function primaryContactForProvider(provider = {}) {
-  const contacts = asArray(provider.outreachContacts);
+  const contacts = asArray(provider.outreachContacts).filter(isConfirmedContact);
 
   return contacts.find((contact) => contact.primaryContact) || contacts[0] || null;
 }

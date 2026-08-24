@@ -68,6 +68,31 @@
         <p id="accessStatusMessage"></p>
       </section>
 
+      <section id="verifyGatePanel" class="workflowPanel" hidden>
+        <div class="panelHeader">
+          <div>
+            <h2>Verify your email to edit this listing</h2>
+            <p>We need to confirm you work at this company before you can make changes. Use your business email address.</p>
+          </div>
+        </div>
+        <form class="workflowForm" id="verifyRequestForm">
+          <label>
+            Your name
+            <input name="name" type="text" autocomplete="name" placeholder="Jane Doe" required />
+          </label>
+          <label>
+            Business email
+            <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+          </label>
+          <label>
+            Your role
+            <input name="role" type="text" placeholder="Marketing Manager, Founder, ..." />
+          </label>
+          <button class="primaryAction" type="submit">Send verification email</button>
+          <p class="workflowMessage" data-verify-request-message aria-live="polite"></p>
+        </form>
+      </section>
+
       <section id="accessIntroBar" class="workflowPanel ownerEditIntroBar" hidden>
         <div>
           <span class="eyebrow">Your profile</span>
@@ -153,6 +178,21 @@
           <button class="primaryAction" id="saveButton" type="submit">Publish changes</button>
         </div>
       </form>
+
+      <section class="workflowPanel" id="inviteEditorPanel" hidden>
+        <details class="faqItem">
+          <summary>Add someone else who can edit this listing</summary>
+          <p>As the verified owner, you can invite colleagues to help keep this listing up to date. They'll get their own verification email.</p>
+          <form class="workflowForm" id="inviteEditorForm">
+            <label>
+              Their email
+              <input name="email" type="email" placeholder="colleague@company.com" required />
+            </label>
+            <button class="secondaryAction" type="submit">Send invite</button>
+            <p class="workflowMessage" data-invite-message aria-live="polite"></p>
+          </form>
+        </details>
+      </section>
 
       <section class="workflowPanel" id="removalPanel" hidden>
         <details class="faqItem">

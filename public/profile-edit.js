@@ -28,6 +28,12 @@ const elements = {
   removalPanel: document.querySelector("#removalPanel"),
   removalForm: document.querySelector("#removalForm"),
   removalMessage: document.querySelector("[data-removal-message]"),
+  verifyGatePanel: document.querySelector("#verifyGatePanel"),
+  verifyRequestForm: document.querySelector("#verifyRequestForm"),
+  verifyRequestMessage: document.querySelector("[data-verify-request-message]"),
+  inviteEditorPanel: document.querySelector("#inviteEditorPanel"),
+  inviteEditorForm: document.querySelector("#inviteEditorForm"),
+  inviteMessage: document.querySelector("[data-invite-message]"),
 };
 
 const fields = {
@@ -105,6 +111,11 @@ function updateFocusStrip() {
 // a company can add something not already in the taxonomy without friction.
 function createTagInput(container, { initialValues = [], suggestions = [], placeholder }) {
   const values = [...initialValues];
+  // /api/tags only returns approved taxonomy tags, so anything not in this
+  // list is either brand new or still awaiting review - flagged so the
+  // company understands why a tag looks different (see server-side upsert
+  // in applyOwnerProfileEdit, which creates it as a "candidate" on save).
+  const approvedKeys = new Set(suggestions.map((value) => value.toLowerCase()));
   const chipRow = document.createElement("div");
   chipRow.className = "chips";
 
@@ -121,14 +132,16 @@ function createTagInput(container, { initialValues = [], suggestions = [], place
 
   function render() {
     chipRow.innerHTML = values
-      .map(
-        (value, index) => `
-          <span class="chip">
-            ${escapeHtml(value)}
+      .map((value, index) => {
+        const isPending = !approvedKeys.has(value.toLowerCase());
+
+        return `
+          <span class="chip${isPending ? " chipPending" : ""}"${isPending ? ' title="Pending review - we\'ll add it to the shared list once approved"' : ""}>
+            ${escapeHtml(value)}${isPending ? '<span class="chipPendingBadge">Pending</span>' : ""}
             <button type="button" data-remove-index="${index}" aria-label="Remove ${escapeHtml(value)}">&times;</button>
           </span>
-        `
-      )
+        `;
+      })
       .join("");
 
     chipRow.querySelectorAll("[data-remove-index]").forEach((button) => {
@@ -330,6 +343,69 @@ function setRemovalMessage(text, isError = false) {
   elements.removalMessage.classList.toggle("error", isError);
 }
 
+function setVerifyRequestMessage(text, isError = false) {
+  elements.verifyRequestMessage.textContent = text;
+  elements.verifyRequestMessage.classList.toggle("error", isError);
+}
+
+function setInviteMessage(text, isError = false) {
+  elements.inviteMessage.textContent = text;
+  elements.inviteMessage.classList.toggle("error", isError);
+}
+
+async function callClaimVerify(body) {
+  const response = await fetch("/api/claim-verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Request failed.");
+  }
+
+  return payload;
+}
+
+async function handleVerifyRequestSubmit(event) {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(elements.verifyRequestForm).entries());
+  const submitButton = elements.verifyRequestForm.querySelector("button[type='submit']");
+
+  submitButton.disabled = true;
+  setVerifyRequestMessage("Sending verification email...");
+
+  try {
+    await callClaimVerify({ action: "request", token: state.token, name: data.name, email: data.email, role: data.role });
+    setVerifyRequestMessage(`Verification email sent to ${data.email}. Click the link in that email to continue.`);
+    elements.verifyRequestForm.reset();
+  } catch (error) {
+    setVerifyRequestMessage(error.message, true);
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+async function handleInviteEditorSubmit(event) {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(elements.inviteEditorForm).entries());
+  const submitButton = elements.inviteEditorForm.querySelector("button[type='submit']");
+
+  submitButton.disabled = true;
+  setInviteMessage("Sending invite...");
+
+  try {
+    await callClaimVerify({ action: "invite", token: state.token, email: data.email });
+    setInviteMessage(`Invite sent to ${data.email}.`);
+    elements.inviteEditorForm.reset();
+  } catch (error) {
+    setInviteMessage(error.message, true);
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 function setLogoStatus(text, isError = false) {
   elements.logoUploadStatus.textContent = text;
   elements.logoUploadStatus.classList.toggle("error", isError);
@@ -383,13 +459,48 @@ async function handleLogoFileChange(event) {
   }
 }
 
-async function init() {
-  const token = getToken();
+// A link clicked from the verification email carries the one-shot "verify"
+// token plus ?verify=1. Exchange it for the person's personal, reusable
+// owner_edit token before doing anything else, then continue loading as
+// normal with that new token in the URL - so a bookmark/refresh of this
+// page from here on behaves like any other verified visit.
+async function confirmVerificationIfNeeded(token) {
+  const params = new URLSearchParams(window.location.search);
 
-  if (!token) {
+  if (params.get("verify") !== "1") {
+    return token;
+  }
+
+  try {
+    const result = await callClaimVerify({ action: "confirm", token });
+
+    setToken(result.editToken);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("verify");
+    window.history.replaceState({}, "", url);
+
+    return result.editToken;
+  } catch (error) {
+    setStatus(error.message || "This verification link is invalid or has expired.");
+    elements.accessDomain.textContent = "Verification failed";
+    elements.accessStatus.textContent = "This verification link is invalid or has expired.";
+    return null;
+  }
+}
+
+async function init() {
+  const initialToken = getToken();
+
+  if (!initialToken) {
     setStatus("Open this page from your outreach email or profile access link.");
     elements.accessDomain.textContent = "No provider selected";
     elements.accessStatus.textContent = "Open this page from your outreach email.";
+    return;
+  }
+
+  const token = await confirmVerificationIfNeeded(initialToken);
+
+  if (!token) {
     return;
   }
 
@@ -408,6 +519,13 @@ async function init() {
     return;
   }
 
+  if (payload.reason === "verification_required") {
+    elements.accessDomain.textContent = payload.companyName || payload.domain || "Verify to edit";
+    elements.accessStatus.textContent = "Verification required";
+    elements.verifyGatePanel.hidden = false;
+    return;
+  }
+
   if (!payload.editable) {
     elements.accessDomain.textContent = payload.companyName || payload.domain || "Profile unavailable";
     elements.accessStatus.textContent = payload.reason === "removed" ? "Removed from the directory" : "No longer editable";
@@ -417,6 +535,10 @@ async function init() {
         : "This profile is no longer editable from this link."
     );
     return;
+  }
+
+  if (payload.editorRole === "owner") {
+    elements.inviteEditorPanel.hidden = false;
   }
 
   tagInputs.services = createTagInput(document.querySelector('[data-tag-field="services"]'), {
@@ -456,5 +578,7 @@ async function init() {
 elements.editForm.addEventListener("submit", handleSaveSubmit);
 elements.removalForm.addEventListener("submit", handleRemovalSubmit);
 elements.logoFile.addEventListener("change", handleLogoFileChange);
+elements.verifyRequestForm.addEventListener("submit", handleVerifyRequestSubmit);
+elements.inviteEditorForm.addEventListener("submit", handleInviteEditorSubmit);
 
 init();

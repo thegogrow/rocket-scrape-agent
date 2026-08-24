@@ -43,7 +43,7 @@ async function fetchProvidersWithRealContacts() {
 
   const [providers, contacts] = await Promise.all([
     fetchAll("providers?select=id,company_name,domain,status&status=in.(approved,outreach_pending,outreach_active)"),
-    fetchAll("outreach_contacts?select=provider_id,name,email,primary_contact"),
+    fetchAll("outreach_contacts?select=provider_id,name,email,primary_contact,source_status"),
   ]);
 
   const contactsByProvider = new Map();
@@ -54,8 +54,13 @@ async function fetchProvidersWithRealContacts() {
 
   return providers
     .map((p) => {
-      const pcontacts = contactsByProvider.get(p.id) || [];
-      const primary = pcontacts.find((c) => c.primary_contact) || pcontacts[0] || null;
+      // Week 13: Apollo can leave unconfirmed candidates (source_status
+      // "sourced") on a provider - those don't count as a usable primary
+      // contact here, same rule as primaryContactForProvider below.
+      const confirmedContacts = (contactsByProvider.get(p.id) || []).filter(
+        (c) => (c.source_status || "confirmed") === "confirmed"
+      );
+      const primary = confirmedContacts.find((c) => c.primary_contact) || confirmedContacts[0] || null;
       return { id: p.id, name: p.company_name, domain: p.domain, status: p.status, primary };
     })
     .filter((p) => !isGenericContact(p.primary));

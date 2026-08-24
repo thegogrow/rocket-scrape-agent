@@ -5,7 +5,7 @@
 // (scripts/sourceOutreachContacts.js) so both use the same "already has a
 // real contact / already has drafts" skip logic instead of re-implementing it.
 const { env } = require("../config/env");
-const { sourceOutreachContact } = require("../enrichment/apollo");
+const { sourceOutreachContacts } = require("../enrichment/apollo");
 const { generateOutreachMessages, primaryContactForProvider } = require("../llm/outreachMessages");
 const {
   createOutreachLink,
@@ -32,33 +32,53 @@ function isGenericContact(contact) {
   return GENERIC_LOCAL_PARTS.has(localPart);
 }
 
-// Best-effort: finds and saves a named contact if the provider doesn't
-// already have a real one. Returns the updated provider (with the new
-// contact, which now has a real DB id) or null if nothing changed.
+// Best-effort: finds and saves candidate contacts if the provider doesn't
+// already have a real, human-confirmed one. Adds sourced candidates
+// alongside any contacts already on the provider (never deletes/overwrites -
+// replaceProviderOutreachContacts treats the whole outreachContacts array as
+// the full desired set, so this always passes the existing rows through
+// too). New candidates are unconfirmed ("sourced") and never primary - a
+// human has to confirm one in the admin before it's send-eligible (see
+// primaryContactForProvider in llm/outreachMessages.js, which ignores
+// unconfirmed contacts). Returns the updated provider or null if nothing
+// changed.
 async function sourceContactIfMissing(provider, { actorEmail = "system" } = {}) {
   if (!isGenericContact(primaryContactForProvider(provider))) {
     return null;
   }
 
-  const contact = await sourceOutreachContact({ website: provider.website || `https://${provider.domain}` });
+  const existingContacts = Array.isArray(provider.outreachContacts) ? provider.outreachContacts : [];
+  const existingEmails = new Set(
+    existingContacts.map((contact) => String(contact.email || "").toLowerCase()).filter(Boolean)
+  );
 
-  if (!contact || !contact.email) {
+  const candidates = await sourceOutreachContacts({ website: provider.website || `https://${provider.domain}` });
+  const newCandidates = candidates.filter(
+    (candidate) => candidate.email && !existingEmails.has(candidate.email.toLowerCase())
+  );
+
+  if (newCandidates.length === 0) {
     return null;
   }
 
   const updated = await updateProvider(
     provider.id,
-    { outreachContacts: [{ ...contact, primaryContact: true }] },
+    {
+      outreachContacts: [
+        ...existingContacts,
+        ...newCandidates.map((candidate) => ({ ...candidate, primaryContact: false, sourceStatus: "sourced" })),
+      ],
+    },
     provider.status
   );
 
   await logActivityEvent({
     providerId: provider.id,
     eventType: "provider_contact_sourced",
-    label: "Outreach contact sourced",
-    summary: `${contact.name || "A contact"} (${contact.title || "unknown title"}) <${contact.email}> found via Apollo.`,
+    label: "Outreach contact candidates sourced",
+    summary: `${newCandidates.length} candidate contact${newCandidates.length === 1 ? "" : "s"} found via Apollo, awaiting admin confirmation: ${newCandidates.map((c) => `${c.name || "unnamed"} <${c.email}>`).join(", ")}.`,
     actorEmail,
-    metadata: { providerDomain: provider.domain, source: contact.source || "apollo" },
+    metadata: { providerDomain: provider.domain, source: "apollo", candidateCount: newCandidates.length },
   });
 
   return updated;

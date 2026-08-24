@@ -217,50 +217,56 @@ async function revealPersonEmail({ apolloPersonId }) {
   }
 }
 
-// Finds the best-fit outreach contact for a company: searches Apollo for people
-// in ICP roles (marketing/BD/partnerships, falling back to founder/MD/CEO for
-// small teams), then spends one credit to reveal the top match's email.
-async function sourceOutreachContact({ website, revealEmail = true }) {
+// Finds viable outreach contacts for a company: searches Apollo for people in
+// ICP roles (marketing/BD/partnerships, falling back to founder/MD/CEO for
+// small teams), then spends one Apollo credit per candidate to reveal each
+// one's email - so raising maxCandidates raises Apollo credit spend
+// proportionally (was 1 credit/company, now up to maxCandidates). Returns the
+// top-ranked candidates as an array, best seniority match first; the caller
+// decides how many of these to keep and which (if any) a human confirms.
+async function sourceOutreachContacts({ website, revealEmail = true, maxCandidates = 3 }) {
   const domain = getDomainFromUrl(website);
 
   if (!domain) {
-    return null;
+    return [];
   }
 
   const candidates = await searchPeopleForDomain({ domain });
 
   if (candidates.length === 0) {
-    return null;
+    return [];
   }
 
-  const best = [...candidates].sort((a, b) => seniorityRank(a) - seniorityRank(b))[0];
+  const ranked = [...candidates]
+    .sort((a, b) => seniorityRank(a) - seniorityRank(b))
+    .slice(0, maxCandidates);
 
   // Search results have obfuscated names/no email - reveal is required to get
   // usable contact details, and costs one Apollo credit per person.
-  if (!revealEmail || !best.id) {
-    return {
-      name: [best.first_name, best.last_name_obfuscated].filter(Boolean).join(" ") || null,
-      title: best.title || null,
+  if (!revealEmail) {
+    return ranked.map((person) => ({
+      name: [person.first_name, person.last_name_obfuscated].filter(Boolean).join(" ") || null,
+      title: person.title || null,
       email: null,
       emailStatus: null,
       linkedinUrl: null,
       seniority: null,
       source: "apollo",
-    };
+    }));
   }
 
-  const revealed = await revealPersonEmail({ apolloPersonId: best.id });
+  const revealed = await Promise.all(
+    ranked.map((person) => (person.id ? revealPersonEmail({ apolloPersonId: person.id }) : null))
+  );
 
-  if (!revealed) {
-    return null;
-  }
-
-  return { ...revealed, source: "apollo" };
+  return revealed
+    .filter(Boolean)
+    .map((person) => ({ ...person, source: "apollo" }));
 }
 
 module.exports = {
   enrichCompany,
   searchPeopleForDomain,
   revealPersonEmail,
-  sourceOutreachContact,
+  sourceOutreachContacts,
 };
