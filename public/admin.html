@@ -141,46 +141,42 @@
             </article>
           </div>
           <div class="adminTwoColumn">
-            <div class="adminTwoColumnStack">
-              <section class="adminPanel">
-                <div id="dashboardReviewPanelHeader" class="panelHeader adminStatClickable" role="button" tabindex="0">
-                  <div>
-                    <h2>Profiles Needing Review</h2>
-                    <p>Profiles waiting for human review or admin action. Click to see the full list.</p>
-                  </div>
+            <section class="adminPanel">
+              <div id="dashboardReviewPanelHeader" class="panelHeader adminStatClickable" role="button" tabindex="0">
+                <div>
+                  <h2>Profiles Needing Review</h2>
+                  <p>5 most recent. Click to see the full list.</p>
                 </div>
-                <div id="dashboardReviewList" class="adminTable adminCompactProviderTable"></div>
-              </section>
-              <section class="adminPanel">
-                <div class="panelHeader">
-                  <div>
-                    <h2>Outreach Queue</h2>
-                    <p>Draft and approved messages. Sending is not enabled.</p>
-                  </div>
+              </div>
+              <div id="dashboardReviewList" class="adminTable adminCompactProviderTable adminDashboardFixedTable"></div>
+            </section>
+            <section class="adminPanel">
+              <div id="dashboardJobsPanelHeader" class="panelHeader adminStatClickable" role="button" tabindex="0">
+                <div>
+                  <h2>Recent Jobs</h2>
+                  <p>5 most recent. Click to see the full list.</p>
                 </div>
-                <div id="dashboardOutreachList" class="adminTable adminCompactProviderTable"></div>
-              </section>
-            </div>
-            <div class="adminTwoColumnStack">
-              <section class="adminPanel">
-                <div id="dashboardJobsPanelHeader" class="panelHeader adminStatClickable" role="button" tabindex="0">
-                  <div>
-                    <h2>Recent Jobs</h2>
-                    <p>Latest scrape requests and failures. Click to see the full list.</p>
-                  </div>
+              </div>
+              <div id="dashboardJobList" class="adminTable adminCompactJobsTable adminDashboardFixedTable"></div>
+            </section>
+            <section class="adminPanel">
+              <div class="panelHeader">
+                <div>
+                  <h2>Outreach Queue</h2>
+                  <p>5 most recent. Sending is not enabled.</p>
                 </div>
-                <div id="dashboardJobList" class="adminTable adminCompactJobsTable"></div>
-              </section>
-              <section class="adminPanel">
-                <div class="panelHeader">
-                  <div>
-                    <h2>New Requests</h2>
-                    <p>Claim, removal, and brokered-introduction requests for manual review.</p>
-                  </div>
+              </div>
+              <div id="dashboardOutreachList" class="adminTable adminCompactProviderTable adminDashboardFixedTable"></div>
+            </section>
+            <section class="adminPanel">
+              <div class="panelHeader">
+                <div>
+                  <h2>New Requests</h2>
+                  <p>5 most recent, for manual review.</p>
                 </div>
-                <div id="dashboardRequestList" class="adminTable adminCompactRequestsTable"></div>
-              </section>
-            </div>
+              </div>
+              <div id="dashboardRequestList" class="adminTable adminCompactRequestsTable adminDashboardFixedTable"></div>
+            </section>
           </div>
         </section>
 

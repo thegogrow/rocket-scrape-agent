@@ -1255,21 +1255,23 @@ a:hover {
 .adminTwoColumn {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* start, not stretch: each column's two panels stack to their own
-     content height independently (see .adminTwoColumnStack) - stretching
-     to match the other column is exactly what caused headings like
-     "Outreach Queue"/"New Requests" to land at different heights whenever
-     the panels above them (Review vs Jobs) held different amounts of
-     content. */
-  align-items: start;
+  align-items: stretch;
   gap: 18px;
   min-width: 0;
 }
 
-.adminTwoColumnStack {
-  display: grid;
-  gap: 18px;
-  min-width: 0;
+.adminTwoColumn > * {
+  height: 100%;
+}
+
+/* Dashboard preview lists always show exactly 5 items (or fewer, plus
+   blank space) - fixing this height directly, rather than relying on grid
+   stretch to force mismatched panels to match each other, is what actually
+   guarantees "Profiles Needing Review"/"Recent Jobs"/"Outreach Queue"/
+   "New Requests" line up as a clean 2x2 regardless of how much real data
+   is in any one of them. min-height: header row (~40px) + 5 x 76px rows. */
+.adminDashboardFixedTable {
+  min-height: 420px;
 }
 
 .adminTable {
@@ -5460,11 +5462,7 @@ h4,
   border-left: 1px solid var(--admin-line-strong);
 }
 
-.adminTwoColumnStack {
-  gap: 0;
-}
-
-.adminTwoColumnStack > .adminPanel {
+.adminTwoColumn > .adminPanel {
   border-left: 0;
 }
 

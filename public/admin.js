@@ -3696,7 +3696,7 @@ function renderRequests() {
 
   if (elements.dashboardRequestList) {
     elements.dashboardRequestList.innerHTML = incoming.length
-      ? `${tableHeader(["Provider", "Type", "Status"])}${incoming.slice(0, 8).map(compactRequestRow).join("")}`
+      ? `${tableHeader(["Provider", "Type", "Status"])}${incoming.slice(0, 5).map(compactRequestRow).join("")}`
       : emptyState("No public requests yet.");
   }
 
@@ -4183,26 +4183,32 @@ function renderLists() {
   elements.reviewProviderList.classList.toggle("adminSelectionMode", state.selectionMode.review);
   elements.publishedProviderList.classList.toggle("adminSelectionMode", state.selectionMode.published);
 
-  elements.dashboardReviewList.innerHTML = reviewProviders.length
-    ? `${tableHeader(["Company", "Status", "Confidence"])}${reviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
+  // Dashboard previews are fixed at exactly 5 items each (see
+  // .adminDashboardFixedTable) and consistently show the 5 most recent,
+  // not the review page's default alphabetical order or the outreach
+  // page's biggest-backlog-first order - those stay as they are for their
+  // own full pages, this is just the dashboard's own recency-sorted slice.
+  const recentReviewProviders = [...reviewProviders].sort(
+    (left, right) => (providerAddedDate(right)?.getTime() || 0) - (providerAddedDate(left)?.getTime() || 0)
+  );
+
+  elements.dashboardReviewList.innerHTML = recentReviewProviders.length
+    ? `${tableHeader(["Company", "Status", "Confidence"])}${recentReviewProviders.slice(0, 5).map(compactProviderRow).join("")}`
     : emptyState("No profiles need review.");
 
+  // state.jobs already arrives newest-first (scrape_jobs is fetched with
+  // order=created_at.desc), so no extra sort needed here.
   elements.dashboardJobList.innerHTML = state.jobs.length
     ? `${tableHeader(["Company", "Status", "Created"])}${state.jobs.slice(0, 5).map(compactJobRow).join("")}`
     : emptyState("No scrape jobs yet.");
 
-  const outreachProviders = state.providers
+  const recentOutreachProviders = state.providers
     .filter((provider) => outreachSummaryForProvider(provider).total > 0)
-    .sort((left, right) => {
-      const leftSummary = outreachSummaryForProvider(left);
-      const rightSummary = outreachSummaryForProvider(right);
-
-      return rightSummary.drafts - leftSummary.drafts || String(left.companyName || left.domain).localeCompare(String(right.companyName || right.domain));
-    });
+    .sort((left, right) => (providerAddedDate(right)?.getTime() || 0) - (providerAddedDate(left)?.getTime() || 0));
 
   if (elements.dashboardOutreachList) {
-    elements.dashboardOutreachList.innerHTML = outreachProviders.length
-      ? `${tableHeader(["Company", "Messages", "Actions"])}${outreachProviders.slice(0, 8).map(compactOutreachProviderRow).join("")}`
+    elements.dashboardOutreachList.innerHTML = recentOutreachProviders.length
+      ? `${tableHeader(["Company", "Messages", "Actions"])}${recentOutreachProviders.slice(0, 5).map(compactOutreachProviderRow).join("")}`
       : emptyState("No outreach messages yet.");
   }
 
@@ -4317,6 +4323,32 @@ async function refreshAdminState() {
   renderLists();
 }
 
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+// The very first admin-state fetch right after signing in has been seen to
+// come back empty/failing even though the login itself succeeded (reported:
+// "data doesn't load until I sign out and log back in") - most likely the
+// freshly-issued session token not being immediately valid everywhere yet
+// (session propagation lag), which a normal page reload or a second login
+// attempt gives enough time to resolve on its own. Retrying once with a
+// short delay covers that without making every other refreshAdminState()
+// call in the app pay for it.
+async function refreshAdminStateAfterLogin() {
+  try {
+    await refreshAdminState();
+  } catch (firstError) {
+    await wait(800);
+
+    try {
+      await refreshAdminState();
+    } catch (secondError) {
+      showToast(secondError.message || "Couldn't load admin data - try refreshing the page.", "error");
+    }
+  }
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   const submitButton = event.submitter || elements.loginForm.querySelector("button[type='submit']");
@@ -4342,7 +4374,7 @@ async function handleLogin(event) {
     setAdminSession(payload);
     elements.password.value = "";
     showShell();
-    await refreshAdminState();
+    await refreshAdminStateAfterLogin();
     showToast("Signed in.");
   } catch (error) {
     elements.loginMessage.textContent = error.message;
@@ -5503,7 +5535,7 @@ async function init() {
   updatePublishedSortButton();
 
   if (isSignedIn()) {
-    await refreshAdminState();
+    await refreshAdminStateAfterLogin();
     return;
   }
 
