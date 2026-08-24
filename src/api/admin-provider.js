@@ -1,4 +1,5 @@
 const { deleteProvider, statusForError, updateProvider, verifyAdminToken } = require("../ui/supabaseStore");
+const { generateDraftsForProvider } = require("../pipeline/outreachAutomation");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 function hasPremiumProfileAccess(profile = {}) {
@@ -46,7 +47,26 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    response.status(200).json(await updateProvider(id, profile, status, { reviewedBy: admin.email }));
+    let updated = await updateProvider(id, profile, status, { reviewedBy: admin.email });
+
+    // A save that touches contacts is the moment an admin confirms one as
+    // the real send target (Week 13's "Suggested" candidates) - draft
+    // generation no-ops safely on its own (already-has-drafts / no-
+    // confirmed-contact-yet), so it's safe to just always try rather than
+    // working out whether this specific save is what newly confirmed one.
+    if (profile.outreachContacts !== undefined) {
+      try {
+        const withDrafts = await generateDraftsForProvider(updated, { generatedBy: admin.email });
+
+        if (withDrafts) {
+          updated = withDrafts;
+        }
+      } catch (error) {
+        console.warn(`[admin-provider] Auto draft generation failed for ${id}: ${error.message}`);
+      }
+    }
+
+    response.status(200).json(updated);
   } catch (error) {
     response.status(statusForError(error)).json({ error: error.message });
   }

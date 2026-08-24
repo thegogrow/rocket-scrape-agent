@@ -1828,63 +1828,17 @@ function openEmailPreview(row) {
   elements.emailPreviewDialog.showModal();
 }
 
-function outreachMessageRowMarkup(message = {}) {
-  const normalizedMessage = normalizeOutreachMessage(message);
-  const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
-  const isLinkedIn = stepDef.channel === "linkedin";
-  const openProvider = findProvider(elements.profileEditKey?.value) || {};
-  const accessUrl = providerAccessUrlForProvider(openProvider);
-  const isClaimInvite = stepDef.messageStep === "claim_profile_invitation";
-
-  return `
-    <article class="outreachMessageRow" data-message-step="${escapeHtml(stepDef.messageStep)}" data-message-channel="${escapeHtml(stepDef.channel)}">
-      <div class="outreachMessageHeader">
-        <div>
-          <strong>${escapeHtml(stepDef.label)}</strong>
-          <span>${escapeHtml(stepDef.channel.replace(/_/g, " "))}</span>
-        </div>
-        <div class="outreachMessageControls">
-          <select data-message-field="status" aria-label="${escapeHtml(stepDef.label)} status">
-            ${["draft", "approved", "sent", "opened", "clicked", "replied"].map((status) => `
-              <option value="${status}" ${normalizedMessage.status === status ? "selected" : ""}>${escapeHtml(titleCase(status))}</option>
-            `).join("")}
-          </select>
-          <button class="secondaryAction compactAction outreachMessageApprove" type="button">Approve</button>
-          <button class="secondaryAction compactAction outreachMessageCopy" type="button">Copy</button>
-          ${stepDef.channel === "email" ? `<button class="secondaryAction compactAction outreachMessagePreview" type="button">Preview</button>` : ""}
-        </div>
-      </div>
-      ${isClaimInvite ? `
-        <div class="outreachAccessLink">
-          <span>Provider access link</span>
-          <a href="${escapeHtml(accessUrl)}" target="_blank" rel="noreferrer">${escapeHtml(accessUrl)}</a>
-        </div>
-      ` : ""}
-      <label ${isLinkedIn ? "hidden" : ""}>
-        Subject
-        <input data-message-field="subject" type="text" value="${escapeHtml(normalizedMessage.subject)}" placeholder="${escapeHtml(stepDef.label)} subject" />
-      </label>
-      <label>
-        Body
-        <textarea data-message-field="body" rows="${isLinkedIn ? "4" : "7"}" placeholder="${escapeHtml(stepDef.label)} body">${escapeHtml(normalizedMessage.body)}</textarea>
-      </label>
-      <input data-message-field="id" type="hidden" value="${escapeHtml(normalizedMessage.id)}" />
-      <input data-message-field="contactId" type="hidden" value="${escapeHtml(normalizedMessage.contactId)}" />
-      <input data-message-field="generatedBy" type="hidden" value="${escapeHtml(normalizedMessage.generatedBy)}" />
-      <input data-message-field="approvedBy" type="hidden" value="${escapeHtml(normalizedMessage.approvedBy)}" />
-      <input data-message-field="approvedAt" type="hidden" value="${escapeHtml(normalizedMessage.approvedAt)}" />
-      <input data-message-field="sentAt" type="hidden" value="${escapeHtml(normalizedMessage.sentAt)}" />
-      <input data-message-field="cycleNumber" type="hidden" value="${normalizedMessage.cycleNumber ?? ""}" />
-      <textarea data-message-metadata hidden>${escapeHtml(JSON.stringify(normalizedMessage.metadata || {}))}</textarea>
-    </article>
-  `;
-}
-
-function renderOutreachMessages(container, messages = []) {
+// Provider edit dialog's Outreach tab used to render a plainer, separately-
+// built version of this list (a live status <select>, edits only persisted
+// via the big Save Profile submit). Unified onto outreachComposeMessageMarkup
+// (defined further down, used by the Outreach-page compose popup) so editing
+// a draft looks and behaves the same and saves the same way wherever you do
+// it - see bindEvents' shared handleOutreachMessageAction.
+function renderOutreachMessages(container, messages = [], provider = {}) {
   const byStep = outreachMessagesByStep(messages);
 
   container.innerHTML = OUTREACH_MESSAGE_STEPS
-    .map((step) => outreachMessageRowMarkup(byStep.get(step.messageStep) || step))
+    .map((step) => outreachComposeMessageMarkup(byStep.get(step.messageStep) || step, provider))
     .join("");
 }
 
@@ -2442,7 +2396,7 @@ function openEditProfile(key) {
   renderManagedProviderEvents(elements.profileEditManagedEvents, provider.managedProviderEvents);
   renderManagedMarketSignals(elements.profileEditManagedSignals, provider.managedMarketSignals);
   renderOutreachContacts(elements.profileEditOutreachContacts, provider.outreachContacts);
-  renderOutreachMessages(elements.profileEditOutreachMessages, provider.outreachMessages);
+  renderOutreachMessages(elements.profileEditOutreachMessages, provider.outreachMessages, provider);
   elements.profileEditNotes.value = listToText(provider.reviewNotes);
   const qualityLog = scraperQualityLogForProfile(provider);
   elements.profileEditQualityMissing.value = listToText(qualityLog.missing);
@@ -3324,12 +3278,13 @@ function renderOutreach() {
   }
 }
 
-// Compose-style card for one email_1/2/3 draft inside the dedicated outreach
-// dialog - deliberately styled and behaves like an email client (To/Subject/
-// body, Approve & Save, Send) rather than a generic form row. Reuses the same
-// .outreachMessageRow wrapper and data-message-field inputs as the profile
-// editor's outreachMessageRowMarkup so collectOutreachMessages() works on
-// either container unchanged.
+// Card for one draft message - styled and behaves like an email client
+// (To/Subject/body, status pill, Approve & Save/Save Changes/Send). Used by
+// both the Outreach page's compose popup and the provider edit dialog's
+// Outreach tab (via renderOutreachMessages) so a draft looks, edits, and
+// saves identically wherever it's opened from. The .outreachMessageRow
+// wrapper and data-message-field inputs are what collectOutreachMessages()
+// reads, regardless of which container it's called on.
 function outreachComposeMessageMarkup(message = {}, provider = {}) {
   const normalizedMessage = normalizeOutreachMessage(message);
   const stepDef = OUTREACH_MESSAGE_STEPS.find((step) => step.messageStep === normalizedMessage.messageStep) || OUTREACH_MESSAGE_STEPS[0];
@@ -3452,10 +3407,10 @@ async function saveOutreachMessagesForKey(key, container) {
     return false;
   }
 
-  // The compose dialog only shows/collects the 3 emails - saving replaces
-  // *all* of a provider's outreach_messages, so the LinkedIn and Claim
-  // Invite drafts (generated alongside the emails, just not shown here)
-  // have to be carried through by hand or they'd be silently deleted.
+  // Callers don't always show/collect every message step (the compose
+  // dialog only shows the 3 emails) - saving replaces *all* of a provider's
+  // outreach_messages, so any step not present in this container has to be
+  // carried through from current state or it'd be silently deleted.
   const collectedMessages = collectOutreachMessages(container);
   const collectedSteps = new Set(collectedMessages.map((message) => message.messageStep));
   const untouchedMessages = (findProvider(key)?.outreachMessages || [])
@@ -3475,6 +3430,75 @@ async function saveOutreachMessagesForKey(key, container) {
 
   await refreshAdminState();
   return payload;
+}
+
+// Shared by both places a draft can be edited - the Outreach page's compose
+// popup, and the provider edit dialog's Outreach tab - so editing a message
+// looks, behaves, and saves identically in either one instead of the tab
+// having its own separate, only-saves-with-the-whole-profile-form behavior.
+async function handleOutreachMessageAction(event, { container, getKey, rerender }) {
+  const copyButton = event.target.closest(".outreachMessageCopy");
+
+  if (copyButton) {
+    copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
+      showToast(error.message || "Copy failed.", "error");
+    });
+    return;
+  }
+
+  const previewButton = event.target.closest(".outreachMessagePreview");
+
+  if (previewButton) {
+    openEmailPreview(previewButton.closest(".outreachMessageRow"));
+    return;
+  }
+
+  const key = getKey();
+  const approveButton = event.target.closest(".outreachComposeApprove");
+
+  if (approveButton) {
+    approveOutreachMessage(approveButton.closest(".outreachMessageRow"));
+    await runAdminAction(approveButton, "Saving", "Approved and saved.", () => (
+      saveOutreachMessagesForKey(key, container)
+    ));
+    rerender();
+    return;
+  }
+
+  const saveButton = event.target.closest(".outreachComposeSave");
+
+  if (saveButton) {
+    await runAdminAction(saveButton, "Saving", "Draft saved.", () => (
+      saveOutreachMessagesForKey(key, container)
+    ));
+    rerender();
+    return;
+  }
+
+  const sendButton = event.target.closest(".outreachComposeSend");
+
+  if (sendButton) {
+    // Saving replaces every outreach_messages row for this provider (new
+    // ids, even for messages that weren't touched) - the id captured
+    // before save is guaranteed stale by the time send runs, which is why
+    // this used to fail with "message not found". Re-look-up the message
+    // by step from the freshly-saved state instead of trusting the old id.
+    const messageStep = sendButton.closest(".outreachMessageRow").dataset.messageStep;
+
+    await runAdminAction(sendButton, "Sending", "Email sent.", async () => {
+      await saveOutreachMessagesForKey(key, container);
+
+      const freshProvider = findProvider(key);
+      const freshMessage = freshProvider?.outreachMessages?.find((message) => message.messageStep === messageStep);
+
+      if (!freshMessage) {
+        throw new Error("Couldn't find the saved draft to send - try again.");
+      }
+
+      return sendOutreachMessage(freshMessage.id);
+    });
+    rerender();
+  }
 }
 
 function compactOutreachProviderRow(provider) {
@@ -4848,7 +4872,7 @@ async function generateOutreachMessagesForOpenProfile() {
 
   if (result && !result.cancelled) {
     const provider = findProvider(key);
-    renderOutreachMessages(elements.profileEditOutreachMessages, result.outreachMessages || provider?.outreachMessages || []);
+    renderOutreachMessages(elements.profileEditOutreachMessages, result.outreachMessages || provider?.outreachMessages || [], provider || {});
     renderProfileActivityLog(provider || result.provider || {});
   }
 
@@ -5110,71 +5134,13 @@ function bindEvents() {
   elements.profileEditClose.addEventListener("click", () => elements.profileEditDialog.close());
   elements.emailPreviewClose.addEventListener("click", () => elements.emailPreviewDialog.close());
   elements.outreachComposeClose.addEventListener("click", () => elements.outreachComposeDialog.close());
-  elements.outreachComposeMessages.addEventListener("click", async (event) => {
-    const copyButton = event.target.closest(".outreachMessageCopy");
-
-    if (copyButton) {
-      copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
-        showToast(error.message || "Copy failed.", "error");
-      });
-      return;
-    }
-
-    const previewButton = event.target.closest(".outreachMessagePreview");
-
-    if (previewButton) {
-      openEmailPreview(previewButton.closest(".outreachMessageRow"));
-      return;
-    }
-
-    const key = elements.outreachComposeKey.value;
-
-    const approveButton = event.target.closest(".outreachComposeApprove");
-
-    if (approveButton) {
-      approveOutreachMessage(approveButton.closest(".outreachMessageRow"));
-      await runAdminAction(approveButton, "Saving", "Approved and saved.", () => (
-        saveOutreachMessagesForKey(key, elements.outreachComposeMessages)
-      ));
-      renderOutreachComposeMessages();
-      return;
-    }
-
-    const saveButton = event.target.closest(".outreachComposeSave");
-
-    if (saveButton) {
-      await runAdminAction(saveButton, "Saving", "Draft saved.", () => (
-        saveOutreachMessagesForKey(key, elements.outreachComposeMessages)
-      ));
-      renderOutreachComposeMessages();
-      return;
-    }
-
-    const sendButton = event.target.closest(".outreachComposeSend");
-
-    if (sendButton) {
-      // Saving replaces every outreach_messages row for this provider (new
-      // ids, even for messages that weren't touched) - the id captured
-      // before save is guaranteed stale by the time send runs, which is why
-      // this used to fail with "message not found". Re-look-up the message
-      // by step from the freshly-saved state instead of trusting the old id.
-      const messageStep = sendButton.closest(".outreachMessageRow").dataset.messageStep;
-
-      await runAdminAction(sendButton, "Sending", "Email sent.", async () => {
-        await saveOutreachMessagesForKey(key, elements.outreachComposeMessages);
-
-        const freshProvider = findProvider(key);
-        const freshMessage = freshProvider?.outreachMessages?.find((message) => message.messageStep === messageStep);
-
-        if (!freshMessage) {
-          throw new Error("Couldn't find the saved draft to send - try again.");
-        }
-
-        return sendOutreachMessage(freshMessage.id);
-      });
-      renderOutreachComposeMessages();
-    }
-  });
+  elements.outreachComposeMessages.addEventListener("click", (event) => (
+    handleOutreachMessageAction(event, {
+      container: elements.outreachComposeMessages,
+      getKey: () => elements.outreachComposeKey.value,
+      rerender: renderOutreachComposeMessages,
+    })
+  ));
   elements.profileEditAddSuccessStory.addEventListener("click", () => addEditableEntry(elements.profileEditSuccessStories));
   elements.profileEditAddManagedSuccessStory.addEventListener("click", () => addManagedSuccessStory(elements.profileEditManagedSuccessStories));
   elements.profileEditAddManagedEvent.addEventListener("click", () => addManagedProviderEvent(elements.profileEditManagedEvents));
@@ -5372,47 +5338,17 @@ function bindEvents() {
       approveManagedMarketSignal(row);
     }
   });
-  elements.profileEditOutreachMessages.addEventListener("click", (event) => {
-    const copyButton = event.target.closest(".outreachMessageCopy");
+  elements.profileEditOutreachMessages.addEventListener("click", (event) => (
+    handleOutreachMessageAction(event, {
+      container: elements.profileEditOutreachMessages,
+      getKey: () => elements.profileEditKey.value,
+      rerender: () => {
+        const provider = findProvider(elements.profileEditKey.value) || {};
 
-    if (copyButton) {
-      copyOutreachMessage(copyButton.closest(".outreachMessageRow")).catch((error) => {
-        showToast(error.message || "Copy failed.", "error");
-      });
-      return;
-    }
-
-    const previewButton = event.target.closest(".outreachMessagePreview");
-
-    if (previewButton) {
-      openEmailPreview(previewButton.closest(".outreachMessageRow"));
-      return;
-    }
-
-    const button = event.target.closest(".outreachMessageApprove");
-
-    if (!button) {
-      return;
-    }
-
-    const row = button.closest(".outreachMessageRow");
-    approveOutreachMessage(row);
-    showToast("Message marked approved. Save profile to persist.");
-  });
-  elements.profileEditOutreachMessages.addEventListener("change", (event) => {
-    const statusSelect = event.target.closest('[data-message-field="status"]');
-
-    if (!statusSelect || statusSelect.value !== "approved") {
-      return;
-    }
-
-    const row = statusSelect.closest(".outreachMessageRow");
-    const approvedAtInput = row.querySelector('[data-message-field="approvedAt"]');
-
-    if (!approvedAtInput.value) {
-      approveOutreachMessage(row);
-    }
-  });
+        renderOutreachMessages(elements.profileEditOutreachMessages, provider.outreachMessages, provider);
+      },
+    })
+  ));
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
   elements.refreshButton.addEventListener("click", () => {
     runAdminAction(elements.refreshButton, "Refreshing", "Admin data refreshed.", refreshAdminState);

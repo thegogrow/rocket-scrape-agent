@@ -1255,13 +1255,21 @@ a:hover {
 .adminTwoColumn {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
+  /* start, not stretch: each column's two panels stack to their own
+     content height independently (see .adminTwoColumnStack) - stretching
+     to match the other column is exactly what caused headings like
+     "Outreach Queue"/"New Requests" to land at different heights whenever
+     the panels above them (Review vs Jobs) held different amounts of
+     content. */
+  align-items: start;
   gap: 18px;
   min-width: 0;
 }
 
-.adminTwoColumn > * {
-  height: 100%;
+.adminTwoColumnStack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
 }
 
 .adminTable {
@@ -5452,7 +5460,11 @@ h4,
   border-left: 1px solid var(--admin-line-strong);
 }
 
-.adminTwoColumn > .adminPanel {
+.adminTwoColumnStack {
+  gap: 0;
+}
+
+.adminTwoColumnStack > .adminPanel {
   border-left: 0;
 }
 
@@ -6414,11 +6426,6 @@ h4,
   min-height: 34px;
 }
 
-.outreachMessageList {
-  display: grid;
-  gap: 14px;
-}
-
 .outreachMessageRow {
   display: grid;
   min-width: 0;
@@ -6426,43 +6433,6 @@ h4,
   padding: 16px;
   border: 1px solid var(--admin-line);
   background: #fafafa;
-}
-
-.outreachMessageHeader {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.outreachMessageHeader strong,
-.outreachMessageHeader span {
-  display: block;
-}
-
-.outreachMessageHeader strong {
-  color: #111;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.outreachMessageHeader span {
-  color: #666;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: capitalize;
-}
-
-.outreachMessageControls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.outreachMessageControls select {
-  min-height: 34px;
 }
 
 .outreachAccessLink {
