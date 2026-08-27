@@ -83,10 +83,14 @@ body.swissPage {
   border-color: var(--sw-ink);
 }
 
+/* Matches .cloudLogo in styles.css exactly (font-size/weight/letter-
+   spacing) so the wordmark is pixel-identical on every page - this page
+   just keeps its own copy rather than loading the shared stylesheet, to
+   stay isolated from everything else styles.css affects. */
 .swissWordmark {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   color: var(--sw-ink);
   text-decoration: none;
   white-space: nowrap;
