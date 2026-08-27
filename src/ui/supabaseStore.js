@@ -1149,6 +1149,70 @@ async function listActivityEvents() {
   }
 }
 
+// The dashboard timeline above only ever needs the 100 most recent events
+// across every event type, so it's capped there. Counting "how many people
+// signed up / edited this month" needs the full self-serve-relevant slice,
+// not just whatever happened to survive that global 100-row cap once other
+// activity (admin actions, tag candidates, etc.) crowds it out - so this
+// queries activity_events directly, filtered to only the event types that
+// matter here.
+const SELF_SERVE_ACTIVITY_EVENT_TYPES = [
+  "provider_editor_verified",
+  "provider_self_edited",
+  "provider_editor_invited",
+  "provider_editor_removed",
+];
+
+// Same reasoning as the readiness/tag-sync caches above: this metrics query
+// only needs to be roughly current, not per-click fresh, so it shouldn't
+// add back the "26 round-trips on every action" cost that was just fixed.
+const SELF_SERVE_ACTIVITY_TTL_MS = 3 * 60 * 1000;
+let cachedSelfServeActivityEvents = null;
+let cachedSelfServeActivityEventsAt = 0;
+
+async function listSelfServeActivityEvents() {
+  const now = Date.now();
+
+  if (cachedSelfServeActivityEvents && now - cachedSelfServeActivityEventsAt < SELF_SERVE_ACTIVITY_TTL_MS) {
+    return cachedSelfServeActivityEvents;
+  }
+
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/activity_events?select=*&event_type=in.(${SELF_SERVE_ACTIVITY_EVENT_TYPES.join(",")})&order=created_at.desc&limit=5000`
+    );
+
+    cachedSelfServeActivityEvents = rows.map(rowToActivityEvent);
+    cachedSelfServeActivityEventsAt = now;
+
+    return cachedSelfServeActivityEvents;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+function buildSelfServeActivityMetrics(events = []) {
+  const now = Date.now();
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const isRecent = (event) => now - new Date(event.createdAt).getTime() <= THIRTY_DAYS_MS;
+
+  const signups = events.filter((event) => event.eventType === "provider_editor_verified" && event.metadata?.role === "owner");
+  const editorsJoined = events.filter((event) => event.eventType === "provider_editor_verified" && event.metadata?.role === "editor");
+  const edits = events.filter((event) => event.eventType === "provider_self_edited");
+  const invitesSent = events.filter((event) => event.eventType === "provider_editor_invited");
+
+  return {
+    signups: { total: signups.length, last30Days: signups.filter(isRecent).length },
+    editorsJoined: { total: editorsJoined.length, last30Days: editorsJoined.filter(isRecent).length },
+    edits: { total: edits.length, last30Days: edits.filter(isRecent).length },
+    invitesSent: { total: invitesSent.length, last30Days: invitesSent.filter(isRecent).length },
+  };
+}
+
 async function listReviewerFeedback() {
   try {
     const rows = await supabaseFetch("/rest/v1/reviewer_feedback?select=*&order=created_at.desc&limit=200");
@@ -1271,19 +1335,41 @@ function checkDeploymentReadiness() {
   };
 }
 
+// checkSupabaseReadiness() alone issues 14 extra Supabase requests (one
+// per SPRINT2_SCHEMA_CHECKS entry). listAdminState() calls this on every
+// single admin-state load, and refreshAdminState() on the client fires
+// after almost every admin action (confirm contact, save provider, send
+// email, ...) - so this schema sweep was re-running 14 queries per click
+// even though table/column readiness essentially never changes between
+// deploys. Memoize it for a few minutes per warm server instance; a stale
+// readiness banner for up to REVIEW_TTL_MS is a fine trade for cutting
+// more than half the round-trips off every admin load.
+const OPERATIONAL_READINESS_TTL_MS = 3 * 60 * 1000;
+let cachedOperationalReadiness = null;
+let cachedOperationalReadinessAt = 0;
+
 async function getOperationalReadiness() {
+  const now = Date.now();
+
+  if (cachedOperationalReadiness && now - cachedOperationalReadinessAt < OPERATIONAL_READINESS_TTL_MS) {
+    return cachedOperationalReadiness;
+  }
+
   const [schema, deployment] = await Promise.all([
     checkSupabaseReadiness(),
     Promise.resolve(checkDeploymentReadiness()),
   ]);
 
-  return {
+  cachedOperationalReadiness = {
     ok: schema.ok && deployment.ok,
     schema,
     deployment,
     auditHistory: CANONICAL_AUDIT_HISTORY,
     warnings: [...(schema.warnings || []), ...(deployment.warnings || [])],
   };
+  cachedOperationalReadinessAt = now;
+
+  return cachedOperationalReadiness;
 }
 
 // Canonical audit history is activity_events plus reviewer_feedback. Legacy
@@ -1379,6 +1465,7 @@ function buildOperationalMetrics({
   successStories = [],
   providerEvents = [],
   marketSignals = [],
+  selfServeActivityEvents = [],
 } = {}) {
   const statusCounts = {};
   const outreachStatusCounts = {};
@@ -1425,6 +1512,7 @@ function buildOperationalMetrics({
       replied: outreachStatusCounts.replied || 0,
       enabled: false,
     },
+    selfServeActivity: buildSelfServeActivityMetrics(selfServeActivityEvents),
   };
 }
 
@@ -2076,6 +2164,81 @@ async function inviteProviderEditor(inviterToken, { email } = {}) {
   return { provider: access.provider, email: normalizedEmail, verifyToken: verifyLink.token };
 }
 
+// Owner/editor-visible: who currently has access to this profile. There was
+// no cap on invites (upsertProviderEditor never enforced one), but until
+// now there was also no way for anyone to see who'd actually been invited -
+// inviteProviderEditor existed with nothing to look the list back up
+// afterward.
+async function listProviderEditorsForAccess(token) {
+  const access = await resolveOwnerEditAccess(token);
+
+  if (!access) {
+    throw new OwnerEditError("This link is invalid or has expired.", 404);
+  }
+
+  if (access.requiresVerification) {
+    throw new OwnerEditError("Verify your own email first.", 403);
+  }
+
+  const editors = await listProviderEditors(access.provider.id);
+
+  return { provider: access.provider, editors, viewerRole: access.editorRole };
+}
+
+// Owner-only: removes an editor's access. Can't revoke the owner role
+// itself (no ownership-transfer flow exists) or your own access, to avoid
+// an owner locking themselves out with no recovery path.
+async function revokeProviderEditor(inviterToken, { email } = {}) {
+  const access = await resolveOwnerEditAccess(inviterToken);
+
+  if (!access) {
+    throw new OwnerEditError("This link is invalid or has expired.", 404);
+  }
+
+  if (access.requiresVerification) {
+    throw new OwnerEditError("Verify your own email before managing editors.", 403);
+  }
+
+  if (access.editorRole !== "owner") {
+    throw new OwnerEditError("Only the owner can remove editors.", 403);
+  }
+
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    throw new OwnerEditError("A valid email address is required.", 400);
+  }
+
+  if (normalizedEmail === access.editorEmail) {
+    throw new OwnerEditError("You can't remove your own access.", 400);
+  }
+
+  const target = await findProviderEditor(access.provider.id, normalizedEmail);
+
+  if (!target) {
+    throw new OwnerEditError("That person doesn't have access to this profile.", 404);
+  }
+
+  if (target.role === "owner") {
+    throw new OwnerEditError("The owner can't be removed.", 400);
+  }
+
+  await supabaseFetch(
+    `/rest/v1/provider_editors?provider_id=eq.${encodeURIComponent(access.provider.id)}&email=eq.${encodeURIComponent(normalizedEmail)}`,
+    { method: "DELETE" }
+  );
+
+  await logActivityEvent({
+    providerId: access.provider.id,
+    eventType: "provider_editor_removed",
+    label: "Editor removed",
+    summary: `${access.editorEmail || "The owner"} removed ${normalizedEmail}'s access.`,
+    metadata: { providerDomain: access.provider.domain },
+  });
+
+  return { provider: access.provider, email: normalizedEmail };
+}
+
 // Publishes a self-serve edit made from the claim link with no admin review
 // in the loop. Week 13: real identity verification happens before this is
 // ever reached (see resolveOwnerEditAccess) - this still fails closed on a
@@ -2541,7 +2704,22 @@ function isMissingTagTaxonomyTable(error) {
   return message.includes("tag_taxonomy") || message.includes("PGRST205") || message.includes("42P01");
 }
 
+// This is a write (upsert-if-missing) over every provider's tags, run
+// unconditionally inside listAdminState() - so it fired on every single
+// admin load/refresh, not just when tags could plausibly have changed.
+// The upsert is idempotent (ignore-duplicates), so re-running it on every
+// click never changes correctness, only cost. Skip re-running it within
+// this window per warm instance; a newly-added tag can take up to this
+// long to appear in the taxonomy list, which is an acceptable trade for
+// dropping a full-table write off nearly every admin action.
+const TAG_SYNC_SKIP_WINDOW_MS = 3 * 60 * 1000;
+let lastTagSyncAt = 0;
+
 async function syncExistingTagsFromProviders(providers = []) {
+  if (Date.now() - lastTagSyncAt < TAG_SYNC_SKIP_WINDOW_MS) {
+    return;
+  }
+
   const rows = tagRowsFromProviders(providers, "approved");
 
   if (rows.length === 0) {
@@ -2556,6 +2734,7 @@ async function syncExistingTagsFromProviders(providers = []) {
       },
       body: JSON.stringify(rows),
     });
+    lastTagSyncAt = Date.now();
   } catch (error) {
     if (!isMissingTagTaxonomyTable(error)) {
       throw error;
@@ -2587,7 +2766,24 @@ async function syncCandidateTagsFromProfile(profile = {}) {
 
 async function listTagTaxonomy(providerRows = []) {
   try {
-    const rows = await supabaseFetch("/rest/v1/tag_taxonomy?select=*&order=category.asc,status.asc,name.asc");
+    // PostgREST enforces a project-level max-rows ceiling (1000 here) that
+    // an explicit ?limit= can't override - it was silently truncating this
+    // table once it grew past that (1044 rows and counting), dropping tags
+    // from admin with no error. Page through in ceiling-sized chunks via
+    // offset instead, stopping once a page comes back short.
+    const pageSize = 1000;
+    const rows = [];
+
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await supabaseFetch(
+        `/rest/v1/tag_taxonomy?select=*&order=category.asc,status.asc,name.asc&limit=${pageSize}&offset=${offset}`
+      );
+      rows.push(...page);
+
+      if (page.length < pageSize) {
+        break;
+      }
+    }
 
     return rows.map(tagRowToClient);
   } catch (error) {
@@ -2983,6 +3179,7 @@ async function listAdminState() {
     marketSignals,
     activityEvents,
     reviewerFeedback,
+    selfServeActivityEvents,
   ] = await Promise.all([
     listOutreachContacts(providerIds),
     listOutreachMessages(providerIds),
@@ -2992,31 +3189,43 @@ async function listAdminState() {
     listMarketSignals(),
     listActivityEvents(),
     listReviewerFeedback(),
+    listSelfServeActivityEvents(),
   ]);
-  const contactsByProviderId = new Map();
-  const messagesByProviderId = new Map();
+  // Was previously 3 of these done as provider.filter(x => x.providerId ===
+  // row.id) *inside* the providers.map() below - an O(providers x items)
+  // scan on every single admin load (up to 212 providers x up to 500 rows
+  // each, x3) for a feature (success stories/events/signals) that's been
+  // hidden from the admin UI since Week 11. Grouping once into a Map first,
+  // same as contacts/messages already did, makes every provider's lookup
+  // O(1) instead - real fix for reported slow admin loads, no behavior
+  // change (still hidden, still returns the same data if ever un-hidden).
+  const groupByProviderId = (items) => {
+    const map = new Map();
+
+    for (const item of items) {
+      const existing = map.get(item.providerId) || [];
+      existing.push(item);
+      map.set(item.providerId, existing);
+    }
+
+    return map;
+  };
+
+  const contactsByProviderId = groupByProviderId(outreachContacts);
+  const messagesByProviderId = groupByProviderId(outreachMessages);
   const cyclesByProviderId = new Map(outreachCycles.map((cycle) => [cycle.providerId, cycle]));
-
-  for (const contact of outreachContacts) {
-    const existingContacts = contactsByProviderId.get(contact.providerId) || [];
-    existingContacts.push(contact);
-    contactsByProviderId.set(contact.providerId, existingContacts);
-  }
-
-  for (const message of outreachMessages) {
-    const existingMessages = messagesByProviderId.get(message.providerId) || [];
-    existingMessages.push(message);
-    messagesByProviderId.set(message.providerId, existingMessages);
-  }
+  const successStoriesByProviderId = groupByProviderId(successStories);
+  const providerEventsByProviderId = groupByProviderId(providerEvents);
+  const marketSignalsByProviderId = groupByProviderId(marketSignals);
 
   const providerProfiles = providers.map((row) => ({
     ...rowToProfile(row),
     outreachContacts: contactsByProviderId.get(row.id) || [],
     outreachMessages: messagesByProviderId.get(row.id) || [],
     outreachCycle: cyclesByProviderId.get(row.id) || null,
-    managedSuccessStories: successStories.filter((story) => story.providerId === row.id),
-    managedProviderEvents: providerEvents.filter((event) => event.providerId === row.id),
-    managedMarketSignals: marketSignals.filter((signal) => signal.providerId === row.id),
+    managedSuccessStories: successStoriesByProviderId.get(row.id) || [],
+    managedProviderEvents: providerEventsByProviderId.get(row.id) || [],
+    managedMarketSignals: marketSignalsByProviderId.get(row.id) || [],
   }));
   const timeline = buildActivityTimeline({
     providers: providerProfiles,
@@ -3034,6 +3243,7 @@ async function listAdminState() {
     successStories,
     providerEvents,
     marketSignals,
+    selfServeActivityEvents,
   });
 
   await syncExistingTagsFromProviders(providers);
@@ -3302,6 +3512,8 @@ module.exports = {
   confirmOwnerVerification,
   inviteProviderEditor,
   listProviderEditors,
+  listProviderEditorsForAccess,
+  revokeProviderEditor,
   resolveOwnerEditAccess,
   createClaimRequest,
   createOutreachLink,

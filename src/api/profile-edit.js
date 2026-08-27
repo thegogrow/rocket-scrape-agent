@@ -1,5 +1,6 @@
 const { applyOwnerProfileEdit, isSupabaseConfigured, OwnerEditError, resolveOwnerEditAccess } = require("../ui/supabaseStore");
 const { readJsonBody } = require("../ui/readJsonBody");
+const { notifyOwnerOfEdit } = require("../email/teammateNotifications");
 
 const STRING_FIELDS = ["companyName", "logoUrl", "website", "country", "city", "description", "githubUrl", "linkedinUrl"];
 const ARRAY_FIELDS = ["services", "technologies", "industries"];
@@ -117,6 +118,14 @@ async function handlePatch(request, response) {
   const result = await applyOwnerProfileEdit(String(body.token || "").trim(), {
     profile: sanitizeProfileInput(body.profile),
   });
+
+  // Best-effort: the owner should hear about a teammate's edit, but a
+  // failed notification email should never fail the save it's reporting on.
+  try {
+    await notifyOwnerOfEdit({ provider: result.provider, editorEmail: result.editorEmail, editorRole: result.editorRole });
+  } catch (error) {
+    console.warn(`[teammateNotifications] Failed to notify owner of edit: ${error.message}`);
+  }
 
   response.setHeader("Cache-Control", "no-store");
   response.status(200).json({

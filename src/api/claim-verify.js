@@ -1,5 +1,12 @@
-const { confirmOwnerVerification, isSupabaseConfigured, OwnerEditError } = require("../ui/supabaseStore");
+const {
+  confirmOwnerVerification,
+  isSupabaseConfigured,
+  listProviderEditorsForAccess,
+  OwnerEditError,
+  revokeProviderEditor,
+} = require("../ui/supabaseStore");
 const { requestOwnerVerification, requestEditorInvite } = require("../email/ownerVerification");
+const { notifyOwnerOfNewEditor } = require("../email/teammateNotifications");
 const { readJsonBody } = require("../ui/readJsonBody");
 
 // Owner/editor email verification (Week 13 client feedback) - three actions
@@ -39,6 +46,16 @@ module.exports = async function handler(request, response) {
     if (action === "confirm") {
       const result = await confirmOwnerVerification(String(body.token || "").trim());
 
+      if (result.role === "editor") {
+        // Best-effort, same reasoning as notifyOwnerOfEdit - a notification
+        // failure shouldn't fail the verification it's reporting on.
+        try {
+          await notifyOwnerOfNewEditor({ provider: result.provider, editorEmail: result.email });
+        } catch (error) {
+          console.warn(`[teammateNotifications] Failed to notify owner of new editor: ${error.message}`);
+        }
+      }
+
       response.status(200).json({
         ok: true,
         editToken: result.editToken,
@@ -52,6 +69,20 @@ module.exports = async function handler(request, response) {
       const result = await requestEditorInvite(String(body.token || "").trim(), { email: body.email });
 
       response.status(200).json({ ok: true, sentTo: result.recipient, dryRun: result.dryRun });
+      return;
+    }
+
+    if (action === "list_editors") {
+      const result = await listProviderEditorsForAccess(String(body.token || "").trim());
+
+      response.status(200).json({ ok: true, editors: result.editors, viewerRole: result.viewerRole });
+      return;
+    }
+
+    if (action === "revoke") {
+      await revokeProviderEditor(String(body.token || "").trim(), { email: body.email });
+
+      response.status(200).json({ ok: true });
       return;
     }
 

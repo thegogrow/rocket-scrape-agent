@@ -1639,6 +1639,35 @@ function approveManagedMarketSignal(row) {
   }
 }
 
+// Mirrors OUTREACH_TITLE_PRIORITY in src/enrichment/apollo.js - that list
+// decides which titles Apollo searches for and in what order; this reuses
+// the same order client-side to pick which already-sourced candidate to
+// badge as the most relevant match, without needing a DB column just to
+// remember Apollo's original ranking (contacts get re-sorted alphabetically
+// once loaded from Supabase, so that ordering doesn't survive a reload).
+const OUTREACH_TITLE_PRIORITY = [
+  "head of marketing",
+  "marketing director",
+  "vp marketing",
+  "chief marketing officer",
+  "business development",
+  "partnerships",
+  "head of sales",
+  "vp sales",
+  "chief sales officer",
+  "managing director",
+  "founder",
+  "co-founder",
+  "ceo",
+];
+
+function outreachTitleRank(title = "") {
+  const normalized = String(title || "").toLowerCase();
+  const index = OUTREACH_TITLE_PRIORITY.findIndex((needle) => normalized.includes(needle));
+
+  return index === -1 ? OUTREACH_TITLE_PRIORITY.length : index;
+}
+
 function normalizeOutreachContact(contact = {}) {
   return {
     name: contact.name || "",
@@ -1652,7 +1681,7 @@ function normalizeOutreachContact(contact = {}) {
   };
 }
 
-function outreachContactRowMarkup(contact = {}) {
+function outreachContactRowMarkup(contact = {}, { isTopSuggested = false } = {}) {
   const normalizedContact = normalizeOutreachContact(contact);
   const isSourced = normalizedContact.sourceStatus === "sourced";
 
@@ -1660,7 +1689,7 @@ function outreachContactRowMarkup(contact = {}) {
     <article class="outreachContactRow${isSourced ? " outreachContactSourced" : ""}">
       ${isSourced
         ? `<div class="outreachSourcedBadgeRow">
-            <span class="outreachSourcedBadge" title="Found automatically via Apollo - not yet reviewed by a human">Suggested, not yet confirmed</span>
+            <span class="outreachSourcedBadge" title="Found automatically via Apollo - not yet reviewed by a human">${isTopSuggested ? "Suggested – most relevant match" : "Suggested, not yet confirmed"}</span>
           </div>`
         : ""}
       <label>
@@ -1706,7 +1735,19 @@ function renderOutreachContacts(container, contacts = []) {
   const normalizedContacts = (contacts || []).map(normalizeOutreachContact);
   const renderContacts = normalizedContacts.length > 0 ? normalizedContacts : [normalizeOutreachContact()];
 
-  container.innerHTML = renderContacts.map(outreachContactRowMarkup).join("");
+  // Among the still-unconfirmed sourced candidates, badge whichever one's
+  // title best matches the sales/marketing/BD priority list as "most
+  // relevant" - the rest still show as plain suggestions.
+  const sourcedContacts = renderContacts.filter((contact) => contact.sourceStatus === "sourced");
+  const topSourcedContact = sourcedContacts.length > 0
+    ? sourcedContacts.reduce((best, contact) => (
+      outreachTitleRank(contact.title) < outreachTitleRank(best.title) ? contact : best
+    ))
+    : null;
+
+  container.innerHTML = renderContacts
+    .map((contact) => outreachContactRowMarkup(contact, { isTopSuggested: contact === topSourcedContact }))
+    .join("");
 }
 
 function collectOutreachContacts(container) {
@@ -2633,11 +2674,36 @@ function tagCategoryLabel(category) {
   return category === "technologies" ? "Technologies" : "Services";
 }
 
+// Was previously state.providers.filter(...) run fresh for every single
+// tag - with ~150+ tags x ~212 providers that's real, measurable work, and
+// it ran on every renderLists() (so every admin action, not just visiting
+// the Tags page - renderTags() is called unconditionally from there).
+// Building this map once per render and reading it per tag is O(providers)
+// total instead of O(tags x providers), same output either way.
+let cachedTagUsageCounts = null;
+
+function computeTagUsageCounts() {
+  const counts = new Map();
+
+  for (const provider of state.providers) {
+    for (const category of ["services", "industries", "technologies", "vendor_partnerships"]) {
+      for (const value of tagValuesForCategory(provider, category)) {
+        const key = `${category}:${normalizeTagKey(value)}`;
+
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+  }
+
+  return counts;
+}
+
 function tagUsageCount(tag = {}) {
-  return state.providers.filter((provider) => (
-    tagValuesForCategory(provider, tag.category)
-      .some((value) => normalizeTagKey(value) === normalizeTagKey(tag.name))
-  )).length;
+  if (!cachedTagUsageCounts) {
+    cachedTagUsageCounts = computeTagUsageCounts();
+  }
+
+  return cachedTagUsageCounts.get(`${tag.category}:${normalizeTagKey(tag.name)}`) || 0;
 }
 
 function filteredTags() {
@@ -2747,6 +2813,8 @@ function renderTags() {
   if (!elements.tagList) {
     return;
   }
+
+  cachedTagUsageCounts = computeTagUsageCounts();
 
   const tags = filteredTags();
 
@@ -3511,7 +3579,7 @@ function compactOutreachProviderRow(provider) {
   ].filter(Boolean).join(", ") || "No messages";
 
   return `
-    <article class="adminTableRow adminCompactRow">
+    <article class="adminTableRow adminCompactRow adminDashboardFixedRow">
       <div class="adminCell adminCellPrimary">
         <span class="adminProviderIdentity">
           ${providerLogo(provider)}
@@ -3542,7 +3610,7 @@ function compactRequestRow(item) {
   const status = item.status || "pending";
 
   return `
-    <article class="adminTableRow adminCompactRow">
+    <article class="adminTableRow adminCompactRow adminDashboardFixedRow">
       <div class="adminCell adminCellPrimary">
         <span>
           <strong>${escapeHtml(item.domain || "Unknown provider")}</strong>
@@ -3933,6 +4001,8 @@ function renderMetrics() {
       metricCard("Outreach pending", metrics.outreachPending || 0, "", "mail"),
       metricCard("Outreach active", metrics.outreachActive || 0, "", "mail"),
       metricCard("Claimed profiles", metrics.claimedProfiles || 0, "", "doc"),
+      metricCard("Signups (30d)", metrics.selfServeActivity?.signups?.last30Days || 0, `${metrics.selfServeActivity?.signups?.total || 0} all time`, "check"),
+      metricCard("Self-serve edits (30d)", metrics.selfServeActivity?.edits?.last30Days || 0, `${metrics.selfServeActivity?.edits?.total || 0} all time`, "doc"),
       metricCard("Leads submitted", metrics.leadsSubmitted || 0, `${metrics.openLeads || 0} new`, "doc"),
       metricCard("Approved stories", metrics.approvedSuccessStories || 0, "", "check"),
       metricCard("Upcoming events", metrics.upcomingApprovedEvents || 0, "", "calendar"),
@@ -3947,7 +4017,19 @@ function renderMetrics() {
   }
 
   if (elements.outreachSignalMetrics) {
+    const selfServe = metrics.selfServeActivity || {};
+    const selfServeRow = (label, bucket = {}) => metricBreakdownRow(label, `${bucket.total || 0} total · ${bucket.last30Days || 0} in last 30 days`);
+
     elements.outreachSignalMetrics.innerHTML = `
+      <section>
+        <h3>Self-Serve Activity</h3>
+        ${[
+          selfServeRow("New signups (owner verified)", selfServe.signups),
+          selfServeRow("Editors joined", selfServe.editorsJoined),
+          selfServeRow("Profile edits published", selfServe.edits),
+          selfServeRow("Team invites sent", selfServe.invitesSent),
+        ].join("")}
+      </section>
       <section>
         <h3>Outreach Messages</h3>
         ${metricsFromObject(metrics.outreachMessagesByStatus)}

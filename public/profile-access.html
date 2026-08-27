@@ -6,244 +6,259 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Manage Your Provider Profile — Rocket Engineers</title>
     <meta name="description" content="Edit and publish your Rocket Engineers provider profile directly from your claim link." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/profile-swiss.css" />
   </head>
-  <body>
-    <header class="appHeader">
-      <div class="brandCluster">
-        <a class="cloudLogo" href="/">Rocket Engineers</a>
+  <body class="swissPage">
+    <div class="swissShell">
+      <div class="swissTopbar">
+        <a class="swissWordmark" href="/">Rocket<span>*</span>Engineers</a>
       </div>
-    </header>
 
-    <main class="workflowPage providerAccessPage">
-      <section class="providerAccessHero">
-        <div>
-          <span class="eyebrow">Rocket Engineers · Provider Directory</span>
-          <h1>Your company has a profile on Rocket Engineers — let's make sure it's right</h1>
-          <p>Rocket Engineers is a directory that helps companies find vetted cloud, DevOps, and platform engineering partners. We put together a starting profile for your company using information that's already public. This page is yours: look it over, fix anything that's off, and publish the changes yourself — right away, no waiting on us.</p>
-          <ul class="trustBadgeRow">
-            <li>Free to be listed</li>
-            <li>Your edits go live instantly</li>
-            <li>You're always in control</li>
-          </ul>
-        </div>
-        <aside class="providerAccessCard" id="accessProfileCard">
-          <span>Provider</span>
-          <strong id="accessDomain">Loading your profile...</strong>
-          <small id="accessStatus">One moment</small>
-          <a id="accessProfileLink" href="/" target="_blank" rel="noreferrer" hidden>View public profile</a>
-        </aside>
-      </section>
-
-      <section class="workflowPanel aboutPanel">
-        <div class="aboutGrid">
-          <article class="aboutCard">
-            <span class="aboutCardIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="m9.5 16.4-4.2-4.2 1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z" /></svg>
-            </span>
-            <strong>1. This is really your profile</strong>
-            <p>We build starting profiles from public info on your website and GitHub &mdash; nothing here was made up or shared with anyone else.</p>
-          </article>
-          <article class="aboutCard">
-            <span class="aboutCardIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 20h16" /><path d="M6 20V10l6-6 6 6v10" /><path d="M10 20v-6h4v6" /></svg>
-            </span>
-            <strong>2. Edit anything below</strong>
-            <p>Fix or fill in whatever's missing: description, services, logo, links.</p>
-          </article>
-          <article class="aboutCard">
-            <span class="aboutCardIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3" /><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
-            </span>
-            <strong>3. It publishes instantly</strong>
-            <p>Hit Publish and it's live on your public profile right away &mdash; there's no review queue for edits.</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="accessStatusBanner" class="workflowPanel" hidden>
-        <p id="accessStatusMessage"></p>
-      </section>
-
-      <section id="verifyGatePanel" class="workflowPanel" hidden>
-        <div class="panelHeader">
-          <div>
-            <h2>Verify your email to edit this listing</h2>
-            <p>We need to confirm you work at this company before you can make changes. Use your business email address.</p>
+      <main>
+        <!-- Welcome / intro - always shown; the "Claim this profile" button
+             just scrolls down to whichever next step (verify, or the editor
+             once already verified) is actually on the page. -->
+        <section class="swissHero">
+          <div class="swissHeroMain">
+            <span class="swissEyebrow accent">You've been listed</span>
+            <h1 class="swissH1">Your company has a profile here<span class="accentDot">.</span></h1>
+            <p class="swissLede">Rocket Engineers is a directory that helps companies find vetted cloud, DevOps, and platform engineering partners. We put together a starting profile for your company using information that's already public. This page is yours: look it over, fix anything that's off, and publish the changes yourself — right away, no waiting on us.</p>
+            <div class="swissHeroActions">
+              <a class="swissBtn" href="#nextStep">Claim this profile →</a>
+              <a class="swissBtn ghost" href="#removalPanel">This isn't my company</a>
+            </div>
+            <div class="swissHeroFinePrint">Takes about a minute. Free — no card required.</div>
           </div>
-        </div>
-        <form class="workflowForm" id="verifyRequestForm">
-          <label>
-            Your name
-            <input name="name" type="text" autocomplete="name" placeholder="Jane Doe" required />
-          </label>
-          <label>
-            Business email
-            <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
-          </label>
-          <label>
-            Your role
-            <input name="role" type="text" placeholder="Marketing Manager, Founder, ..." />
-          </label>
-          <button class="primaryAction" type="submit">Send verification email</button>
-          <p class="workflowMessage" data-verify-request-message aria-live="polite"></p>
-        </form>
-      </section>
+          <div class="swissPreviewPane">
+            <span class="swissEyebrow">Your profile — preview</span>
+            <div class="swissPreviewCard" id="accessProfileCard">
+              <div class="swissPreviewHead">
+                <div>
+                  <div class="swissPreviewName" id="accessDomain">Loading your profile…</div>
+                  <div class="swissPreviewMeta" id="accessStatus">One moment</div>
+                </div>
+              </div>
+            </div>
+            <div class="swissChecklist">
+              <span><span class="mark">✓</span>Verified badge on your card</span>
+              <span><span class="mark">✓</span>Correct anything that's off</span>
+              <span><span class="mark">✓</span>Publishes the moment you save</span>
+            </div>
+            <a class="swissLink" id="accessProfileLink" href="/" target="_blank" rel="noreferrer" hidden style="margin-top: 18px;">View public profile</a>
+          </div>
+        </section>
 
-      <section id="accessIntroBar" class="workflowPanel ownerEditIntroBar" hidden>
-        <div>
-          <span class="eyebrow">Your profile</span>
-          <h2 id="accessCompanyName">Editing your provider profile</h2>
-        </div>
-      </section>
+        <section id="accessStatusBanner" class="swissBanner" hidden>
+          <p id="accessStatusMessage" style="margin: 0;"></p>
+        </section>
 
-      <form id="ownerEditForm">
-        <fieldset id="editFieldset" class="ownerEditFieldset" hidden>
-          <div class="detailContent" id="editCard">
-            <div class="listingDetail detailSingleColumn">
-              <div class="listingMain">
-                <section class="providerProfileHero">
-                  <div class="providerHeaderIdentity">
+        <!-- Verify step (16b) -->
+        <section id="verifyGatePanel" class="swissVerifyGrid" hidden>
+          <div class="swissVerifyMain" id="nextStep">
+            <h1 class="swissH2">Prove it's you<span class="accentDot">.</span></h1>
+            <p class="swissLede" style="margin-top: 20px;">We send a verification link to an email address on your company's domain — that's all it takes to start editing.</p>
+            <form class="swissForm" id="verifyRequestForm">
+              <div class="swissField">
+                <span>Your name</span>
+                <input name="name" type="text" autocomplete="name" placeholder="Jane Doe" required />
+              </div>
+              <div class="swissField">
+                <span>Business email</span>
+                <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+              </div>
+              <div class="swissField">
+                <span>Your role</span>
+                <input name="role" type="text" placeholder="Marketing Manager, Founder, ..." />
+              </div>
+              <button class="swissBtn" type="submit">Send verification email →</button>
+              <p class="swissFormMessage" data-verify-request-message aria-live="polite"></p>
+            </form>
+          </div>
+          <div class="swissVerifySide">
+            <span class="swissEyebrow">Not your company, or don't want to be listed?</span>
+            <p class="swissLede" style="max-width: 380px;">If this profile was created in error, or you'd rather not appear in the directory, request removal below — it's reviewed by a person, so it's the one thing here that isn't instant.</p>
+            <a class="swissLink" href="#removalPanel" style="margin-top: 20px;">Request removal ↓</a>
+          </div>
+        </section>
+
+        <!-- Editor (14a / 15a-c) - shown once verified -->
+        <section id="accessIntroBar" hidden>
+          <div class="swissEditorTopbar">
+            <span class="swissWordmark" style="font-size: 13px;">Rocket<span>*</span>Engineers</span>
+            <span class="swissCompanyTag" id="accessCompanyName">Editing your provider profile</span>
+          </div>
+        </section>
+
+        <form id="ownerEditForm">
+          <fieldset id="editFieldset" hidden style="border: none; margin: 0; padding: 0;">
+            <div class="swissEditorBody">
+              <nav class="swissRail" aria-label="Profile sections">
+                <a class="swissRailLink" href="#sectionCompany">Company</a>
+                <a class="swissRailLink" href="#sectionServices">Services &amp; technologies</a>
+                <a class="swissRailLink" href="#sectionLinks">Links &amp; profiles</a>
+                <a class="swissRailLink" href="#sectionTeam">Team &amp; contacts</a>
+              </nav>
+
+              <div class="swissEditorContent">
+                <section id="sectionCompany">
+                  <span class="swissEyebrow">Company</span>
+                  <div class="swissFieldGrid">
                     <div>
-                      <label class="logoBox logoLarge" id="logoPreview" for="fieldLogoFile" tabindex="0">?</label>
+                      <label class="swissLogoUpload" id="logoPreview" for="fieldLogoFile" tabindex="0">?</label>
                       <input id="fieldLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden />
                       <input id="fieldLogoUrl" name="logoUrl" type="hidden" />
-                      <label for="fieldLogoFile" class="secondaryAction ownerEditLogoLink">Upload logo</label>
-                      <p class="ownerEditLogoStatus" id="logoUploadStatus"></p>
+                      <label for="fieldLogoFile" class="swissLink" style="display: inline-block; margin-top: 10px;">Change logo</label>
+                      <p class="swissFormMessage" id="logoUploadStatus" style="margin-top: 6px;"></p>
                     </div>
-                    <div>
-                      <div class="detailTitleRow">
-                        <input id="fieldCompanyName" class="ownerEditTitleInput" name="companyName" type="text" placeholder="Company name" required />
-                        <span class="verifiedBadge" id="verifiedBadge" hidden>Verified</span>
+                    <div class="swissFieldStack">
+                      <div class="swissField">
+                        <span>Company name</span>
+                        <input id="fieldCompanyName" name="companyName" type="text" placeholder="Company name" required />
+                        <span class="verifiedBadge" id="verifiedBadge" hidden style="font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sw-red);">✓ Verified</span>
                       </div>
-                      <p class="platformLine" id="domainLine"></p>
-                      <div class="providerFocusStrip" id="focusStrip"></div>
+                      <div class="swissField">
+                        <span>Website</span>
+                        <input id="fieldWebsite" name="website" type="url" placeholder="https://yourcompany.com" />
+                      </div>
+                    </div>
+                    <div class="swissFieldStack">
+                      <div class="swissField">
+                        <span>Country</span>
+                        <input id="fieldCountry" name="country" type="text" placeholder="Country" />
+                      </div>
+                      <div class="swissField">
+                        <span>City</span>
+                        <input id="fieldCity" name="city" type="text" placeholder="City" />
+                      </div>
+                    </div>
+                  </div>
+                  <p class="platformLine" id="domainLine" style="font-size: 12px; color: var(--sw-muted); margin: 16px 0 0;"></p>
+                  <div class="swissFocusStrip" id="focusStrip"></div>
+                  <div class="swissField" style="margin-top: 28px;">
+                    <span>About</span>
+                    <textarea id="fieldDescription" rows="5" placeholder="What does your company do? This appears on your public profile."></textarea>
+                  </div>
+                </section>
+
+                <section id="sectionServices">
+                  <span class="swissEyebrow">Services &amp; technologies</span>
+                  <div class="swissTagGroup">
+                    <span class="swissEyebrow">Services</span>
+                    <div class="tagInput" data-tag-field="services"></div>
+                  </div>
+                  <div class="swissTagGroup">
+                    <span class="swissEyebrow">Technologies</span>
+                    <div class="tagInput" data-tag-field="technologies"></div>
+                  </div>
+                  <div class="swissTagGroup">
+                    <span class="swissEyebrow">Industries</span>
+                    <div class="tagInput" data-tag-field="industries"></div>
+                  </div>
+                </section>
+
+                <section id="sectionLinks">
+                  <span class="swissEyebrow">Links &amp; profiles</span>
+                  <div class="swissFieldGrid2">
+                    <div class="swissField">
+                      <span>LinkedIn</span>
+                      <input id="fieldLinkedin" name="linkedinUrl" type="url" placeholder="https://linkedin.com/company/..." />
+                    </div>
+                    <div class="swissField">
+                      <span>GitHub</span>
+                      <input id="fieldGithub" name="githubUrl" type="url" placeholder="https://github.com/..." />
                     </div>
                   </div>
                 </section>
 
-                <section class="providerProfileGrid">
-                  <div class="providerProfileMain">
-                    <section class="providerProfileBlock">
-                      <span class="eyebrow">About</span>
-                      <textarea id="fieldDescription" name="description" rows="5" placeholder="What does your company do? This appears on your public profile."></textarea>
-                    </section>
-                    <section class="providerProfileBlock">
-                      <span class="eyebrow">Services</span>
-                      <div class="tagInput" data-tag-field="services"></div>
-                      <span class="eyebrow providerSubEyebrow">Technologies</span>
-                      <div class="tagInput" data-tag-field="technologies"></div>
-                      <span class="eyebrow providerSubEyebrow">Industries</span>
-                      <div class="tagInput" data-tag-field="industries"></div>
-                    </section>
+                <section id="sectionTeam">
+                  <span class="swissEyebrow">Team &amp; contacts</span>
+                  <div id="editorListPanel" hidden>
+                    <div class="swissEditorList" id="editorListBody"></div>
+                    <p class="swissFormMessage" data-editor-list-message aria-live="polite"></p>
                   </div>
-                  <aside class="providerProfileAside">
-                    <section>
-                      <span class="eyebrow">Facts</span>
-                      <div class="providerFacts ownerEditFacts">
-                        <div class="providerFactRow">
-                          <span>Website</span>
-                          <input id="fieldWebsite" name="website" type="url" placeholder="https://yourcompany.com" />
+                  <details class="swissDetails" id="inviteEditorPanel" hidden>
+                    <summary>Add someone else who can edit this listing</summary>
+                    <div class="swissDetailsBody">
+                      <p>As the verified owner, you can invite colleagues to help keep this listing up to date. They'll get their own verification email.</p>
+                      <form id="inviteEditorForm">
+                        <div class="swissField">
+                          <span>Their email</span>
+                          <input name="email" type="email" placeholder="colleague@company.com" required />
                         </div>
-                        <div class="providerFactRow">
-                          <span>Country</span>
-                          <input id="fieldCountry" name="country" type="text" placeholder="Country" />
-                        </div>
-                        <div class="providerFactRow">
-                          <span>City</span>
-                          <input id="fieldCity" name="city" type="text" placeholder="City" />
-                        </div>
-                        <div class="providerFactRow">
-                          <span>LinkedIn</span>
-                          <input id="fieldLinkedin" name="linkedinUrl" type="url" placeholder="https://linkedin.com/company/..." />
-                        </div>
-                        <div class="providerFactRow">
-                          <span>GitHub</span>
-                          <input id="fieldGithub" name="githubUrl" type="url" placeholder="https://github.com/..." />
-                        </div>
-                      </div>
-                    </section>
-                  </aside>
+                        <button class="swissBtn ghost" type="submit">Send invite</button>
+                        <p class="swissFormMessage" data-invite-message aria-live="polite"></p>
+                      </form>
+                    </div>
+                  </details>
                 </section>
               </div>
             </div>
+          </fieldset>
+
+          <div class="swissSaveBar" id="saveBar" hidden>
+            <p class="swissFormMessage" data-save-message aria-live="polite" style="margin: 0;"></p>
+            <button class="swissBtn" id="saveButton" type="submit">Publish changes</button>
           </div>
-        </fieldset>
+        </form>
 
-        <div class="ownerEditSaveBar" id="saveBar" hidden>
-          <p class="workflowMessage" data-save-message aria-live="polite"></p>
-          <button class="primaryAction" id="saveButton" type="submit">Publish changes</button>
-        </div>
-      </form>
+        <!-- Removal request -->
+        <section class="swissSection tight">
+          <details class="swissDetails" id="removalPanel" hidden>
+            <summary>Want to be removed instead?</summary>
+            <div class="swissDetailsBody">
+              <p>A Rocket Engineers reviewer confirms every removal request came from the company before anything is taken down — this is the one thing here that isn't instant.</p>
+              <form id="removalForm">
+                <div class="swissField">
+                  <span>Business email</span>
+                  <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+                </div>
+                <div class="swissField">
+                  <span>Message to Rocket Engineers</span>
+                  <textarea name="message" rows="3" placeholder="Optional context for the review team"></textarea>
+                </div>
+                <button class="swissBtn danger" type="submit">Request removal</button>
+                <p class="swissFormMessage" data-removal-message aria-live="polite"></p>
+              </form>
+            </div>
+          </details>
+        </section>
 
-      <section class="workflowPanel" id="inviteEditorPanel" hidden>
-        <details class="faqItem">
-          <summary>Add someone else who can edit this listing</summary>
-          <p>As the verified owner, you can invite colleagues to help keep this listing up to date. They'll get their own verification email.</p>
-          <form class="workflowForm" id="inviteEditorForm">
-            <label>
-              Their email
-              <input name="email" type="email" placeholder="colleague@company.com" required />
-            </label>
-            <button class="secondaryAction" type="submit">Send invite</button>
-            <p class="workflowMessage" data-invite-message aria-live="polite"></p>
-          </form>
-        </details>
-      </section>
-
-      <section class="workflowPanel" id="removalPanel" hidden>
-        <details class="faqItem">
-          <summary>Want to be removed instead?</summary>
-          <p>A Rocket Engineers reviewer confirms every removal request came from the company before anything is taken down &mdash; this is the one thing here that isn't instant.</p>
-          <form class="workflowForm" id="removalForm">
-            <label>
-              Business email
-              <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
-            </label>
-            <label>
-              Message to Rocket Engineers
-              <textarea name="message" rows="3" placeholder="Optional context for the review team"></textarea>
-            </label>
-            <button class="secondaryAction danger" type="submit">Request removal</button>
-            <p class="workflowMessage" data-removal-message aria-live="polite"></p>
-          </form>
-        </details>
-      </section>
-
-      <section class="workflowPanel faqPanel">
-        <div class="panelHeader">
-          <div>
-            <h2>Common questions</h2>
-            <p>Answers for companies hearing from Rocket Engineers for the first time.</p>
+        <!-- FAQ -->
+        <section class="swissSection tight">
+          <span class="swissEyebrow" style="font-size: 22px; text-transform: none; letter-spacing: -0.01em; color: var(--sw-ink); font-weight: 700;">Common questions</span>
+          <div class="swissFaqList" style="margin-top: 20px;">
+            <details class="swissDetails">
+              <summary>Is this a sales pitch or a paid listing?</summary>
+              <div class="swissDetailsBody">
+                <p style="margin: 0;">No. There is no cost to appear in the directory, and editing your profile does not enroll you in anything.</p>
+              </div>
+            </details>
+            <details class="swissDetails">
+              <summary>Where did this information come from?</summary>
+              <div class="swissDetailsBody">
+                <p style="margin: 0;">From your public website and, where relevant, public sources like your GitHub organization. Nothing here was submitted by us to a third party or made up — and now you can correct anything that's off.</p>
+              </div>
+            </details>
+            <details class="swissDetails">
+              <summary>Will my changes go live right away?</summary>
+              <div class="swissDetailsBody">
+                <p style="margin: 0;">Yes. Edits you save publish immediately to your public profile — there's no waiting on a reviewer for this. Removal requests are the one exception; those are still confirmed by a person first.</p>
+              </div>
+            </details>
+            <details class="swissDetails">
+              <summary>Can I come back and edit again later?</summary>
+              <div class="swissDetailsBody">
+                <p style="margin: 0;">Yes. After your first save, this same link keeps working — bookmark it to update your listing anytime.</p>
+              </div>
+            </details>
           </div>
-        </div>
-        <div class="faqList">
-          <details class="faqItem">
-            <summary>Is this a sales pitch or a paid listing?</summary>
-            <p>No. There is no cost to appear in the directory, and editing your profile does not enroll you in anything.</p>
-          </details>
-          <details class="faqItem">
-            <summary>Where did this information come from?</summary>
-            <p>From your public website and, where relevant, public sources like your GitHub organization. Nothing here was submitted by us to a third party or made up &mdash; and now you can correct anything that's off.</p>
-          </details>
-          <details class="faqItem">
-            <summary>Will my changes go live right away?</summary>
-            <p>Yes. Edits you save publish immediately to your public profile &mdash; there's no waiting on a reviewer for this. Removal requests are the one exception; those are still confirmed by a person first.</p>
-          </details>
-          <details class="faqItem">
-            <summary>Can I come back and edit again later?</summary>
-            <p>Yes. After your first save, this same link keeps working &mdash; bookmark it to update your listing anytime.</p>
-          </details>
-        </div>
-      </section>
+        </section>
 
-      <footer class="workflowFooter">
-        <p>Questions this page didn't answer? Reply to the outreach email you received, or use the message field above.</p>
-      </footer>
-    </main>
+        <footer class="swissFooter">
+          Questions this page didn't answer? Reply to the outreach email you received, or use the message field above.
+        </footer>
+      </main>
+    </div>
 
     <script src="/profile-edit.js"></script>
   </body>

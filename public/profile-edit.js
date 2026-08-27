@@ -34,6 +34,9 @@ const elements = {
   inviteEditorPanel: document.querySelector("#inviteEditorPanel"),
   inviteEditorForm: document.querySelector("#inviteEditorForm"),
   inviteMessage: document.querySelector("[data-invite-message]"),
+  editorListPanel: document.querySelector("#editorListPanel"),
+  editorListBody: document.querySelector("#editorListBody"),
+  editorListMessage: document.querySelector("[data-editor-list-message]"),
 };
 
 const fields = {
@@ -399,10 +402,79 @@ async function handleInviteEditorSubmit(event) {
     await callClaimVerify({ action: "invite", token: state.token, email: data.email });
     setInviteMessage(`Invite sent to ${data.email}.`);
     elements.inviteEditorForm.reset();
+    loadEditorList();
   } catch (error) {
     setInviteMessage(error.message, true);
   } finally {
     submitButton.disabled = false;
+  }
+}
+
+function setEditorListMessage(text, isError = false) {
+  elements.editorListMessage.textContent = text;
+  elements.editorListMessage.classList.toggle("error", isError);
+}
+
+function renderEditorList(editors) {
+  if (editors.length === 0) {
+    elements.editorListBody.innerHTML = `<div class="swissEditorRow"><div class="swissEditorRowInfo"><div class="swissEditorRowMeta">No one else has access yet.</div></div></div>`;
+    return;
+  }
+
+  elements.editorListBody.innerHTML = editors.map((editor) => {
+    const isOwner = editor.role === "owner";
+    const statusLabel = isOwner ? "Owner" : (editor.status === "active" ? "Editor" : "Invited — not yet verified");
+    const metaClass = editor.status === "pending" && !isOwner ? "swissEditorRowMeta pending" : "swissEditorRowMeta";
+
+    return `
+      <div class="swissEditorRow" data-editor-email="${escapeHtml(editor.email)}">
+        <div class="swissEditorRowInfo">
+          <div class="swissEditorRowEmail">${escapeHtml(editor.email)}</div>
+          <div class="${metaClass}">${escapeHtml(statusLabel)}</div>
+        </div>
+        ${isOwner ? "" : `<button type="button" class="swissEditorRowRemove" data-remove-editor>Remove</button>`}
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadEditorList() {
+  try {
+    const result = await callClaimVerify({ action: "list_editors", token: state.token });
+
+    elements.editorListPanel.hidden = false;
+    renderEditorList(result.editors || []);
+  } catch (error) {
+    // Non-critical - the invite form still works without this list, so fail
+    // quiet rather than blocking the rest of the editor from loading.
+    elements.editorListPanel.hidden = true;
+  }
+}
+
+async function handleEditorListClick(event) {
+  const button = event.target.closest("[data-remove-editor]");
+
+  if (!button) {
+    return;
+  }
+
+  const row = button.closest("[data-editor-email]");
+  const email = row?.dataset.editorEmail;
+
+  if (!email || !window.confirm(`Remove ${email}'s access to this profile?`)) {
+    return;
+  }
+
+  button.disabled = true;
+  setEditorListMessage("Removing...");
+
+  try {
+    await callClaimVerify({ action: "revoke", token: state.token, email });
+    setEditorListMessage("");
+    loadEditorList();
+  } catch (error) {
+    setEditorListMessage(error.message, true);
+    button.disabled = false;
   }
 }
 
@@ -539,6 +611,7 @@ async function init() {
 
   if (payload.editorRole === "owner") {
     elements.inviteEditorPanel.hidden = false;
+    loadEditorList();
   }
 
   tagInputs.services = createTagInput(document.querySelector('[data-tag-field="services"]'), {
@@ -580,5 +653,6 @@ elements.removalForm.addEventListener("submit", handleRemovalSubmit);
 elements.logoFile.addEventListener("change", handleLogoFileChange);
 elements.verifyRequestForm.addEventListener("submit", handleVerifyRequestSubmit);
 elements.inviteEditorForm.addEventListener("submit", handleInviteEditorSubmit);
+elements.editorListBody.addEventListener("click", handleEditorListClick);
 
 init();

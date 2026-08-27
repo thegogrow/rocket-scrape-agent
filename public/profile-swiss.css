@@ -1,0 +1,827 @@
+/* "Minimal Swiss" design system for the claim/edit flow only
+   (public/profile-access.html) - International Typographic Style: flat,
+   black on white, one red accent, hairline dividers, no rounded corners.
+   Scoped to this page's own file rather than the shared styles.css, since
+   admin.html/index.html keep their existing look untouched. */
+
+:root {
+  --sw-red: #d0103a;
+  --sw-ink: #111;
+  --sw-muted: #999;
+  --sw-muted-2: #444;
+  --sw-body: #333;
+  --sw-line: #e5e5e5;
+  --sw-bg: #fff;
+  --sw-bg-soft: #fafafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.swissPage {
+  margin: 0;
+  background: var(--sw-bg-soft);
+  color: var(--sw-ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.swissShell {
+  max-width: 1240px;
+  margin: 0 auto;
+  background: var(--sw-bg);
+  border-left: 1px solid var(--sw-line);
+  border-right: 1px solid var(--sw-line);
+  min-height: 100vh;
+}
+
+/* ---- top bar ---- */
+
+.swissTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 48px;
+  border-bottom: 1px solid var(--sw-ink);
+}
+
+.swissWordmark {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--sw-ink);
+  text-decoration: none;
+}
+
+.swissWordmark span {
+  color: var(--sw-red);
+}
+
+.swissTopbarMeta {
+  font-size: 12px;
+  color: var(--sw-muted);
+}
+
+/* ---- generic building blocks ---- */
+
+.swissEyebrow {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sw-muted);
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+.swissEyebrow.accent {
+  color: var(--sw-red);
+}
+
+.swissSection {
+  padding: 56px 48px;
+  border-bottom: 1px solid var(--sw-ink);
+}
+
+.swissSection.tight {
+  padding: 40px 48px;
+  border-bottom: 1px solid var(--sw-line);
+}
+
+.swissH1 {
+  margin: 0;
+  font-size: 44px;
+  line-height: 1.06;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.swissH1 .accentDot {
+  color: var(--sw-red);
+}
+
+.swissLede {
+  margin: 24px 0 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--sw-muted-2);
+  max-width: 520px;
+}
+
+/* ---- buttons ---- */
+
+.swissBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 13px 26px;
+  border: 1px solid var(--sw-ink);
+  background: var(--sw-ink);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.swissBtn:hover {
+  background: var(--sw-red);
+  border-color: var(--sw-red);
+}
+
+.swissBtn.ghost {
+  background: transparent;
+  color: var(--sw-ink);
+}
+
+.swissBtn.ghost:hover {
+  background: var(--sw-ink);
+  color: #fff;
+}
+
+.swissBtn.danger {
+  border-color: var(--sw-ink);
+}
+
+.swissBtn.danger:hover {
+  background: var(--sw-red);
+  border-color: var(--sw-red);
+}
+
+.swissBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.swissLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sw-ink);
+  border-bottom: 1.5px solid var(--sw-ink);
+  padding-bottom: 1px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.swissLink:hover {
+  color: var(--sw-red);
+  border-color: var(--sw-red);
+}
+
+/* ---- welcome hero (16a) ---- */
+
+.swissHero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  border-bottom: 1px solid var(--sw-line);
+}
+
+.swissHeroMain {
+  padding: 72px 48px;
+  border-right: 1px solid var(--sw-line);
+}
+
+.swissHeroActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+
+.swissHeroFinePrint {
+  font-size: 12px;
+  color: var(--sw-muted);
+  margin-top: 20px;
+}
+
+.swissPreviewPane {
+  padding: 48px 40px;
+  background: var(--sw-bg-soft);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.swissPreviewCard {
+  background: #fff;
+  border: 1px solid var(--sw-line);
+  padding: 24px;
+}
+
+.swissPreviewHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.swissPreviewLogo {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  background: var(--sw-bg-soft);
+  color: var(--sw-muted-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.swissPreviewLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.swissPreviewName {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.swissPreviewMeta {
+  font-size: 12px;
+  color: var(--sw-muted);
+  margin-top: 2px;
+}
+
+.swissStatusPill {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid var(--sw-muted);
+  color: var(--sw-muted);
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.swissStatusPill.claimed {
+  border-color: var(--sw-red);
+  color: var(--sw-red);
+}
+
+.swissPreviewBlurb {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--sw-muted-2);
+}
+
+.swissChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--sw-muted-2);
+}
+
+.swissChecklist span.mark {
+  color: var(--sw-red);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* ---- verify step (16b) ---- */
+
+.swissVerifyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.swissVerifyMain {
+  padding: 64px 48px;
+  border-right: 1px solid var(--sw-line);
+}
+
+.swissVerifySide {
+  padding: 64px 48px;
+  background: var(--sw-bg-soft);
+}
+
+.swissH2 {
+  margin: 0;
+  font-size: 36px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ---- underline-style form fields, matching the mockup ---- */
+
+.swissField {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+
+.swissField:last-child {
+  margin-bottom: 0;
+}
+
+.swissField > span,
+.swissFieldLabel {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sw-muted);
+  font-weight: 700;
+}
+
+.swissField input,
+.swissField textarea {
+  border: none;
+  border-bottom: 2px solid var(--sw-ink);
+  border-radius: 0;
+  padding: 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--sw-ink);
+  background: transparent;
+  width: 100%;
+}
+
+.swissField textarea {
+  border: 1px solid #ddd;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.swissField input:focus,
+.swissField textarea:focus {
+  outline: none;
+  border-color: var(--sw-red);
+}
+
+.swissField input::placeholder,
+.swissField textarea::placeholder {
+  color: #bbb;
+  font-weight: 400;
+}
+
+.swissForm {
+  margin-top: 36px;
+  max-width: 460px;
+}
+
+.swissInlineForm {
+  display: flex;
+  gap: 0;
+  align-items: flex-end;
+}
+
+.swissInlineForm .swissField {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.swissInlineForm .swissBtn {
+  flex: none;
+}
+
+.swissFormHelp {
+  font-size: 12px;
+  color: var(--sw-muted);
+  margin-top: 14px;
+}
+
+.swissFormMessage {
+  font-size: 13px;
+  color: var(--sw-muted-2);
+  margin-top: 14px;
+}
+
+.swissFormMessage.error {
+  color: var(--sw-red);
+}
+
+.swissSideNote {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 44px;
+  padding-top: 28px;
+  border-top: 1px solid var(--sw-line);
+  font-size: 13px;
+  color: var(--sw-muted);
+}
+
+/* ---- status banner ---- */
+
+.swissBanner {
+  padding: 20px 48px;
+  border-bottom: 1px solid var(--sw-line);
+  background: var(--sw-bg-soft);
+  font-size: 14px;
+  color: var(--sw-muted-2);
+}
+
+/* ---- editor layout: left rail + content (14a / 15a-c) ---- */
+
+.swissEditorTopbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 48px;
+  border-bottom: 1px solid var(--sw-ink);
+  flex-wrap: wrap;
+}
+
+.swissEditorTopbar .swissCompanyTag {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sw-muted);
+}
+
+.swissEditorTopbar .savedNote {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--sw-muted);
+}
+
+.swissEditorMasthead {
+  padding: 48px 48px 40px;
+  border-bottom: 1px solid var(--sw-ink);
+}
+
+.swissEditorMasthead .swissH1 {
+  font-size: 40px;
+}
+
+.swissEditorBody {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.swissRail {
+  border-right: 1px solid var(--sw-line);
+  padding: 36px 0;
+  align-self: start;
+  position: sticky;
+  top: 0;
+}
+
+.swissRailLink {
+  display: block;
+  padding: 12px 32px;
+  border-left: 3px solid transparent;
+  color: var(--sw-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  scroll-margin-top: 20px;
+}
+
+.swissRailLink:hover {
+  color: var(--sw-ink);
+}
+
+.swissRailLink.current {
+  border-left-color: var(--sw-red);
+  background: var(--sw-bg-soft);
+  color: var(--sw-ink);
+  font-weight: 700;
+}
+
+.swissEditorContent > section {
+  padding: 40px 48px;
+  border-bottom: 1px solid var(--sw-line);
+  scroll-margin-top: 20px;
+}
+
+.swissEditorContent > section:last-child {
+  border-bottom: none;
+}
+
+.swissFieldGrid {
+  display: grid;
+  grid-template-columns: 96px 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.swissFieldGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.swissFieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.swissLogoUpload {
+  width: 72px;
+  height: 72px;
+  background: var(--sw-bg-soft);
+  color: var(--sw-muted-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid var(--sw-line);
+}
+
+.swissLogoUpload img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- tag chips restyled to match "Services" pills in the mockup ---- */
+
+.swissTagGroup + .swissTagGroup {
+  margin-top: 28px;
+}
+
+.swissTagGroup .swissEyebrow {
+  margin-bottom: 16px;
+}
+
+.swissPage .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.swissPage .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--sw-ink);
+  border-radius: 0;
+  padding: 6px 12px;
+  background: #fff;
+  color: var(--sw-ink);
+}
+
+.swissPage .chip.chipPending {
+  border-color: var(--sw-red);
+  color: var(--sw-red);
+  background: #fff;
+}
+
+.swissPage .chip button {
+  border: none;
+  background: none;
+  color: var(--sw-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.swissPage .chip button:hover {
+  color: var(--sw-red);
+}
+
+.swissPage .chipPendingBadge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--sw-red);
+  color: #fff;
+  padding: 1px 6px;
+  margin: 0;
+}
+
+.swissPage .tagInputField {
+  border: 1px dashed #bbb;
+  border-radius: 0;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--sw-ink);
+  min-width: 180px;
+}
+
+.swissPage .tagInputField:focus {
+  outline: none;
+  border-color: var(--sw-ink);
+  border-style: solid;
+}
+
+.swissPage .tagInputField::placeholder {
+  color: var(--sw-muted);
+}
+
+/* ---- focus strip (small auto-detected focus codes) ---- */
+
+.swissFocusStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.swissFocusStrip span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sw-red);
+  border: 1px solid var(--sw-red);
+  padding: 4px 8px;
+}
+
+.swissFocusStrip small {
+  font-size: 11px;
+  color: var(--sw-muted);
+  margin-left: 6px;
+}
+
+/* ---- team & contacts / details-based collapsibles ---- */
+
+.swissDetails {
+  border: 1px solid var(--sw-line);
+  padding: 0;
+}
+
+.swissDetails summary {
+  padding: 18px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.swissDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.swissDetails summary::after {
+  content: "+";
+  float: right;
+  color: var(--sw-red);
+  font-weight: 700;
+}
+
+.swissDetails[open] summary::after {
+  content: "\2212";
+}
+
+.swissDetails .swissDetailsBody {
+  padding: 0 24px 24px;
+}
+
+.swissDetails p {
+  font-size: 13px;
+  color: var(--sw-muted-2);
+  line-height: 1.55;
+  margin: 0 0 20px;
+}
+
+/* ---- editor list (who has access) ---- */
+
+.swissEditorList {
+  border: 1px solid var(--sw-line);
+  margin-bottom: 20px;
+}
+
+.swissEditorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+}
+
+.swissEditorRow + .swissEditorRow {
+  border-top: 1px solid var(--sw-line);
+}
+
+.swissEditorRowInfo {
+  min-width: 0;
+}
+
+.swissEditorRowEmail {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sw-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swissEditorRowMeta {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sw-muted);
+  margin-top: 2px;
+}
+
+.swissEditorRowMeta.pending {
+  color: var(--sw-red);
+}
+
+.swissEditorRowRemove {
+  border: none;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sw-muted);
+  cursor: pointer;
+  padding: 6px 0;
+  flex-shrink: 0;
+}
+
+.swissEditorRowRemove:hover {
+  color: var(--sw-red);
+}
+
+/* ---- save bar ---- */
+
+.swissSaveBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 48px;
+  border-top: 1px solid var(--sw-ink);
+  background: #fff;
+  position: sticky;
+  bottom: 0;
+}
+
+/* ---- FAQ ---- */
+
+.swissFaqList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.swissFaqList .swissDetails + .swissDetails {
+  border-top: none;
+}
+
+.swissFooter {
+  padding: 28px 48px;
+  font-size: 12px;
+  color: var(--sw-muted);
+  border-top: 1px solid var(--sw-line);
+}
+
+/* ---- responsive ---- */
+
+@media (max-width: 900px) {
+  .swissHero,
+  .swissVerifyGrid,
+  .swissFieldGrid,
+  .swissFieldGrid2,
+  .swissEditorBody {
+    grid-template-columns: 1fr;
+  }
+
+  .swissHeroMain,
+  .swissVerifyMain {
+    border-right: none;
+    border-bottom: 1px solid var(--sw-line);
+  }
+
+  .swissRail {
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--sw-line);
+    padding: 20px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 0;
+  }
+
+  .swissTopbar,
+  .swissSection,
+  .swissSection.tight,
+  .swissEditorMasthead,
+  .swissEditorTopbar,
+  .swissSaveBar,
+  .swissFooter {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .swissEditorContent > section {
+    padding: 28px 20px;
+  }
+}
