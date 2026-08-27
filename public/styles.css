@@ -3789,6 +3789,13 @@ h4,
 }
 
 .cloudLogo {
+  /* The base rule above sets display:grid with no explicit column count,
+     which was never reset here - that put each piece of "Rocket*Engineers"
+     (the "Rocket" text, the <span> asterisk, and "Engineers") into its own
+     implicit grid row, stacking the wordmark onto three lines. inline-flex
+     makes all three flow on one line, matching .swissWordmark. */
+  display: inline-flex;
+  align-items: baseline;
   width: auto;
   height: auto;
   min-width: 0;
@@ -5342,11 +5349,23 @@ h4,
 .adminBrand .cloudLogo,
 .adminBrandText {
   height: 40px;
-  display: inline-grid;
   align-items: center;
   font-size: 13px;
   font-weight: 800;
   line-height: 1;
+}
+
+/* .adminBrandText has no child elements, so inline-grid never caused it any
+   issue - but this same specificity (.adminBrand .cloudLogo, two classes)
+   otherwise wins over the plain .cloudLogo rule's display:inline-flex,
+   putting the admin sidebar's wordmark right back to the same three-line
+   stacking that fix was for. Split out so each keeps the right display. */
+.adminBrandText {
+  display: inline-grid;
+}
+
+.adminBrand .cloudLogo {
+  display: inline-flex;
 }
 
 .adminBrandText {
