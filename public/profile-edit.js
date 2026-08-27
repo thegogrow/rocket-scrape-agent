@@ -709,12 +709,24 @@ async function init() {
   fields.description.addEventListener("input", updateFocusStrip);
 }
 
-elements.editForm.addEventListener("submit", handleSaveSubmit);
-elements.removalForm.addEventListener("submit", handleRemovalSubmit);
-elements.logoFile.addEventListener("change", handleLogoFileChange);
-elements.verifyRequestForm.addEventListener("submit", handleVerifyRequestSubmit);
-elements.inviteEditorForm.addEventListener("submit", handleInviteEditorSubmit);
-elements.editorListBody.addEventListener("click", handleEditorListClick);
+// Guards every top-level listener attachment - a single null element here
+// (e.g. a stale cached copy of the HTML briefly out of sync with a newer
+// JS file mid-deploy) used to throw synchronously and crash the entire
+// script before init() ever ran, which is exactly what left real users
+// stuck on "Loading your profile..." with no error at all: nothing after
+// the crash point - including init() itself - ever executed.
+function on(element, event, handler) {
+  if (element) {
+    element.addEventListener(event, handler);
+  }
+}
+
+on(elements.editForm, "submit", handleSaveSubmit);
+on(elements.removalForm, "submit", handleRemovalSubmit);
+on(elements.logoFile, "change", handleLogoFileChange);
+on(elements.verifyRequestForm, "submit", handleVerifyRequestSubmit);
+on(elements.inviteEditorForm, "submit", handleInviteEditorSubmit);
+on(elements.editorListBody, "click", handleEditorListClick);
 
 // init() has no internal try/catch around its fetch/render chain - any
 // unexpected failure (network error, unexpected response shape, a bug in a
