@@ -3798,6 +3798,7 @@ h4,
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 /* Wordmark accent is the "*" between Rocket/Engineers (matching the

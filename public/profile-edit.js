@@ -59,6 +59,31 @@ const state = {
 
 const tagInputs = {};
 
+// Promise.all in init() waits for every request to settle - a stuck/slow
+// request that never resolves OR rejects (a hung serverless function, a
+// blocked request) would leave the whole page waiting forever with no way
+// out, which the init().catch() below can't help with since nothing ever
+// rejects. This forces every fetch to fail after a fixed time instead of
+// hanging indefinitely.
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out. Check your connection and try again.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Plan/Done aren't reachable yet (no self-serve pricing flow exists) - they
 // stay visible as future steps so the tracker reads as a real 5-step
 // journey, matching the reference design, even though only the first 3
@@ -248,7 +273,7 @@ function setToken(token) {
 
 async function fetchTagSuggestions() {
   try {
-    const response = await fetch("/api/tags");
+    const response = await fetchWithTimeout("/api/tags");
     const tags = response.ok ? await response.json() : [];
     const byCategory = { services: [], technologies: [], industries: [] };
 
@@ -391,7 +416,7 @@ function setInviteMessage(text, isError = false) {
 }
 
 async function callClaimVerify(body) {
-  const response = await fetch("/api/claim-verify", {
+  const response = await fetchWithTimeout("/api/claim-verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -613,7 +638,7 @@ async function init() {
   state.token = token;
 
   const [linkResponse, tagSuggestions] = await Promise.all([
-    fetch(`/api/profile-edit?token=${encodeURIComponent(token)}`),
+    fetchWithTimeout(`/api/profile-edit?token=${encodeURIComponent(token)}`),
     fetchTagSuggestions(),
   ]);
   const payload = await linkResponse.json().catch(() => ({}));
