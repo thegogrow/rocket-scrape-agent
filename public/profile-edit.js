@@ -7,6 +7,7 @@
 // non-module script wired to the list/filter page state this page doesn't have.
 
 const elements = {
+  swissStepper: document.querySelector("#swissStepper"),
   accessDomain: document.querySelector("#accessDomain"),
   accessStatus: document.querySelector("#accessStatus"),
   statusBanner: document.querySelector("#accessStatusBanner"),
@@ -57,6 +58,39 @@ const state = {
 };
 
 const tagInputs = {};
+
+// Plan/Done aren't reachable yet (no self-serve pricing flow exists) - they
+// stay visible as future steps so the tracker reads as a real 5-step
+// journey, matching the reference design, even though only the first 3
+// steps actually do anything right now.
+const SWISS_STEP_ORDER = ["welcome", "verify", "profile", "plan", "done"];
+const SWISS_STEP_LABELS = { welcome: "Welcome", verify: "Verify", profile: "Profile", plan: "Plan", done: "Done" };
+
+function setSwissStep(activeStep) {
+  if (!elements.swissStepper) {
+    return;
+  }
+
+  const activeIndex = SWISS_STEP_ORDER.indexOf(activeStep);
+
+  elements.swissStepper.querySelectorAll(".swissStep").forEach((el) => {
+    const index = SWISS_STEP_ORDER.indexOf(el.dataset.step);
+    const label = SWISS_STEP_LABELS[el.dataset.step];
+
+    el.classList.remove("current", "done");
+
+    if (index < activeIndex) {
+      el.classList.add("done");
+      el.textContent = `✓ ${label}`;
+    } else {
+      if (index === activeIndex) {
+        el.classList.add("current");
+      }
+
+      el.textContent = `${index + 1} ${label}`;
+    }
+  });
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -595,6 +629,7 @@ async function init() {
     elements.accessDomain.textContent = payload.companyName || payload.domain || "Verify to edit";
     elements.accessStatus.textContent = "Verification required";
     elements.verifyGatePanel.hidden = false;
+    setSwissStep("verify");
     return;
   }
 
@@ -628,6 +663,7 @@ async function init() {
   });
 
   populateForm(payload.profile);
+  setSwissStep("profile");
   elements.introBar.hidden = false;
   elements.companyName.textContent = payload.profile.companyName
     ? `Editing ${payload.profile.companyName}`

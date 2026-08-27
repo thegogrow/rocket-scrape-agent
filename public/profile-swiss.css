@@ -21,19 +21,21 @@
 
 body.swissPage {
   margin: 0;
-  background: var(--sw-bg-soft);
+  background: var(--sw-bg);
   color: var(--sw-ink);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Full-bleed - no boxed "card floating on a gray canvas" framing. That look
+   came from the design-doc viewer's own preview chrome (each mockup screen
+   rendered as a fixed 1240px card on a #f0eee9 background so several could
+   be compared side by side) - that's presentation chrome for the doc, not
+   part of the shipped page, so the real page fills the viewport instead. */
 .swissShell {
-  max-width: 1240px;
-  margin: 0 auto;
-  background: var(--sw-bg);
-  border-left: 1px solid var(--sw-line);
-  border-right: 1px solid var(--sw-line);
+  width: 100%;
   min-height: 100vh;
+  background: var(--sw-bg);
 }
 
 /* ---- top bar ---- */
@@ -42,8 +44,43 @@ body.swissPage {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
   padding: 22px 48px;
   border-bottom: 1px solid var(--sw-ink);
+}
+
+/* ---- step tracker (Welcome / Verify / Profile / Plan / Done) ---- */
+
+.swissStepper {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.swissStep {
+  padding: 6px 14px;
+  border: 1px solid var(--sw-line);
+  color: var(--sw-muted);
+  font-weight: 500;
+}
+
+.swissStep + .swissStep {
+  border-left: none;
+}
+
+.swissStep.done {
+  color: var(--sw-muted);
+  border-color: var(--sw-line);
+}
+
+.swissStep.current {
+  background: var(--sw-ink);
+  color: #fff;
+  font-weight: 700;
+  border-color: var(--sw-ink);
 }
 
 .swissWordmark {
@@ -155,7 +192,7 @@ body.swissPage {
   cursor: not-allowed;
 }
 
-.swissLink {
+.swissLink:not([hidden]) {
   font-size: 13px;
   font-weight: 500;
   color: var(--sw-ink);
@@ -289,9 +326,13 @@ body.swissPage {
 
 /* ---- verify step (16b) ---- */
 
-.swissVerifyGrid {
+/* Matches .swissHero's 1.2fr/1fr ratio (not the mockup's own 1fr/1fr for
+   this screen) - the mockup treats each screen as an independent card, but
+   here Welcome and Verify stack on one continuous page, so their vertical
+   divider needs to line up as you scroll from one into the other. */
+.swissVerifyGrid:not([hidden]) {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
 }
 
 .swissVerifyMain {
@@ -753,15 +794,13 @@ body.swissPage {
 
 /* ---- save bar ---- */
 
-.swissSaveBar {
+.swissSaveBar:not([hidden]) {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 24px 48px;
   border-top: 1px solid var(--sw-ink);
   background: #fff;
-  position: sticky;
-  bottom: 0;
 }
 
 /* ---- FAQ ---- */
