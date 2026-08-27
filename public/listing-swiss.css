@@ -1,0 +1,87 @@
+/* "Minimal Swiss" polish pass for the public provider-listing page
+   (public/index.html) - same design language as public/profile-swiss.css
+   (Helvetica Neue, black/white, crimson accent, hairline dividers, sharp
+   corners), but layered on top of the existing "9a / 11a Swiss-Rocket
+   visual system" override block in public/styles.css:3743+ rather than
+   replacing it. That block already got this page ~90% of the way there
+   (full-bleed layout, flat cards, crimson verified badge, row-based list
+   with chips) and is also shared by admin.html's form inputs
+   (.adminForm/.adminFilterBar/.adminTagsTable), so it isn't touched here -
+   this file only adds a scoped, additive refinement pass, gated by
+   body.swissListingPage so nothing else is affected. No markup changes:
+   every id/class app.js queries stays exactly as-is. */
+
+body.swissListingPage {
+  /* Nudges the existing --line/--blue/etc custom properties (defined at
+     :root in styles.css) to the exact palette profile-swiss.css uses,
+     scoped to this page only - custom properties cascade to descendants,
+     so every existing rule that already does var(--line)/var(--blue)
+     picks this up for free without being rewritten. */
+  --line: #e5e5e5;
+  --muted: #999;
+  --blue: #d0103a;
+  --ink: #111;
+}
+
+/* ---- underline-style inputs, matching .swissField on the claim page ----
+   The existing override already flattens these to a bordered rectangle
+   (border:1px solid var(--line); border-radius:0) - this goes the rest of
+   the way to the same underline treatment used everywhere else in the
+   redesigned flow, so search/filter inputs read as the same design
+   system, not a slightly different flavor of "flat." */
+body.swissListingPage .heroSearch input,
+body.swissListingPage .filterSearch,
+body.swissListingPage .filterOptionSearch {
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  padding: 8px 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+body.swissListingPage .heroSearch input:focus,
+body.swissListingPage .filterSearch:focus,
+body.swissListingPage .filterOptionSearch:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+body.swissListingPage .sortControl select {
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 20px 4px 4px;
+}
+
+body.swissListingPage .sortControl select:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+/* ---- filter option rows: sharp corners, consistent hover ---- */
+
+body.swissListingPage .filterOption {
+  border-radius: 0;
+}
+
+body.swissListingPage .filterOption:hover {
+  background: #f2f2f2;
+}
+
+/* ---- provider rows: crimson focus tags matching the mockup's chip style
+   on cardTags, distinct from the plain service/tech chips ---- */
+
+body.swissListingPage .cardTags .chip {
+  border-radius: 0;
+}
+
+/* ---- responsive: keep the underline inputs readable when the filter
+   drawer collapses to the off-canvas overlay ---- */
+
+@media (max-width: 820px) {
+  body.swissListingPage .heroSearch input {
+    font-size: 16px;
+  }
+}

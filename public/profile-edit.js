@@ -691,4 +691,15 @@ elements.verifyRequestForm.addEventListener("submit", handleVerifyRequestSubmit)
 elements.inviteEditorForm.addEventListener("submit", handleInviteEditorSubmit);
 elements.editorListBody.addEventListener("click", handleEditorListClick);
 
-init();
+// init() has no internal try/catch around its fetch/render chain - any
+// unexpected failure (network error, unexpected response shape, a bug in a
+// later render step) previously left the page silently stuck on whatever
+// text was already there, which is literally "Loading your profile..." in
+// the HTML. This turns any such failure into a visible message instead of
+// an unrecoverable hang, and logs the real error for debugging.
+init().catch((error) => {
+  console.error("[profile-edit] Failed to load:", error);
+  elements.accessDomain.textContent = "Couldn't load this profile";
+  elements.accessStatus.textContent = "Something went wrong";
+  setStatus("Something went wrong loading this page. Try refreshing - if it keeps happening, reply to the outreach email for help.");
+});
