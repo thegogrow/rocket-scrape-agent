@@ -4141,10 +4141,11 @@ h4,
   white-space: normal;
 }
 
-/* ---- hero quick filters (9a): Country/Service/Technology boxes below the
-   search field, each a shortcut that opens the real filter drawer scrolled
-   to that facet (see app.js's [data-open-filter] handler) rather than a
-   separate filtering UI. ---- */
+/* ---- hero quick filters: Country/Service/Technology boxes below the
+   search field. Each is its own small combobox-style dropdown (button +
+   absolutely-positioned scrollable panel), not a full-screen drawer -
+   .heroFilterDropdown is the positioning context for its own panel only,
+   so opening one never affects the other two. ---- */
 
 .heroSearchColumn {
   display: flex;
@@ -4162,8 +4163,13 @@ h4,
   border: 1px solid var(--line);
 }
 
+.heroFilterDropdown {
+  position: relative;
+}
+
 .heroQuickFilter {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -4178,7 +4184,7 @@ h4,
   cursor: pointer;
 }
 
-.heroQuickFilter:last-child {
+.heroFilterDropdown:last-child .heroQuickFilter {
   border-right: 0;
 }
 
@@ -4186,9 +4192,65 @@ h4,
   background: #fafafa;
 }
 
+.heroQuickFilter[aria-expanded="true"] {
+  background: #111;
+  color: #fff;
+}
+
 .heroQuickFilter span {
   color: var(--muted);
   font-size: 10px;
+}
+
+.heroQuickFilter[aria-expanded="true"] span {
+  color: #fff;
+}
+
+.heroFilterPanel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #111;
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.heroFilterDropdown:last-child .heroFilterPanel {
+  left: auto;
+  right: 0;
+}
+
+.heroFilterPanelHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.heroFilterPanelHead .filterOptionSearch {
+  flex: 1;
+  min-height: 34px;
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.heroFilterPanelHead [data-clear-filter] {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.heroFilterPanel .filterOptionList {
+  max-height: none;
 }
 
 /* ---- quick-search focus strip (9a): a 6-across row of focus-area codes
@@ -4262,96 +4324,41 @@ h4,
   font-size: 11px;
 }
 
-/* ---- always-off-canvas filter drawer: 9a shows no persistent sidebar, so
-   the real (5-facet, checkbox-based) drawer that used to sit permanently
-   next to the results now opens as an overlay at every viewport width, not
-   just the narrow one the existing .filterDrawerButton/.filtersOpen
-   mechanism was originally built for (see the mobile-only rules further
-   below in this file, which this section supersedes for this page). The
-   3 hero boxes and the focus strip open it pre-scrolled to a facet; this
-   small button covers the two facets they don't (Partnerships, Industries)
-   plus mobile, so every facet stays reachable. ---- */
-
+/* .marketplace no longer has a sidebar sibling (.listingArea is its only
+   child now that filtering lives in the hero dropdowns + focus strip), so
+   this drops the base rule's 276px sidebar column - without it there'd be
+   a permanent empty gutter down the left side. */
 .marketplace {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.discoveryRail {
-  display: none;
-}
-
-.filtersOpen .discoveryRail {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: block;
-  width: 100vw;
-  max-width: none;
-  margin: 0;
-  padding: 24px 32px 32px;
-  overflow: auto;
-  border-right: 0;
-  background: var(--page);
-}
-
-.filtersOpen {
-  overflow: hidden;
-}
-
-.filterDrawerHeader {
+.activeFiltersBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #111;
+  gap: 16px;
 }
 
-.filterDrawerHeader strong {
-  color: #111;
-  font-size: 20px;
+.activeFiltersBar .activeFilters {
+  margin-bottom: 0;
 }
 
-.filterDrawerHeader button {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid #111;
-  border-radius: 0;
-  background: #fff;
-  color: #111;
-  font-weight: 700;
-}
-
-/* The existing #filterDrawerButton ("Filters") was previously mobile-only
-   (base rule at .filterDrawerButton, .filterDrawerHeader { display:none })
-   with its own shadowed-pill styling further below in this file for narrow
-   viewports. Since the drawer is now always off-canvas (not just on
-   mobile), this button needs to always be reachable too - restyled here to
-   match the Swiss aesthetic instead of the mobile pill look. */
-.filterDrawerButton {
-  display: inline-flex !important;
-  justify-self: start;
-  align-items: center;
-  gap: 6px;
-  min-height: 0;
-  margin: 20px 0 0 48px;
-  border: 1px solid var(--line) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: var(--ink) !important;
+.resetFiltersLink {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--muted);
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 8px 14px;
-  box-shadow: none !important;
   cursor: pointer;
+  padding: 0;
 }
 
-.filterDrawerButton:hover {
-  border-color: #111 !important;
+.resetFiltersLink:hover {
+  color: var(--blue);
 }
 
 .profileMode .marketplace {
@@ -6962,13 +6969,20 @@ h4,
     grid-template-columns: 1fr;
   }
 
-  .heroQuickFilter {
+  .heroFilterDropdown .heroQuickFilter {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
-  .heroQuickFilter:last-child {
+  .heroFilterDropdown:last-child .heroQuickFilter {
     border-bottom: 0;
+  }
+
+  .heroFilterPanel,
+  .heroFilterDropdown:last-child .heroFilterPanel {
+    left: 0;
+    right: 0;
+    width: auto;
   }
 
   .focusStrip {

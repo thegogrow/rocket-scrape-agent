@@ -39,9 +39,36 @@
           <input id="searchInput" type="search" placeholder="Search providers, services, technologies, partnerships" />
         </label>
         <div class="heroQuickFilters">
-          <button type="button" class="heroQuickFilter" data-open-filter="country">Country <span aria-hidden="true">⌄</span></button>
-          <button type="button" class="heroQuickFilter" data-open-filter="service">Service <span aria-hidden="true">⌄</span></button>
-          <button type="button" class="heroQuickFilter" data-open-filter="technology">Technology <span aria-hidden="true">⌄</span></button>
+          <div class="heroFilterDropdown">
+            <button type="button" class="heroQuickFilter" data-filter-toggle="country" aria-expanded="false" aria-controls="countryFilterPanel">Country <span aria-hidden="true">⌄</span></button>
+            <div id="countryFilterPanel" class="heroFilterPanel" hidden>
+              <div class="heroFilterPanelHead">
+                <input type="search" class="filterOptionSearch" placeholder="Search countries" data-filter-search="country" />
+                <button type="button" data-clear-filter="country">Clear</button>
+              </div>
+              <div id="countryFilter" class="filterOptionList" data-filter-key="country"></div>
+            </div>
+          </div>
+          <div class="heroFilterDropdown">
+            <button type="button" class="heroQuickFilter" data-filter-toggle="service" aria-expanded="false" aria-controls="serviceFilterPanel">Service <span aria-hidden="true">⌄</span></button>
+            <div id="serviceFilterPanel" class="heroFilterPanel" hidden>
+              <div class="heroFilterPanelHead">
+                <input type="search" class="filterOptionSearch" placeholder="Search services" data-filter-search="service" />
+                <button type="button" data-clear-filter="service">Clear</button>
+              </div>
+              <div id="serviceFilter" class="filterOptionList" data-filter-key="service"></div>
+            </div>
+          </div>
+          <div class="heroFilterDropdown">
+            <button type="button" class="heroQuickFilter" data-filter-toggle="technology" aria-expanded="false" aria-controls="technologyFilterPanel">Technology <span aria-hidden="true">⌄</span></button>
+            <div id="technologyFilterPanel" class="heroFilterPanel" hidden>
+              <div class="heroFilterPanelHead">
+                <input type="search" class="filterOptionSearch" placeholder="Search technologies" data-filter-search="technology" />
+                <button type="button" data-clear-filter="technology">Clear</button>
+              </div>
+              <div id="technologyFilter" class="filterOptionList" data-filter-key="technology"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -54,74 +81,6 @@
     <section id="signalsPage" class="staticPage" hidden></section>
 
     <main id="providersPage" class="marketplace">
-      <button id="filterDrawerButton" class="filterDrawerButton" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters</button>
-
-      <aside id="filterDrawer" class="discoveryRail" aria-label="Explore and filters">
-        <div class="filterDrawerHeader">
-          <strong>Filters</strong>
-          <button id="filterDrawerClose" type="button">Close</button>
-        </div>
-        <div class="filterSearch">
-          <span>Find</span>
-          <input id="filterSearchInput" type="search" placeholder="Search filters..." />
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Country</button></h2>
-            <button type="button" data-clear-filter="country">Clear</button>
-          </div>
-          <input class="filterOptionSearch" type="search" placeholder="Search countries" data-filter-search="country" />
-          <div id="countryFilter" class="filterOptionList" data-filter-key="country"></div>
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Service</button></h2>
-            <button type="button" data-clear-filter="service">Clear</button>
-          </div>
-          <input class="filterOptionSearch" type="search" placeholder="Search services" data-filter-search="service" />
-          <div id="serviceFilter" class="filterOptionList" data-filter-key="service"></div>
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Technology</button></h2>
-            <button type="button" data-clear-filter="technology">Clear</button>
-          </div>
-          <input class="filterOptionSearch" type="search" placeholder="Search technologies" data-filter-search="technology" />
-          <div id="technologyFilter" class="filterOptionList" data-filter-key="technology"></div>
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Partnerships</button></h2>
-            <button type="button" data-clear-filter="partner">Clear</button>
-          </div>
-          <input class="filterOptionSearch" type="search" placeholder="Search partnerships" data-filter-search="partner" />
-          <div id="partnerFilter" class="filterOptionList" data-filter-key="partner"></div>
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Industries</button></h2>
-            <button type="button" data-clear-filter="industry">Clear</button>
-          </div>
-          <input class="filterOptionSearch" type="search" placeholder="Search industries" data-filter-search="industry" />
-          <div id="industryFilter" class="filterOptionList" data-filter-key="industry"></div>
-        </div>
-
-        <div class="filterGroup isCollapsed">
-          <div class="filterGroupHeader" data-filter-group-header>
-            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Focus area</button></h2>
-            <button type="button" data-clear-filter="focus">Clear</button>
-          </div>
-          <div id="focusFilter" class="filterOptionList" data-filter-key="focus"></div>
-        </div>
-
-        <button id="resetButton" class="advancedButton" type="button">Show All Providers</button>
-      </aside>
-
       <section class="listingArea" aria-label="Company profiles">
         <section class="detail" aria-label="Profile detail" hidden>
           <div id="detailContent" class="detailContent empty">
@@ -129,7 +88,10 @@
           </div>
         </section>
 
-        <div id="activeFilters" class="activeFilters" hidden></div>
+        <div class="activeFiltersBar">
+          <div id="activeFilters" class="activeFilters" hidden></div>
+          <button id="resetButton" class="resetFiltersLink" type="button">Reset filters</button>
+        </div>
         <div id="profileList" class="profileList">
           <div class="loadingSpinner" role="status" aria-label="Loading providers">
             <span class="loadingSpinnerRing"></span>

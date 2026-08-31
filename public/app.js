@@ -9,16 +9,12 @@ const state = {
     country: [],
     service: [],
     technology: [],
-    partner: [],
-    industry: [],
     focus: [],
   },
   filterSearches: {
     country: "",
     service: "",
     technology: "",
-    partner: "",
-    industry: "",
     focus: "",
   },
 };
@@ -33,15 +29,9 @@ const elements = {
   providersPage: document.querySelector("#providersPage"),
   navTabs: document.querySelectorAll("[data-nav-tab]"),
   searchInput: document.querySelector("#searchInput"),
-  filterSearchInput: document.querySelector("#filterSearchInput"),
-  filterDrawerButton: document.querySelector("#filterDrawerButton"),
-  filterDrawerClose: document.querySelector("#filterDrawerClose"),
   countryFilter: document.querySelector("#countryFilter"),
   serviceFilter: document.querySelector("#serviceFilter"),
   technologyFilter: document.querySelector("#technologyFilter"),
-  partnerFilter: document.querySelector("#partnerFilter"),
-  industryFilter: document.querySelector("#industryFilter"),
-  focusFilter: document.querySelector("#focusFilter"),
   focusStrip: document.querySelector("#focusStrip"),
   activeFilters: document.querySelector("#activeFilters"),
   resetButton: document.querySelector("#resetButton"),
@@ -123,27 +113,13 @@ const FILTER_DEFS = [
     },
   },
   {
-    key: "partner",
-    label: "Partnerships",
-    tagCategory: "vendor_partnerships",
-    container: elements.partnerFilter,
-    values(profile) {
-      return profile.filterBuckets?.partnerships || normalizePartnerships(profile.vendorPartnerships);
-    },
-  },
-  {
-    key: "industry",
-    label: "Industries",
-    tagCategory: "industries",
-    container: elements.industryFilter,
-    values(profile) {
-      return profile.filterBuckets?.industries || getIndustries(profile);
-    },
-  },
-  {
+    // No drawer UI of its own - the homepage's quick-search focus strip
+    // (renderFocusStrip()) is this facet's only UI, and reads/writes
+    // state.filters.focus directly. Still a full FILTER_DEFS entry so it
+    // participates in applyFilters()/renderActiveFilters() like the others.
     key: "focus",
     label: "Focus area",
-    container: elements.focusFilter,
+    container: null,
     values(profile) {
       return providerFocusCodes(profile).map(([code]) => code);
     },
@@ -324,44 +300,6 @@ const TECHNOLOGY_BUCKET_RULES = [
   { name: "Open Source", match: ["open source", "oss"] },
   { name: "Microservices", match: ["microservices"] },
   { name: "Secrets Management", match: ["openbao", "vault", "secrets management"] },
-];
-
-const PARTNERSHIP_BUCKET_RULES = [
-  { name: "AWS", match: ["amazon", "aws", "amazon web services"] },
-  { name: "Microsoft", match: ["microsoft", "azure"] },
-  { name: "Google Cloud", match: ["google cloud", "google cloud platform", "gcp"] },
-  { name: "Kubernetes / CNCF", match: ["kubernetes", "cncf", "cloud native computing foundation"] },
-  { name: "Salesforce", match: ["salesforce"] },
-  { name: "SAP", match: ["sap"] },
-  { name: "Red Hat", match: ["red hat", "redhat"] },
-  { name: "Databricks", match: ["databricks"] },
-  { name: "Snowflake", match: ["snowflake"] },
-  { name: "ServiceNow", match: ["servicenow"] },
-  { name: "Atlassian", match: ["atlassian"] },
-  { name: "GitHub", match: ["github"] },
-  { name: "NVIDIA", match: ["nvidia"] },
-  { name: "Adobe", match: ["adobe"] },
-  { name: "Oracle", match: ["oracle"] },
-  { name: "Anthropic", match: ["anthropic", "claude"] },
-  { name: "dbt", match: ["dbt"] },
-  { name: "HashiCorp", match: ["hashicorp"] },
-  { name: "OpenAI", match: ["openai"] },
-  { name: "Cisco", match: ["cisco"] },
-  { name: "Dell Technologies", match: ["dell"] },
-  { name: "HP", match: ["hp", "hewlett packard"] },
-  { name: "Lenovo", match: ["lenovo"] },
-  { name: "SUSE", match: ["suse", "rancher"] },
-  { name: "Linux Foundation", match: ["linux foundation", "lpi"] },
-  { name: "Palo Alto Networks", match: ["palo alto"] },
-  { name: "NetApp", match: ["netapp"] },
-  { name: "CrowdStrike", match: ["crowdstrike"] },
-  { name: "New Relic", match: ["new relic"] },
-  { name: "Nutanix", match: ["nutanix"] },
-  { name: "Rubrik", match: ["rubrik"] },
-  { name: "Workday", match: ["workday"] },
-  { name: "Harness", match: ["harness"] },
-  { name: "Monday.com", match: ["monday.com", "monday"] },
-  { name: "IONOS", match: ["ionos"] },
 ];
 
 const COUNTRY_BUCKET_RULES = [
@@ -578,10 +516,6 @@ function normalizeTechnologies(values) {
   return normalizeBucketList(values, TECHNOLOGY_BUCKET_RULES, 100, "Other Technologies");
 }
 
-function normalizePartnerships(values) {
-  return normalizeBucketList(values, PARTNERSHIP_BUCKET_RULES, 100, "Other Partnerships");
-}
-
 function normalizeCountryName(value) {
   return normalizeBucketName(value, COUNTRY_BUCKET_RULES);
 }
@@ -764,6 +698,12 @@ function filterOptionValues(filterDef, counts, selected) {
 }
 
 function renderFilterOptions(filterDef) {
+  // "focus" has no drawer UI of its own (see FILTER_DEFS) - only the
+  // homepage's quick-search strip renders it, via renderFocusStrip().
+  if (!filterDef.container) {
+    return;
+  }
+
   const counts = countFilterValues(filterDef);
   const selected = new Set(state.filters[filterDef.key]);
   const search = state.filterSearches[filterDef.key].toLowerCase();
@@ -874,15 +814,10 @@ function profileSearchText(profile) {
 }
 
 function applyFilters() {
-  const query = [elements.searchInput.value, elements.filterSearchInput.value]
-    .join(" ")
-    .trim()
-    .toLowerCase();
+  const query = elements.searchInput.value.trim().toLowerCase();
   const countries = state.filters.country;
   const services = state.filters.service;
   const technologies = state.filters.technology;
-  const partners = state.filters.partner;
-  const industries = state.filters.industry;
   const focusCodes = state.filters.focus;
 
   state.filtered = state.profiles.filter((profile) => {
@@ -890,8 +825,6 @@ function applyFilters() {
       if (!listMatchesSelected(valuesForFilterKey(profile, "country"), countries)) return false;
       if (!listMatchesSelected(valuesForFilterKey(profile, "service"), services)) return false;
       if (!listMatchesSelected(valuesForFilterKey(profile, "technology"), technologies)) return false;
-      if (!listMatchesSelected(valuesForFilterKey(profile, "partner"), partners)) return false;
-      if (!listMatchesSelected(getIndustries(profile), industries)) return false;
       if (!listMatchesSelected(valuesForFilterKey(profile, "focus"), focusCodes)) return false;
       return true;
     });
@@ -1554,7 +1487,6 @@ function initializeChipDisclosures() {
 
 function clearFilterInputs() {
   elements.searchInput.value = "";
-  elements.filterSearchInput.value = "";
   Object.keys(state.filters).forEach((key) => {
     state.filters[key] = [];
   });
@@ -1595,10 +1527,11 @@ function applyTagFilter(type, value) {
     selectOnly("service", normalizeBucketName(value, SERVICE_BUCKET_RULES) || value);
   } else if (type === "technology") {
     selectOnly("technology", normalizeBucketName(value, TECHNOLOGY_BUCKET_RULES) || value);
-  } else if (type === "vendor") {
-    selectOnly("partner", normalizeBucketName(value, PARTNERSHIP_BUCKET_RULES) || value);
-  } else if (type === "industry") {
-    selectOnly("industry", value);
+  } else {
+    // Partnerships/industries aren't filterable facets anymore (see
+    // FILTER_DEFS) - fall through to a plain text search on the value
+    // instead of silently doing nothing.
+    elements.searchInput.value = value;
   }
 
   exitProfileMode();
@@ -1912,14 +1845,15 @@ function bindEvents() {
   // first, firing "change" mid-click and replacing #profileList's buttons
   // between mousedown and click, which silently swallows the click on
   // whatever row the user just typed their way to.
-  [
-    elements.searchInput,
-    elements.filterSearchInput,
-  ].forEach((element) => {
-    element.addEventListener("input", applyFilters);
-  });
+  elements.searchInput.addEventListener("input", applyFilters);
 
   FILTER_DEFS.forEach((filterDef) => {
+    // "focus" has no drawer/dropdown container of its own (see FILTER_DEFS) -
+    // it's driven entirely by the homepage's quick-search strip instead.
+    if (!filterDef.container) {
+      return;
+    }
+
     filterDef.container.addEventListener("change", (event) => {
       const checkbox = event.target.closest("[data-filter-option]");
 
@@ -1955,12 +1889,6 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll("[data-filter-group-header]").forEach((header) => {
-    header.addEventListener("click", () => {
-      toggleFilterGroup(header.closest(".filterGroup"));
-    });
-  });
-
   elements.activeFilters.addEventListener("click", (event) => {
     const button = event.target.closest("[data-remove-filter]");
 
@@ -1974,35 +1902,40 @@ function bindEvents() {
 
   elements.resetButton.addEventListener("click", resetFilters);
 
-  elements.filterDrawerButton.addEventListener("click", () => {
-    document.body.classList.add("filtersOpen");
-    elements.filterDrawerButton.setAttribute("aria-expanded", "true");
-  });
+  // Hero Country/Service/Technology dropdowns: each button toggles its own
+  // small scrollable panel (see .heroFilterDropdown in the CSS) - only one
+  // open at a time, closes on outside click or Escape.
+  document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
 
-  elements.filterDrawerClose.addEventListener("click", closeFilterDrawer);
+      const panel = document.getElementById(button.getAttribute("aria-controls"));
+      const willOpen = panel.hidden;
 
-  // Hero "Country / Service / Technology" quick-open boxes (9a) - shortcuts
-  // onto the real filter drawer rather than a separate UI, so there's only
-  // one filtering implementation to keep in sync.
-  document.querySelectorAll("[data-open-filter]").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.body.classList.add("filtersOpen");
-      elements.filterDrawerButton.setAttribute("aria-expanded", "true");
+      closeAllFilterDropdowns();
 
-      const filterDef = filterDefForKey(button.dataset.openFilter);
-      const group = filterDef?.container?.closest(".filterGroup");
-
-      if (group) {
-        group.classList.remove("isCollapsed");
-        group.querySelector("[data-toggle-filter-group]")?.setAttribute("aria-expanded", "true");
-        requestAnimationFrame(() => group.scrollIntoView({ behavior: "smooth", block: "start" }));
+      if (willOpen) {
+        panel.hidden = false;
+        button.setAttribute("aria-expanded", "true");
       }
     });
   });
 
-  // Quick-search focus strip (9a) - single-select shortcut onto the same
-  // "focus" facet as the drawer's own Focus area group; clicking an already-
-  // active code clears it instead of re-selecting it.
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".heroFilterDropdown")) {
+      closeAllFilterDropdowns();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllFilterDropdowns();
+    }
+  });
+
+  // Quick-search focus strip (9a) - single-select shortcut onto the "focus"
+  // facet (see FILTER_DEFS); clicking an already-active code clears it
+  // instead of re-selecting it.
   elements.focusStrip?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-focus-code]");
 
@@ -2035,16 +1968,13 @@ function syncPageFromLocation() {
   setActivePage(page || "providers");
 }
 
-function toggleFilterGroup(group) {
-  const toggle = group.querySelector("[data-toggle-filter-group]");
-  const expanded = group.classList.toggle("isCollapsed") === false;
-
-  toggle.setAttribute("aria-expanded", String(expanded));
-}
-
-function closeFilterDrawer() {
-  document.body.classList.remove("filtersOpen");
-  elements.filterDrawerButton.setAttribute("aria-expanded", "false");
+function closeAllFilterDropdowns() {
+  document.querySelectorAll(".heroFilterPanel").forEach((panel) => {
+    panel.hidden = true;
+  });
+  document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+  });
 }
 
 function syncProviderRouteFromLocation(options = {}) {
