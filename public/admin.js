@@ -785,18 +785,18 @@ function renderActionCell(actions = []) {
   `;
 }
 
-// Same shape as renderActionCell but keeps only 1 item primary instead of 2 -
-// the Outreach Queue row always leads with a single, priority-ordered action
-// (Send / Mark Replied / Edit Drafts), with everything else under "More".
-function renderOutreachActionCell(actions = []) {
-  const items = actions.filter(Boolean);
+// Same shape as renderActionCell but takes explicit primary/overflow sets
+// instead of slicing one priority-ordered array - the Outreach Queue row
+// always shows exactly Edit Drafts + Outreach Page as its two buttons; Send,
+// Mark Replied, and Pause/Resume still work, just from "More" instead of
+// competing for one of the two primary slots.
+function renderOutreachActionCell(primaryActions = [], overflowActions = []) {
+  const primary = primaryActions.filter(Boolean);
+  const overflow = overflowActions.filter(Boolean);
 
-  if (items.length <= 1) {
-    return `<div class="adminPublishedActions">${items.join("")}</div>`;
+  if (overflow.length === 0) {
+    return `<div class="adminPublishedActions">${primary.join("")}</div>`;
   }
-
-  const primary = items.slice(0, 1);
-  const overflow = items.slice(1);
 
   return `
     <div class="adminPublishedActions">
@@ -3245,13 +3245,13 @@ function outreachProviderRow(provider) {
     ? actionButton("recrawl", cycle.paused ? "Resume" : "Pause", `data-toggle-outreach-pause="${escapeHtml(provider.id)}" data-outreach-pause="${cycle.paused ? "false" : "true"}"`)
     : null;
 
-  // Exactly one primary action shown per row (Send once approved, otherwise
-  // Mark Replied once a cycle is running, otherwise Edit Drafts) - everything
-  // else, including whichever of those didn't win, collapses into "More".
-  const primaryAction = sendButton || markRepliedButton || editDraftsButton;
-  const moreActions = [editDraftsButton, outreachPageLink, markRepliedButton, pauseResumeButton]
-    .filter((action) => action && action !== primaryAction);
-  const actions = renderOutreachActionCell([primaryAction, ...moreActions]);
+  // Edit Drafts + Outreach Page are always the two visible buttons; Send,
+  // Mark Replied, and Pause/Resume collapse into "More" when applicable
+  // rather than competing for a primary slot.
+  const actions = renderOutreachActionCell(
+    [editDraftsButton, outreachPageLink],
+    [sendButton, markRepliedButton, pauseResumeButton]
+  );
 
   const selectable = Boolean(sendableMessage);
   const selected = selectable && state.outreachSelection.has(key);
