@@ -2114,7 +2114,7 @@ async function confirmOwnerVerification(verifyToken) {
     metadata: { providerDomain: provider.domain, role: editor.role },
   });
 
-  return { editToken: editLink.token, role: editor.role, email: link.email, name: editor.name, provider };
+  return { editToken: editLink.token, role: editor.role, email: link.email, name: editor.name, provider, isFirstClaim };
 }
 
 // Owner-only: invites someone by email as an editor. Bypasses the domain

@@ -33,11 +33,18 @@ const elements = {
   verifyRequestForm: document.querySelector("#verifyRequestForm"),
   verifyRequestMessage: document.querySelector("[data-verify-request-message]"),
   inviteEditorPanel: document.querySelector("#inviteEditorPanel"),
-  inviteEditorForm: document.querySelector("#inviteEditorForm"),
+  inviteEditorEmail: document.querySelector("#inviteEditorEmail"),
+  inviteEditorSubmit: document.querySelector("#inviteEditorSubmit"),
   inviteMessage: document.querySelector("[data-invite-message]"),
   editorListPanel: document.querySelector("#editorListPanel"),
   editorListBody: document.querySelector("#editorListBody"),
   editorListMessage: document.querySelector("[data-editor-list-message]"),
+  planSection: document.querySelector("#planSection"),
+  planMessage: document.querySelector("[data-plan-message]"),
+  doneSection: document.querySelector("#doneSection"),
+  doneCompanyName: document.querySelector("#doneCompanyName"),
+  doneMessage: document.querySelector("#doneMessage"),
+  doneViewProfile: document.querySelector("#doneViewProfile"),
 };
 
 const fields = {
@@ -55,6 +62,11 @@ const state = {
   token: "",
   domain: "",
   tags: { services: [], technologies: [], industries: [] },
+  // Set only when this page load just walked through email verification for
+  // a provider that wasn't claimed before (see confirmVerificationIfNeeded) -
+  // claiming itself happens server-side at verify-confirm time, not at
+  // Publish, so this is the one accurate signal for "show Plan/Done next".
+  isFirstClaim: false,
 };
 
 const tagInputs = {};
@@ -84,10 +96,10 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-// Plan/Done aren't reachable yet (no self-serve pricing flow exists) - they
-// stay visible as future steps so the tracker reads as a real 5-step
-// journey, matching the reference design, even though only the first 3
-// steps actually do anything right now.
+// Plan/Done only appear right after a first-time claim (see handleSaveSubmit
+// / showPlanStep) - re-editing an already-claimed profile stays on "profile"
+// and just shows the inline Published message, so fixing a typo later
+// doesn't re-run the whole onboarding tail every time.
 const SWISS_STEP_ORDER = ["welcome", "verify", "profile", "plan", "done"];
 const SWISS_STEP_LABELS = { welcome: "Welcome", verify: "Verify", profile: "Profile", plan: "Plan", done: "Done" };
 
@@ -358,11 +370,96 @@ async function handleSaveSubmit(event) {
     elements.profileLink.hidden = false;
     elements.saveButton.textContent = "Publish changes";
     setSaveMessage("Published. Your public profile is up to date.");
+
+    // Plan/Done only follow the save right after a genuine first-time claim
+    // (see confirmVerificationIfNeeded), not every later edit - reset the
+    // flag straight after so a second Publish click in the same session
+    // doesn't show it again.
+    if (state.isFirstClaim) {
+      state.isFirstClaim = false;
+      showPlanStep();
+    }
   } catch (error) {
     setSaveMessage(error.message, true);
   } finally {
     elements.saveButton.disabled = false;
   }
+}
+
+function setPlanMessage(text, isError = false) {
+  elements.planMessage.textContent = text;
+  elements.planMessage.classList.toggle("error", isError);
+}
+
+async function callProfilePlan(choice) {
+  const response = await fetchWithTimeout("/api/profile-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: state.token, choice }),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Request failed.");
+  }
+
+  return payload;
+}
+
+function showPlanStep() {
+  elements.planSection.hidden = false;
+  setSwissStep("plan");
+  elements.planSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showDoneStep() {
+  const companyName = fields.companyName.value.trim();
+
+  elements.doneCompanyName.textContent = companyName ? `, ${companyName}` : "";
+  elements.doneMessage.textContent = "Your profile is live in the directory — no waiting on review.";
+
+  if (state.domain) {
+    elements.doneViewProfile.href = `/?provider=${encodeURIComponent(state.domain)}`;
+  }
+
+  elements.doneSection.hidden = false;
+  setSwissStep("done");
+  elements.doneSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// There's no payment processor wired up yet (see src/api/profile-plan.js),
+// so every choice - including Pro/Premium - just logs an activity event and
+// moves on to Done; Pro/Premium don't actually change the billed tier.
+async function handlePlanChoice(choice) {
+  const controls = elements.planSection.querySelectorAll("[data-plan-choice]");
+
+  controls.forEach((button) => {
+    button.disabled = true;
+  });
+  setPlanMessage(choice === "free" ? "Continuing with Free..." : "Sending your request...");
+
+  try {
+    await callProfilePlan(choice);
+    setPlanMessage(
+      choice === "free" ? "Continuing on the Free plan." : `Thanks — we'll be in touch about ${choice === "pro" ? "Pro" : "Premium"}.`
+    );
+    showDoneStep();
+  } catch (error) {
+    setPlanMessage(error.message, true);
+    controls.forEach((button) => {
+      button.disabled = false;
+    });
+  }
+}
+
+function handlePlanSectionClick(event) {
+  const button = event.target.closest("[data-plan-choice]");
+
+  if (!button || button.disabled) {
+    return;
+  }
+
+  handlePlanChoice(button.dataset.planChoice);
 }
 
 async function handleRemovalSubmit(event) {
@@ -449,18 +546,29 @@ async function handleVerifyRequestSubmit(event) {
   }
 }
 
-async function handleInviteEditorSubmit(event) {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(elements.inviteEditorForm).entries());
-  const submitButton = elements.inviteEditorForm.querySelector("button[type='submit']");
+// #inviteEditorForm is a plain <div>, not a <form> (see the HTML comment
+// next to it) - so this runs off a button click, not a submit event, reads/
+// clears the email input directly instead of FormData()/reset(), and
+// validates it here rather than via the input's `required` attribute: that
+// attribute would block *#ownerEditForm's own* Publish button too, since
+// this field lives inside it and sits inside a collapsed <details> the
+// owner may never open (a real bug this replaced - see the HTML comment).
+async function handleInviteEditorSubmit() {
+  const email = elements.inviteEditorEmail.value.trim();
+  const submitButton = elements.inviteEditorSubmit;
+
+  if (!email) {
+    setInviteMessage("Enter an email address.", true);
+    return;
+  }
 
   submitButton.disabled = true;
   setInviteMessage("Sending invite...");
 
   try {
-    await callClaimVerify({ action: "invite", token: state.token, email: data.email });
-    setInviteMessage(`Invite sent to ${data.email}.`);
-    elements.inviteEditorForm.reset();
+    await callClaimVerify({ action: "invite", token: state.token, email });
+    setInviteMessage(`Invite sent to ${email}.`);
+    elements.inviteEditorEmail.value = "";
     loadEditorList();
   } catch (error) {
     setInviteMessage(error.message, true);
@@ -606,6 +714,7 @@ async function confirmVerificationIfNeeded(token) {
     const result = await callClaimVerify({ action: "confirm", token });
 
     setToken(result.editToken);
+    state.isFirstClaim = Boolean(result.isFirstClaim);
     const url = new URL(window.location.href);
     url.searchParams.delete("verify");
     window.history.replaceState({}, "", url);
@@ -725,8 +834,9 @@ on(elements.editForm, "submit", handleSaveSubmit);
 on(elements.removalForm, "submit", handleRemovalSubmit);
 on(elements.logoFile, "change", handleLogoFileChange);
 on(elements.verifyRequestForm, "submit", handleVerifyRequestSubmit);
-on(elements.inviteEditorForm, "submit", handleInviteEditorSubmit);
+on(elements.inviteEditorSubmit, "click", handleInviteEditorSubmit);
 on(elements.editorListBody, "click", handleEditorListClick);
+on(elements.planSection, "click", handlePlanSectionClick);
 
 // init() has no internal try/catch around its fetch/render chain - any
 // unexpected failure (network error, unexpected response shape, a bug in a

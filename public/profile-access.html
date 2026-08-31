@@ -187,14 +187,18 @@
                     <summary>Add someone else who can edit this listing</summary>
                     <div class="swissDetailsBody">
                       <p>As the verified owner, you can invite colleagues to help keep this listing up to date. They'll get their own verification email.</p>
-                      <form id="inviteEditorForm">
+                      <!-- Not a <form>: it would nest inside #ownerEditForm, which HTML
+                           disallows - the browser silently drops the inner <form> start
+                           tag but still honors its closing tag, which would close
+                           #ownerEditForm early and strand #saveButton outside any form. -->
+                      <div id="inviteEditorForm">
                         <div class="swissField">
                           <span>Their email</span>
-                          <input name="email" type="email" placeholder="colleague@company.com" required />
+                          <input id="inviteEditorEmail" name="email" type="email" placeholder="colleague@company.com" />
                         </div>
-                        <button class="swissBtn ghost" type="submit">Send invite</button>
+                        <button class="swissBtn ghost" type="button" id="inviteEditorSubmit">Send invite</button>
                         <p class="swissFormMessage" data-invite-message aria-live="polite"></p>
-                      </form>
+                      </div>
                     </div>
                   </details>
                 </section>
@@ -207,6 +211,72 @@
             <button class="swissBtn" id="saveButton" type="submit">Publish changes</button>
           </div>
         </form>
+
+        <!-- Plan (16d) - only shown right after a first-time claim, not on
+             every later edit. No payment processor is wired up yet, so
+             Upgrade just records interest for a human to follow up on. -->
+        <section id="planSection" class="swissSection" hidden>
+          <span class="swissEyebrow accent">Step 4 of 5</span>
+          <h1 class="swissH1">How visible do you want to be<span class="accentDot">?</span></h1>
+          <p class="swissLede">Start free and upgrade anytime — no card required either way.</p>
+          <div class="swissPlanGrid">
+            <div class="swissPlanCard">
+              <span class="swissEyebrow">Listed</span>
+              <div class="swissPlanPrice">Free<span class="swissPlanPeriod">forever</span></div>
+              <ul class="swissPlanFeatures">
+                <li>Verified profile &amp; badge</li>
+                <li>Services &amp; technologies</li>
+                <li>Contact requests</li>
+              </ul>
+              <button type="button" class="swissBtn ghost swissPlanCta" disabled>Your current choice ✓</button>
+            </div>
+            <div class="swissPlanCard featured">
+              <span class="swissPlanBadge">Most popular</span>
+              <span class="swissEyebrow">Pro</span>
+              <div class="swissPlanPrice">CHF 190<span class="swissPlanPeriod">/ month, billed yearly</span></div>
+              <ul class="swissPlanFeatures">
+                <li>Everything in Listed</li>
+                <li>Priority placement in results</li>
+                <li>Profile analytics</li>
+              </ul>
+              <button type="button" class="swissBtn swissPlanCta" data-plan-choice="pro">Upgrade to Pro</button>
+            </div>
+            <div class="swissPlanCard">
+              <span class="swissEyebrow">Premium</span>
+              <div class="swissPlanPrice">CHF 490<span class="swissPlanPeriod">/ month, billed yearly</span></div>
+              <ul class="swissPlanFeatures">
+                <li>Everything in Pro</li>
+                <li>Warm introductions brokered</li>
+                <li>Dedicated success manager</li>
+              </ul>
+              <button type="button" class="swissBtn ghost swissPlanCta" data-plan-choice="premium">Upgrade to Premium</button>
+            </div>
+          </div>
+          <p class="swissFormMessage" data-plan-message aria-live="polite"></p>
+          <div class="swissPlanFooter">
+            <button type="button" class="swissLink" data-plan-choice="free">Continue with Free →</button>
+          </div>
+        </section>
+
+        <!-- Done (16e) -->
+        <section id="doneSection" class="swissDoneGrid" hidden>
+          <div class="swissDoneMain">
+            <span class="swissDoneCheck" aria-hidden="true">✓</span>
+            <h1 class="swissH1">Thank you<span id="doneCompanyName"></span><span class="accentDot">.</span></h1>
+            <p class="swissLede" id="doneMessage">Your profile is live in the directory.</p>
+            <div class="swissHeroActions">
+              <a class="swissBtn" id="doneViewProfile" href="/" target="_blank" rel="noreferrer">View your public profile →</a>
+            </div>
+          </div>
+          <div class="swissDoneSide">
+            <span class="swissEyebrow">What happens next</span>
+            <div class="swissDoneSteps">
+              <div class="swissDoneStep"><span>01</span><div><strong>Profile published</strong><small>Live now, visible to buyers — no review queue</small></div></div>
+              <div class="swissDoneStep"><span>02</span><div><strong>Bookmark this link</strong><small>Come back anytime to update your listing</small></div></div>
+              <div class="swissDoneStep"><span>03</span><div><strong>Invite teammates</strong><small>Add editors from the Team &amp; contacts section above</small></div></div>
+            </div>
+          </div>
+        </section>
 
         <!-- Removal request -->
         <section class="swissSection tight">

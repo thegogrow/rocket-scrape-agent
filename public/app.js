@@ -11,6 +11,7 @@ const state = {
     technology: [],
     partner: [],
     industry: [],
+    focus: [],
   },
   filterSearches: {
     country: "",
@@ -18,6 +19,7 @@ const state = {
     technology: "",
     partner: "",
     industry: "",
+    focus: "",
   },
 };
 
@@ -39,6 +41,8 @@ const elements = {
   technologyFilter: document.querySelector("#technologyFilter"),
   partnerFilter: document.querySelector("#partnerFilter"),
   industryFilter: document.querySelector("#industryFilter"),
+  focusFilter: document.querySelector("#focusFilter"),
+  focusStrip: document.querySelector("#focusStrip"),
   activeFilters: document.querySelector("#activeFilters"),
   resetButton: document.querySelector("#resetButton"),
   profileList: document.querySelector("#profileList"),
@@ -136,6 +140,29 @@ const FILTER_DEFS = [
       return profile.filterBuckets?.industries || getIndustries(profile);
     },
   },
+  {
+    key: "focus",
+    label: "Focus area",
+    container: elements.focusFilter,
+    values(profile) {
+      return providerFocusCodes(profile).map(([code]) => code);
+    },
+  },
+];
+
+// Short focus-area codes shown on provider cards and the homepage's
+// quick-search strip (e.g. "CLD", "PLT") - there's no persisted taxonomy for
+// these, so they're derived on the fly from the same free-text fields
+// profileSearchText() already searches, same approach providerFocusCodes()
+// used before this was pulled out into a shared list of definitions (it's
+// now also the source for the "focus" FILTER_DEFS entry and the strip).
+const FOCUS_AREA_DEFS = [
+  { code: "SEC", name: "Cyber Security", match: /security|zero trust|compliance|cyber/ },
+  { code: "AI", name: "AI & Data", match: /\bai\b|data|machine learning|analytics|mlops/ },
+  { code: "CLD", name: "Cloud", match: /cloud|aws|azure|gcp|kubernetes|k8s/ },
+  { code: "WRK", name: "Workplace", match: /workplace|microsoft 365|m365|office 365|end.?user computing|device management/ },
+  { code: "SOV", name: "Digital Sovereignty", match: /sovereign|swiss cloud|schweizer cloud|gaia-x/ },
+  { code: "PLT", name: "Platform Engineering", match: /platform|developer platform|devops|gitops|ci\/cd|sre/ },
 ];
 
 const CATEGORY_RULES = [
@@ -766,6 +793,39 @@ function populateFilters() {
   FILTER_DEFS.forEach(renderFilterOptions);
 }
 
+// Homepage "quick search by focus area" strip - a single-select shortcut
+// onto the same "focus" facet the filter drawer's own Focus area group uses
+// (see FILTER_DEFS), so clicking a code here and picking it from the drawer
+// are two paths to the same state.filters.focus. Counts are always against
+// the full state.profiles (like the drawer's own per-option counts), not
+// state.filtered, so the strip doesn't visually shift as other filters are
+// applied - only which cell is highlighted "active" changes.
+function renderFocusStrip() {
+  if (!elements.focusStrip) {
+    return;
+  }
+
+  if (state.profiles.length === 0) {
+    elements.focusStrip.hidden = true;
+    elements.focusStrip.innerHTML = "";
+    return;
+  }
+
+  elements.focusStrip.hidden = false;
+  elements.focusStrip.innerHTML = FOCUS_AREA_DEFS.map((def) => {
+    const count = state.profiles.filter((profile) => providerFocusCodes(profile).some(([code]) => code === def.code)).length;
+    const active = state.filters.focus.includes(def.code) ? " active" : "";
+
+    return `
+      <button type="button" class="focusStripItem${active}" data-focus-code="${escapeHtml(def.code)}">
+        <span class="focusStripCode">${escapeHtml(def.code)}</span>
+        <span class="focusStripName">${escapeHtml(def.name)}</span>
+        <span class="focusStripCount">${count} provider${count === 1 ? "" : "s"}</span>
+      </button>
+    `;
+  }).join("");
+}
+
 function valueMatchesText(value, query) {
   return String(value || "").toLowerCase().includes(query);
 }
@@ -823,6 +883,7 @@ function applyFilters() {
   const technologies = state.filters.technology;
   const partners = state.filters.partner;
   const industries = state.filters.industry;
+  const focusCodes = state.filters.focus;
 
   state.filtered = state.profiles.filter((profile) => {
       if (query && !profileSearchText(profile).includes(query)) return false;
@@ -831,10 +892,12 @@ function applyFilters() {
       if (!listMatchesSelected(valuesForFilterKey(profile, "technology"), technologies)) return false;
       if (!listMatchesSelected(valuesForFilterKey(profile, "partner"), partners)) return false;
       if (!listMatchesSelected(getIndustries(profile), industries)) return false;
+      if (!listMatchesSelected(valuesForFilterKey(profile, "focus"), focusCodes)) return false;
       return true;
     });
 
   renderList();
+  renderFocusStrip();
 
   if (state.profileMode && !state.filtered.some((profile) => profile.domain === state.selectedDomain)) {
     state.selectedDomain = state.filtered[0]?.domain || null;
@@ -857,10 +920,7 @@ function renderList() {
 
   elements.profileList.innerHTML = `
     <div class="resultsToolbar">
-      <div class="resultsHeader">
-        <h2>Provider index<span>.</span></h2>
-        <span>${resultSummaryText(listProfiles.length)}</span>
-      </div>
+      <span class="resultsSummaryLine">${resultSummaryText(listProfiles.length)}</span>
       <label class="sortControl">
         <span>Sort</span>
         <select id="sortMode">
@@ -884,11 +944,13 @@ function renderList() {
 }
 
 function resultSummaryText(count) {
-  if (count === state.profiles.length) {
-    return "Showing all providers";
+  const total = state.profiles.length;
+
+  if (count === total) {
+    return `${count} provider${count === 1 ? "" : "s"} — showing all`;
   }
 
-  return `${count} of ${state.profiles.length} match current filters`;
+  return `${count} of ${total} provider${total === 1 ? "" : "s"} — filtered`;
 }
 
 function sortProfiles(profiles) {
@@ -946,32 +1008,30 @@ function renderActiveFilters() {
 function cardMarkup(profile) {
   const active = profile.domain === state.selectedDomain ? " active" : "";
   const location = locationParts(profile);
-  const services = normalizeServices(profile.services).slice(0, 3);
-  const industries = getIndustries(profile).slice(0, 2);
-  const technologies = normalizeTechnologies(profile.technologies).slice(0, 3);
-  const tags = [...services.slice(0, 2), ...technologies.slice(0, 2)];
+  const services = normalizeServices(profile.services).slice(0, 2);
+  const technologies = normalizeTechnologies(profile.technologies).slice(0, 2);
+  const tags = [...services, ...technologies];
   const description = profile.description || services.join(", ") || "Profile details available.";
-  const verifiedBadge = profile.claimed ? `<span class="verifiedBadge" aria-label="Verified profile">Verified</span>` : "";
   const locationText = [location.city, location.country].filter(Boolean).join(", ");
-  const partnerCount = normalizePartnerships(profile.vendorPartnerships).filter((value) => value !== "Other Partnerships").length;
-  const score = Math.max(0, Math.min(100, Number.parseInt(profile.confidenceScore, 10) || 0));
+  const metaText = locationText ? `${locationText} — ${profile.domain}` : profile.domain;
+  const focusCodes = providerFocusCodes(profile);
+  const verifiedMark = profile.claimed
+    ? `<span class="cardVerifiedMark" title="Verified by Rocket Engineers" aria-label="Verified profile">✓</span>`
+    : "";
 
   return `
     <button class="profileCard${active}" type="button" data-domain="${escapeHtml(profile.domain)}">
-      <span class="cardTop">
-        ${logoMarkup(profile)}
-        <span class="cardHeading">
-          <span class="cardTitleRow"><span class="cardTitle">${escapeHtml(profile.companyName)}</span>${verifiedBadge}</span>
-          <span class="cardMeta">${escapeHtml(locationText || profile.domain)}</span>
-        </span>
+      ${logoMarkup(profile)}
+      <span class="cardHeading">
+        <span class="cardTitleRow"><span class="cardTitle">${escapeHtml(profile.companyName)}</span>${verifiedMark}</span>
+        <span class="cardMeta">${escapeHtml(metaText)}</span>
+        <span class="cardFocusTags">${focusCodes.map(([code]) => `<span class="focusTag">${escapeHtml(code)}</span>`).join("")}</span>
       </span>
-      <span class="cardText">${escapeHtml(String(description ?? "").slice(0, 180))}</span>
-      <span class="cardTags">${chips(tags, "No tags found")}</span>
-      <span class="cardStats">
-        <span><strong>${partnerCount}</strong> partners</span>
-        <span><strong>${score}%</strong> evidence</span>
-        <span>${industries.map(escapeHtml).join(" / ") || "Software & Technology"}</span>
+      <span class="cardBody">
+        <span class="cardText">${escapeHtml(String(description ?? "").slice(0, 180))}</span>
+        <span class="cardTags">${chips(tags, "No tags found")}</span>
       </span>
+      <span class="cardViewLink" aria-hidden="true">View profile →</span>
     </button>
   `;
 }
@@ -1077,12 +1137,7 @@ function providerFocusCodes(profile) {
     profile.focusAreas,
     profile.description,
   ].flat(2).filter(Boolean).join(" ").toLowerCase();
-  const codes = [];
-
-  if (/cloud|aws|azure|gcp|kubernetes|k8s|platform/.test(text)) codes.push(["CLD", "Cloud"]);
-  if (/platform|developer|devops|gitops|ci\/cd|sre/.test(text)) codes.push(["PLT", "Platform Engineering"]);
-  if (/security|zero trust|compliance|cyber/.test(text)) codes.push(["SEC", "Security"]);
-  if (/\bai\b|data|machine learning|analytics|mlops/.test(text)) codes.push(["AI", "AI & Data"]);
+  const codes = FOCUS_AREA_DEFS.filter((def) => def.match.test(text)).map((def) => [def.code, def.name]);
 
   return codes.length ? codes.slice(0, 3) : [["ENG", "Engineering"]];
 }
@@ -1850,12 +1905,18 @@ function setActivePage(page) {
 }
 
 function bindEvents() {
+  // "input" alone already re-filters live on every keystroke - the "change"
+  // listener this used to also carry was redundant for that (change never
+  // fires without a preceding input on a plain text field) and actively
+  // harmful: clicking a result right after typing blurs the search input
+  // first, firing "change" mid-click and replacing #profileList's buttons
+  // between mousedown and click, which silently swallows the click on
+  // whatever row the user just typed their way to.
   [
     elements.searchInput,
     elements.filterSearchInput,
   ].forEach((element) => {
     element.addEventListener("input", applyFilters);
-    element.addEventListener("change", applyFilters);
   });
 
   FILTER_DEFS.forEach((filterDef) => {
@@ -1919,6 +1980,41 @@ function bindEvents() {
   });
 
   elements.filterDrawerClose.addEventListener("click", closeFilterDrawer);
+
+  // Hero "Country / Service / Technology" quick-open boxes (9a) - shortcuts
+  // onto the real filter drawer rather than a separate UI, so there's only
+  // one filtering implementation to keep in sync.
+  document.querySelectorAll("[data-open-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.body.classList.add("filtersOpen");
+      elements.filterDrawerButton.setAttribute("aria-expanded", "true");
+
+      const filterDef = filterDefForKey(button.dataset.openFilter);
+      const group = filterDef?.container?.closest(".filterGroup");
+
+      if (group) {
+        group.classList.remove("isCollapsed");
+        group.querySelector("[data-toggle-filter-group]")?.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => group.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
+    });
+  });
+
+  // Quick-search focus strip (9a) - single-select shortcut onto the same
+  // "focus" facet as the drawer's own Focus area group; clicking an already-
+  // active code clears it instead of re-selecting it.
+  elements.focusStrip?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-focus-code]");
+
+    if (!button) {
+      return;
+    }
+
+    const code = button.dataset.focusCode;
+
+    state.filters.focus = state.filters.focus.includes(code) ? [] : [code];
+    applyFilters();
+  });
 
   elements.navTabs.forEach((tab) => {
     tab.addEventListener("click", (event) => {

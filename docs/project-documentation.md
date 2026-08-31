@@ -1,7 +1,7 @@
 # Rocket Engineers Scrape Agent — Project Documentation (Week 1–13)
 
 Prepared: 2026-07-31
-Updated: 2026-08-24
+Updated: 2026-08-27
 Prepared for: Phil (client)
 
 A week-by-week record of what was built, from the first Firecrawl crawl through the current state of the Sprint 2 admin, outreach, and claim workflow.
@@ -134,6 +134,42 @@ Phil reviewed the live site and gave structured feedback in Slack, 8 points. Sev
 
 **Not yet applied to production:** two schema migrations at the bottom of `docs/supabase-schema.sql` (the `provider_editors` table + `outreach_links.email` column for verification, and `outreach_contacts.source_status` for multi-contact) need to be run manually in the Supabase SQL editor before those two features work live — this session has no direct database access, consistent with every prior week's schema changes. **Also not yet done:** a real browser click-through of the verification flow and the tag-duplicate finder — both were smoke-tested via direct API calls (curl) against the live site, confirming routes/auth/error-handling behave correctly, but the actual multi-step user flows need a human in a browser once the migrations are applied.
 
+### Week 13 continued — Redesign + Follow-Up Fixes (2026-08-24 to 2026-08-27)
+
+Two more work sessions the same week, both logged here under Week 13 since the corrected week boundary (Aug 21–27) covers both.
+
+**Same evening, 2026-08-24:**
+
+- Unified outreach draft editing between the provider dialog's Outreach tab and the standalone Outreach page's Edit Draft popup, so an edit made in either place applies consistently in both instead of the two surfaces drifting apart (`outreachComposeMessageMarkup()` reused in both, shared `handleOutreachMessageAction()`). Outreach drafts now generate automatically the moment an admin confirms a sourced contact, instead of needing a separate manual click.
+- Fixed the dashboard's 2×2 grid alignment for real — the earlier stretch-based approach broke down whenever one panel's content was taller than another's. All four panels now use a fixed row height and cap at exactly 5 items, so the grid lines up regardless of content. Added a one-time retry after the first admin-state load post-login as a mitigation for a reported "data doesn't load until I sign out and back in" bug — not conclusively root-caused by code review alone.
+
+**2026-08-27 — claim/edit page redesign:**
+
+- Full visual redesign of the claim/edit page (`public/profile-access.html`, new `public/profile-swiss.css`) to match an approved "Minimal Swiss" mockup — Helvetica Neue, black/white, crimson accent, hairline borders, no rounded corners — covering the welcome/verify onboarding steps and the left-nav profile editor. Scoped to restyling what already exists, per explicit direction: no new pricing/plan step, no new pages added. Verified end-to-end via a throwaway test provider through the real API; not yet visually confirmed in an actual browser.
+
+**2026-08-27 — a further list of client-requested items, worked through the same day:**
+
+- **Admin performance, root-caused for real this time** (the Week 13 debounce fix addressed a plausible but unconfirmed cause). Found the actual problem: every admin action re-ran a 14-table schema-readiness check and an unconditional tag-taxonomy write on every state reload. Both now cached for 3 minutes — measured ~2.3s → ~1.4s per repeat admin-state load. Also fixed a real, separate bug found along the way: `tag_taxonomy` had grown past PostgREST's silent 1,000-row cap, dropping 44 tags from the admin view with no error.
+- **Owner-facing editor management** — an owner can now see everyone with edit access to their profile and revoke someone, closing a one-way door (could invite, but never see or remove).
+- **Self-Serve Activity metrics** added to the admin Metrics panel: signups, edits, editors joined, and invites sent, each all-time and last-30-days, sourced from a dedicated uncapped query rather than the activity feed's already-capped 100-row list.
+- **"Most relevant match" badge** on auto-sourced outreach contacts — the multi-contact sourcing itself already existed (Week 13 Part E); this closes the gap where all suggestions looked identical with no indication of which one the system recommended.
+- **Owner notification emails** — the owner is now emailed when an editor updates the listing or a newly invited editor verifies, best-effort so a failed notification never blocks the save/verification it's reporting on.
+
+**2026-08-27 — a second round of client-reported issues on the new redesign, fixed the same day:**
+
+- Removed a boxed "card on gray canvas" frame around the redesigned page — leftover presentation chrome from the design-mockup viewer, not part of the intended shipped page.
+- Found and fixed a real CSS bug: three classes set `display` unconditionally, which silently overrides the HTML `hidden` attribute in every browser regardless of selector specificity (an author style always beats the browser's own `[hidden]{display:none}` default) — this was making a verify panel and a save bar render at the wrong times.
+- Aligned two sections' mismatched column grids, removed unwanted sticky positioning, and added a Welcome/Verify/Profile/Plan/Done step tracker.
+- Restyled the public provider-listing page with a new scoped stylesheet, layered on top of an existing partial "Swiss" style already in the shared stylesheet rather than replacing it (which is also used by the admin page). Kept the existing filter-drawer sidebar, just restyled; kept the row-based list layout.
+- Unified the "Rocket\*Engineers" logo (red asterisk) across every page — previously only the redesigned page had it.
+
+**2026-08-27 — two further real bugs, each root-caused from a direct client report:**
+
+- The logo rendering on three separate lines. Root cause: a CSS rule set the logo's layout mode to a grid with no explicit column count, which put each piece of the wordmark in its own row — not a text-wrapping issue, which is why an earlier same-day attempt at a fix didn't work.
+- Pages getting stuck forever on "Loading your profile..." with no visible error. Root cause, confirmed via a real browser console error the client captured: a missing/mismatched HTML element crashed the whole script before any error handling could run. Fixed by guarding every such listener attachment against a missing element, on top of two earlier same-day hardening passes (an error boundary around the page's load sequence, and a timeout on every network request on that path) that couldn't have caught this specific failure on their own since it happened before either ever ran.
+
+**Still not applied to production:** the same two schema migrations noted above. **Still not done:** a real human browser click-through of the verification flow, the tag-duplicate finder, and the new page redesign — all fixes above were driven by either direct API testing or reactive fixes from client-reported bugs, not proactive browser testing.
+
 ---
 
 ## Reference Index
@@ -159,3 +195,9 @@ Phil reviewed the live site and gave structured feedback in Slack, 8 points. Sev
 | Week 13 tag normalization + pending tags | `src/llm/tagNormalization.js`, `src/api/admin-tags-normalize.js`, `upsertCandidateTagsIfNew()` in `src/ui/supabaseStore.js` |
 | Week 13 multi-contact outreach | `src/enrichment/apollo.js` (`sourceOutreachContacts`), `src/pipeline/outreachAutomation.js`, `outreach_contacts.source_status` |
 | Week 13 client feedback log | `docs/weekly-plan.md` (Week 13) |
+| Week 13 claim/edit page redesign | `public/profile-access.html`, `public/profile-swiss.css`, `public/profile-edit.js` |
+| Week 13 admin performance fix | `src/ui/supabaseStore.js` (`getOperationalReadiness()`/`syncExistingTagsFromProviders()` caching, `listTagTaxonomy()` pagination) |
+| Week 13 editor management | `listProviderEditorsForAccess()`/`revokeProviderEditor()` in `src/ui/supabaseStore.js`, `src/api/claim-verify.js` |
+| Week 13 self-serve activity metrics | `listSelfServeActivityEvents()`/`buildSelfServeActivityMetrics()` in `src/ui/supabaseStore.js`, `public/admin.js` |
+| Week 13 teammate notifications | `src/email/teammateNotifications.js` |
+| Week 13 public listing page restyle | `public/listing-swiss.css` |

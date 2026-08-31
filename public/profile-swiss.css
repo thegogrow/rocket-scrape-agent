@@ -198,6 +198,14 @@ body.swissPage {
 }
 
 .swissLink:not([hidden]) {
+  /* Reset native <button> chrome - this class is also used on <button
+     type="button"> elements (e.g. the Plan step's "Continue with Free"),
+     which otherwise keep their default border/background/padding. */
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--sw-ink);
@@ -206,6 +214,11 @@ body.swissPage {
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
+}
+
+.swissLink:not([hidden]):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .swissLink:hover {
@@ -808,6 +821,170 @@ body.swissPage {
   background: #fff;
 }
 
+/* ---- plan step (16d) ---- */
+
+.swissPlanGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--sw-line);
+  border-bottom: 1px solid var(--sw-ink);
+  margin-top: 36px;
+}
+
+.swissPlanCard {
+  position: relative;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sw-line);
+}
+
+.swissPlanCard:last-child {
+  border-right: none;
+}
+
+.swissPlanCard.featured {
+  background: var(--sw-bg-soft);
+}
+
+.swissPlanCard.featured::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--sw-red);
+}
+
+.swissPlanBadge {
+  align-self: flex-start;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  background: var(--sw-red);
+  color: #fff;
+  padding: 3px 8px;
+  margin-bottom: 12px;
+}
+
+.swissPlanPrice {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-top: 10px;
+}
+
+.swissPlanPeriod {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--sw-muted);
+  margin-top: 6px;
+}
+
+.swissPlanFeatures {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--sw-muted-2);
+  flex: 1;
+}
+
+.swissPlanFeatures li::before {
+  content: "✓ ";
+  color: var(--sw-red);
+  font-weight: 700;
+}
+
+.swissPlanCta {
+  margin-top: 28px;
+  width: 100%;
+  justify-content: center;
+}
+
+.swissPlanFooter {
+  margin-top: 24px;
+}
+
+/* ---- done step (16e) ---- */
+
+.swissDoneGrid:not([hidden]) {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  border-bottom: 1px solid var(--sw-line);
+}
+
+.swissDoneMain {
+  padding: 72px 48px;
+  border-right: 1px solid var(--sw-line);
+}
+
+.swissDoneCheck {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sw-red);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.swissDoneMain .swissH1 {
+  margin-top: 28px;
+}
+
+.swissDoneSide {
+  padding: 64px 40px;
+  background: var(--sw-bg-soft);
+}
+
+.swissDoneSteps {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+.swissDoneStep {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--sw-line);
+}
+
+.swissDoneStep:last-child {
+  border-bottom: none;
+}
+
+.swissDoneStep > span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sw-red);
+}
+
+.swissDoneStep strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.swissDoneStep small {
+  display: block;
+  font-size: 12.5px;
+  color: var(--sw-muted);
+  margin-top: 3px;
+}
+
 /* ---- FAQ ---- */
 
 .swissFaqList {
@@ -834,14 +1011,26 @@ body.swissPage {
   .swissVerifyGrid,
   .swissFieldGrid,
   .swissFieldGrid2,
-  .swissEditorBody {
+  .swissEditorBody,
+  .swissPlanGrid,
+  .swissDoneGrid {
     grid-template-columns: 1fr;
   }
 
   .swissHeroMain,
-  .swissVerifyMain {
+  .swissVerifyMain,
+  .swissDoneMain {
     border-right: none;
     border-bottom: 1px solid var(--sw-line);
+  }
+
+  .swissPlanCard {
+    border-right: none;
+    border-bottom: 1px solid var(--sw-line);
+  }
+
+  .swissPlanCard:last-child {
+    border-bottom: none;
   }
 
   .swissRail {

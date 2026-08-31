@@ -3969,18 +3969,22 @@ h4,
 }
 
 .resultsToolbar {
-  padding: 0 0 22px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 20px;
   border: 0;
-  border-bottom: 1px solid #111;
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
 }
 
-.resultsHeader h2 {
-  color: #111;
-  font-size: 42px;
-  line-height: 1;
-  letter-spacing: -0.05em;
+.resultsSummaryLine {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .providerIndexRows {
@@ -3989,10 +3993,14 @@ h4,
   gap: 0;
 }
 
+/* Row layout matching design 9a: logo | name+meta+focus-tags | blurb+chips |
+   view-profile link. cardMarkup() in app.js emits these four as direct grid
+   children (no more .cardTop wrapper) so this grid only needs one level. */
 .profileCard {
-  grid-template-columns: minmax(220px, 1.1fr) minmax(280px, 1.4fr) minmax(220px, 0.8fr);
-  align-items: center;
-  gap: 26px;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 2.2fr) minmax(0, 2.6fr) minmax(90px, 1fr);
+  align-items: start;
+  gap: 24px;
   min-height: 0;
   padding: 26px 0;
   border: 0;
@@ -4001,6 +4009,7 @@ h4,
   background: #fff;
   box-shadow: none;
   white-space: normal;
+  text-align: left;
 }
 
 .profileCard > * {
@@ -4011,11 +4020,6 @@ h4,
 .profileCard.active {
   border-color: var(--line);
   background: #fafafa;
-}
-
-.cardTop {
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: 14px;
 }
 
 .logoBox {
@@ -4034,10 +4038,90 @@ h4,
   height: 96px;
 }
 
+.cardHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cardTitle {
   color: #111;
-  font-size: 20px;
-  letter-spacing: -0.03em;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Minimal checkmark badge for provider rows (distinct from the fuller
+   ".verifiedBadge" pill still used in the detail hero) - matches 9a/11a's
+   "verified is a checkmark only" treatment. */
+.cardVerifiedMark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.cardMeta {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.cardFocusTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.focusTag {
+  border: 1px solid var(--blue);
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardText {
+  color: #444;
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+.cardViewLink {
+  align-self: start;
+  justify-self: end;
+  padding-top: 4px;
+  border-bottom: 1.5px solid var(--ink);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.profileCard:hover .cardViewLink {
+  color: var(--blue);
+  border-color: var(--blue);
 }
 
 .verifiedBadge {
@@ -4049,43 +4133,225 @@ h4,
   letter-spacing: 0.06em;
 }
 
-.cardText {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: end;
-  color: #333;
-  font-size: 14px;
-  white-space: normal;
-}
-
-.cardTags {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.cardStats {
-  display: grid;
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  justify-items: end;
-  gap: 5px;
-  color: #777;
-  font-size: 12px;
-  font-weight: 700;
-  text-align: right;
-}
-
-.cardStats strong {
-  color: #111;
-  font-size: 17px;
-}
-
 .chip {
   border: 1px solid #ddd;
   background: #fff;
   color: #111;
   font-size: 11px;
   white-space: normal;
+}
+
+/* ---- hero quick filters (9a): Country/Service/Technology boxes below the
+   search field, each a shortcut that opens the real filter drawer scrolled
+   to that facet (see app.js's [data-open-filter] handler) rather than a
+   separate filtering UI. ---- */
+
+.heroSearchColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-self: end;
+  gap: 0;
+  width: 100%;
+}
+
+.heroQuickFilters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 16px;
+  border: 1px solid var(--line);
+}
+
+.heroQuickFilter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.heroQuickFilter:last-child {
+  border-right: 0;
+}
+
+.heroQuickFilter:hover {
+  background: #fafafa;
+}
+
+.heroQuickFilter span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* ---- quick-search focus strip (9a): a 6-across row of focus-area codes
+   with live counts, below the hero. Single-select shortcut onto the same
+   "focus" facet the filter drawer's own Focus area group uses. ---- */
+
+.focusStrip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid #111;
+}
+
+.focusStrip[hidden] {
+  display: none;
+}
+
+.focusStripItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.focusStripItem:last-child {
+  border-right: 0;
+}
+
+.focusStripItem:hover {
+  background: #111;
+}
+
+.focusStripItem:hover .focusStripCode,
+.focusStripItem:hover .focusStripName,
+.focusStripItem:hover .focusStripCount {
+  color: #fff;
+}
+
+.focusStripItem.active {
+  background: #111;
+}
+
+.focusStripItem.active .focusStripCode,
+.focusStripItem.active .focusStripName,
+.focusStripItem.active .focusStripCount {
+  color: #fff;
+}
+
+.focusStripCode {
+  color: var(--blue);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.focusStripName {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.focusStripCount {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ---- always-off-canvas filter drawer: 9a shows no persistent sidebar, so
+   the real (5-facet, checkbox-based) drawer that used to sit permanently
+   next to the results now opens as an overlay at every viewport width, not
+   just the narrow one the existing .filterDrawerButton/.filtersOpen
+   mechanism was originally built for (see the mobile-only rules further
+   below in this file, which this section supersedes for this page). The
+   3 hero boxes and the focus strip open it pre-scrolled to a facet; this
+   small button covers the two facets they don't (Partnerships, Industries)
+   plus mobile, so every facet stays reachable. ---- */
+
+.marketplace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.discoveryRail {
+  display: none;
+}
+
+.filtersOpen .discoveryRail {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: block;
+  width: 100vw;
+  max-width: none;
+  margin: 0;
+  padding: 24px 32px 32px;
+  overflow: auto;
+  border-right: 0;
+  background: var(--page);
+}
+
+.filtersOpen {
+  overflow: hidden;
+}
+
+.filterDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #111;
+}
+
+.filterDrawerHeader strong {
+  color: #111;
+  font-size: 20px;
+}
+
+.filterDrawerHeader button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+}
+
+/* The existing #filterDrawerButton ("Filters") was previously mobile-only
+   (base rule at .filterDrawerButton, .filterDrawerHeader { display:none })
+   with its own shadowed-pill styling further below in this file for narrow
+   viewports. Since the drawer is now always off-canvas (not just on
+   mobile), this button needs to always be reachable too - restyled here to
+   match the Swiss aesthetic instead of the mobile pill look. */
+.filterDrawerButton {
+  display: inline-flex !important;
+  justify-self: start;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  margin: 20px 0 0 48px;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ink) !important;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.filterDrawerButton:hover {
+  border-color: #111 !important;
 }
 
 .profileMode .marketplace {
@@ -6636,20 +6902,8 @@ h4,
     grid-template-columns: 1fr;
   }
 
-  .cardStats {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .cardText,
-  .cardTags {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .cardStats {
-    justify-items: start;
-    text-align: left;
+  .cardViewLink {
+    justify-self: start;
   }
 
   .twoColumnStatic,
@@ -6702,6 +6956,31 @@ h4,
   .searchHero,
   .staticHero {
     padding: 36px 20px;
+  }
+
+  .heroQuickFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .heroQuickFilter {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .heroQuickFilter:last-child {
+    border-bottom: 0;
+  }
+
+  .focusStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .focusStripItem {
+    border-right: 1px solid var(--line);
+  }
+
+  .focusStripItem:nth-child(2n) {
+    border-right: 0;
   }
 
   .marketplace {

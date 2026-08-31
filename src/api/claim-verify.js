@@ -61,6 +61,7 @@ module.exports = async function handler(request, response) {
         editToken: result.editToken,
         role: result.role,
         name: result.name,
+        isFirstClaim: result.isFirstClaim,
       });
       return;
     }

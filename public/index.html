@@ -30,14 +30,23 @@
 
     <section class="searchHero">
       <div>
-        <h1>Explore Providers by Business Need</h1>
+        <h1>Find your next transformation partner</h1>
         <p>Find cloud, DevOps, platform, and software providers using generated profile evidence.</p>
       </div>
-      <label class="heroSearch">
-        <span>Search Rocket Engineers</span>
-        <input id="searchInput" type="search" placeholder="Search providers, services, technologies, partnerships" />
-      </label>
+      <div class="heroSearchColumn">
+        <label class="heroSearch">
+          <span>Search Rocket Engineers</span>
+          <input id="searchInput" type="search" placeholder="Search providers, services, technologies, partnerships" />
+        </label>
+        <div class="heroQuickFilters">
+          <button type="button" class="heroQuickFilter" data-open-filter="country">Country <span aria-hidden="true">⌄</span></button>
+          <button type="button" class="heroQuickFilter" data-open-filter="service">Service <span aria-hidden="true">⌄</span></button>
+          <button type="button" class="heroQuickFilter" data-open-filter="technology">Technology <span aria-hidden="true">⌄</span></button>
+        </div>
+      </div>
     </section>
+
+    <nav id="focusStrip" class="focusStrip" aria-label="Quick search by focus area" hidden></nav>
 
     <section id="homePage" class="homePage" hidden></section>
     <section id="storiesPage" class="staticPage" hidden></section>
@@ -100,6 +109,14 @@
           </div>
           <input class="filterOptionSearch" type="search" placeholder="Search industries" data-filter-search="industry" />
           <div id="industryFilter" class="filterOptionList" data-filter-key="industry"></div>
+        </div>
+
+        <div class="filterGroup isCollapsed">
+          <div class="filterGroupHeader" data-filter-group-header>
+            <h2><button class="filterGroupToggle" type="button" data-toggle-filter-group aria-expanded="false">Focus area</button></h2>
+            <button type="button" data-clear-filter="focus">Clear</button>
+          </div>
+          <div id="focusFilter" class="filterOptionList" data-filter-key="focus"></div>
         </div>
 
         <button id="resetButton" class="advancedButton" type="button">Show All Providers</button>

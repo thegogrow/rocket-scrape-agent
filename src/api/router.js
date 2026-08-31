@@ -24,6 +24,7 @@ const handlers = {
   "/api/profile": require("./profile"),
   "/api/profile-edit": require("./profile-edit"),
   "/api/profile-edit-logo": require("./profile-edit-logo"),
+  "/api/profile-plan": require("./profile-plan"),
   "/api/profiles": require("./profiles"),
   "/api/provider-lead": require("./provider-lead"),
   "/api/resolve-outreach-link": require("./resolve-outreach-link"),
