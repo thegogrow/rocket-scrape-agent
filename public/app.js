@@ -895,10 +895,24 @@ function renderList() {
     button.addEventListener("click", () => {
       state.currentPage = Number.parseInt(button.dataset.pageTo, 10);
       renderList();
-      elements.profileList.scrollIntoView({ behavior: "smooth", block: "start" });
+      // "smooth" here meant re-animating a long scroll on every single page
+      // click, repeatedly, which is what read as nauseating rather than
+      // helpful - an instant jump back to the top of the results reads as
+      // a normal pagination reset instead of a scroll effect.
+      elements.profileList.scrollIntoView({ behavior: "auto", block: "start" });
     });
   });
   bindProfileCards();
+}
+
+// Always includes page 1, the last page, and the current page's immediate
+// neighbors - everything else collapses into a single "…" gap marker, so
+// this stays readable even once there are many more pages than fit on one
+// row.
+function pageNumbersToShow(current, total) {
+  const pages = new Set([1, total, current - 1, current, current + 1]);
+
+  return [...pages].filter((page) => page >= 1 && page <= total).sort((left, right) => left - right);
 }
 
 function paginationMarkup(startIndex, pageCount, totalCount, totalPages) {
@@ -909,14 +923,28 @@ function paginationMarkup(startIndex, pageCount, totalCount, totalPages) {
   const page = state.currentPage;
   const rangeStart = startIndex + 1;
   const rangeEnd = startIndex + pageCount;
+  const pageNumbers = pageNumbersToShow(page, totalPages);
+
+  let numbersHtml = "";
+  let previousPage = 0;
+
+  for (const pageNumber of pageNumbers) {
+    if (pageNumber - previousPage > 1) {
+      numbersHtml += `<span class="paginationGap">…</span>`;
+    }
+
+    const isActive = pageNumber === page;
+    numbersHtml += `<button type="button" class="${isActive ? "active" : ""}" data-page-to="${pageNumber}" ${isActive ? 'aria-current="page"' : ""}>${pageNumber}</button>`;
+    previousPage = pageNumber;
+  }
 
   return `
     <div class="paginationBar">
       <span class="paginationRange">${rangeStart}–${rangeEnd} of ${totalCount}</span>
       <div class="paginationControls">
-        <button type="button" class="paginationLink" data-page-to="${page - 1}" ${page <= 1 ? "disabled" : ""}>← Previous</button>
-        <span class="paginationPage">Page ${page} of ${totalPages}</span>
-        <button type="button" class="paginationLink" data-page-to="${page + 1}" ${page >= totalPages ? "disabled" : ""}>Next →</button>
+        <button type="button" class="paginationArrow" data-page-to="${page - 1}" aria-label="Previous page" ${page <= 1 ? "disabled" : ""}>←</button>
+        <div class="paginationNumbers">${numbersHtml}</div>
+        <button type="button" class="paginationArrow" data-page-to="${page + 1}" aria-label="Next page" ${page >= totalPages ? "disabled" : ""}>→</button>
       </div>
     </div>
   `;

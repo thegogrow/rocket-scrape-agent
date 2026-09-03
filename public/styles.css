@@ -3987,13 +3987,18 @@ h4,
   text-transform: uppercase;
 }
 
+/* Reuses the same .paginationBar/.paginationNumbers/.paginationGap classes
+   admin.js's renderPagination() already established (see styles.css:2273+)
+   rather than inventing a parallel naming scheme - this block only scales
+   things up and strips the rounded corners admin.html uses, to match this
+   page's own Swiss (sharp-corner, black/crimson) aesthetic instead. */
 .paginationBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 24px 0;
-  border-top: 1px solid var(--line);
+  gap: 24px;
+  padding: 40px 0;
+  border-top: 1px solid #111;
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4003,29 +4008,76 @@ h4,
 .paginationControls {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
-.paginationLink {
-  border: 0;
-  background: none;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
+.paginationArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
   color: var(--ink);
+  font-size: 18px;
+  font-family: inherit;
   cursor: pointer;
-  padding: 0;
+  transition: border-color 0.12s ease, color 0.12s ease;
 }
 
-.paginationLink:hover:not(:disabled) {
+.paginationArrow:hover:not(:disabled) {
+  border-color: var(--blue);
   color: var(--blue);
 }
 
-.paginationLink:disabled {
-  color: #ccc;
+.paginationArrow:disabled {
+  color: #ddd;
+  border-color: #f2f2f2;
   cursor: not-allowed;
+}
+
+.paginationNumbers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationNumbers button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.paginationNumbers button:hover:not(.active) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.paginationNumbers button.active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+  cursor: default;
+}
+
+.paginationGap {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  color: var(--muted);
 }
 
 .providerIndexRows {
