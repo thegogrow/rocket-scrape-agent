@@ -2559,7 +2559,7 @@ button.isLoading::after,
 .profileMode .searchHero,
 .profileMode .discoveryRail,
 .profileMode .filterDrawerButton,
-.profileMode .activeFilters,
+.profileMode .activeFiltersBar,
 .profileMode .profileList {
   display: none;
 }
@@ -4078,6 +4078,7 @@ h4,
    here rather than raising the shared .logoBox base size, which would also
    inflate the small mini-provider chips on the home/stories pages. */
 .profileCard > .logoBox {
+  align-self: center;
   width: 64px;
   height: 64px;
   font-size: 17px;
