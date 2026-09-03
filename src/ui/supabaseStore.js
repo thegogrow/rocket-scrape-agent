@@ -3120,12 +3120,37 @@ function statusForError(error) {
   return error instanceof AdminAuthError ? 401 : 400;
 }
 
+// The admin UI calls refreshAdminState() after nearly every action (20+
+// call sites in admin.js), and each of those pairs an action endpoint with
+// a follow-up /api/admin-state call - two Supabase Auth round trips per
+// click, back to back, on the same still-valid token. Caching the verified
+// result for a short window removes one of those two round trips for the
+// common case without meaningfully weakening security: a revoked session
+// still stops working within ADMIN_TOKEN_VERIFY_TTL_MS, just not instantly.
+const ADMIN_TOKEN_VERIFY_TTL_MS = 30 * 1000;
+const adminTokenVerifyCache = new Map();
+
+function pruneExpiredAdminTokens(now) {
+  for (const [token, entry] of adminTokenVerifyCache) {
+    if (entry.expiresAt <= now) {
+      adminTokenVerifyCache.delete(token);
+    }
+  }
+}
+
 async function verifyAdminToken(authHeader) {
   const config = supabaseConfig();
   const token = String(authHeader || "").replace(/^Bearer\s+/i, "");
 
   if (!config.url || !config.anonKey || !token) {
     throw new AdminAuthError("Unauthorized");
+  }
+
+  const now = Date.now();
+  const cached = adminTokenVerifyCache.get(token);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
   }
 
   const response = await fetch(`${normalizeSupabaseUrl(config.url)}/auth/v1/user`, {
@@ -3136,6 +3161,7 @@ async function verifyAdminToken(authHeader) {
   });
 
   if (!response.ok) {
+    adminTokenVerifyCache.delete(token);
     throw new AdminAuthError("Unauthorized");
   }
 
@@ -3143,10 +3169,16 @@ async function verifyAdminToken(authHeader) {
   const email = String(user.email || "").toLowerCase();
 
   if (!config.adminEmails.includes(email)) {
+    adminTokenVerifyCache.delete(token);
     throw new AdminAuthError("Unauthorized");
   }
 
-  return { email, id: user.id };
+  const result = { email, id: user.id };
+
+  pruneExpiredAdminTokens(now);
+  adminTokenVerifyCache.set(token, { result, expiresAt: now + ADMIN_TOKEN_VERIFY_TTL_MS });
+
+  return result;
 }
 
 // Success stories/events/signals are no longer fetched here - that UI is

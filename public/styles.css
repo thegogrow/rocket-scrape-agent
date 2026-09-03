@@ -3987,6 +3987,47 @@ h4,
   text-transform: uppercase;
 }
 
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.paginationLink {
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.paginationLink:hover:not(:disabled) {
+  color: var(--blue);
+}
+
+.paginationLink:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
 .providerIndexRows {
   display: grid;
   grid-template-columns: 1fr;
@@ -3998,7 +4039,7 @@ h4,
    children (no more .cardTop wrapper) so this grid only needs one level. */
 .profileCard {
   display: grid;
-  grid-template-columns: 56px minmax(0, 2.2fr) minmax(0, 2.6fr) minmax(90px, 1fr);
+  grid-template-columns: 64px minmax(0, 2.2fr) minmax(0, 2.6fr) minmax(90px, 1fr);
   align-items: start;
   gap: 24px;
   min-height: 0;
@@ -4031,6 +4072,15 @@ h4,
   color: #111;
   box-shadow: none;
   font-size: 13px;
+}
+
+/* Larger logos on the listing rows specifically (client feedback) - scoped
+   here rather than raising the shared .logoBox base size, which would also
+   inflate the small mini-provider chips on the home/stories pages. */
+.profileCard > .logoBox {
+  width: 64px;
+  height: 64px;
+  font-size: 17px;
 }
 
 .logoLarge {

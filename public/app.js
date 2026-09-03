@@ -5,6 +5,8 @@ const state = {
   selectedDomain: null,
   profileMode: false,
   sortMode: "recommended",
+  currentPage: 1,
+  pageSize: 40,
   filters: {
     country: [],
     service: [],
@@ -829,6 +831,11 @@ function applyFilters() {
       return true;
     });
 
+  // Any change to what's being filtered/searched invalidates whatever page
+  // the user was on - page 3 of an unfiltered list isn't page 3 of a
+  // filtered one.
+  state.currentPage = 1;
+
   renderList();
   renderFocusStrip();
 
@@ -843,6 +850,9 @@ function applyFilters() {
   renderActiveFilters();
 }
 
+// Renders 1 page of state.pageSize rows at a time instead of the full
+// filtered list - client feedback was that the page loaded every provider
+// (200+) at once.
 function renderList() {
   const listProfiles = sortProfiles(state.filtered);
 
@@ -850,6 +860,12 @@ function renderList() {
     elements.profileList.innerHTML = `<div class="emptyResults">No providers match the current filters.</div>`;
     return;
   }
+
+  const totalPages = Math.max(1, Math.ceil(listProfiles.length / state.pageSize));
+  state.currentPage = Math.min(Math.max(1, state.currentPage), totalPages);
+
+  const startIndex = (state.currentPage - 1) * state.pageSize;
+  const pageProfiles = listProfiles.slice(startIndex, startIndex + state.pageSize);
 
   elements.profileList.innerHTML = `
     <div class="resultsToolbar">
@@ -865,15 +881,45 @@ function renderList() {
       </label>
     </div>
     <div class="providerGrid providerIndexRows">
-      ${listProfiles.map(cardMarkup).join("")}
+      ${pageProfiles.map(cardMarkup).join("")}
     </div>
+    ${paginationMarkup(startIndex, pageProfiles.length, listProfiles.length, totalPages)}
   `;
 
   elements.profileList.querySelector("#sortMode").addEventListener("change", (event) => {
     state.sortMode = event.target.value;
+    state.currentPage = 1;
     renderList();
   });
+  elements.profileList.querySelectorAll("[data-page-to]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.currentPage = Number.parseInt(button.dataset.pageTo, 10);
+      renderList();
+      elements.profileList.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
   bindProfileCards();
+}
+
+function paginationMarkup(startIndex, pageCount, totalCount, totalPages) {
+  if (totalPages <= 1) {
+    return "";
+  }
+
+  const page = state.currentPage;
+  const rangeStart = startIndex + 1;
+  const rangeEnd = startIndex + pageCount;
+
+  return `
+    <div class="paginationBar">
+      <span class="paginationRange">${rangeStart}–${rangeEnd} of ${totalCount}</span>
+      <div class="paginationControls">
+        <button type="button" class="paginationLink" data-page-to="${page - 1}" ${page <= 1 ? "disabled" : ""}>← Previous</button>
+        <span class="paginationPage">Page ${page} of ${totalPages}</span>
+        <button type="button" class="paginationLink" data-page-to="${page + 1}" ${page >= totalPages ? "disabled" : ""}>Next →</button>
+      </div>
+    </div>
+  `;
 }
 
 function resultSummaryText(count) {
@@ -938,11 +984,30 @@ function renderActiveFilters() {
   `;
 }
 
+// Card chips use per-item bucket names (normalizeBucketName), not the
+// list-level normalizeServices()/normalizeTechnologies() used for filter
+// faceting - those collapse every unmatched value into one shared "Other
+// Services"/"Other Technologies" chip to keep the filter dropdown's option
+// list short, which reads as a vague, meaningless label on a provider card.
+// Per-item, an unmatched value just falls back to its own real text instead.
+function cardDisplayTags(values, rules, max) {
+  return uniqueList(values)
+    .map((value) => normalizeBucketName(value, rules))
+    .filter(Boolean)
+    .reduce((items, value) => {
+      if (!items.some((item) => item.toLowerCase() === value.toLowerCase())) {
+        items.push(value);
+      }
+      return items;
+    }, [])
+    .slice(0, max);
+}
+
 function cardMarkup(profile) {
   const active = profile.domain === state.selectedDomain ? " active" : "";
   const location = locationParts(profile);
-  const services = normalizeServices(profile.services).slice(0, 2);
-  const technologies = normalizeTechnologies(profile.technologies).slice(0, 2);
+  const services = cardDisplayTags(profile.services, SERVICE_BUCKET_RULES, 2);
+  const technologies = cardDisplayTags(profile.technologies, TECHNOLOGY_BUCKET_RULES, 2);
   const tags = [...services, ...technologies];
   const description = profile.description || services.join(", ") || "Profile details available.";
   const locationText = [location.city, location.country].filter(Boolean).join(", ");
